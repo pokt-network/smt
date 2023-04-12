@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/celestiaorg/smt"
+	"github.com/pokt-network/smt"
 )
 
 func Fuzz(input []byte) int {
