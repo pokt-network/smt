@@ -1,3 +1,3 @@
-module github.com/celestiaorg/smt
+module github.com/pokt-network/smt
 
 go 1.14
