@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	_ treeNode = (*innerNode)(nil)
-	_ treeNode = (*leafNode)(nil)
+	_ treeNode = &innerNode{}
+	_ treeNode = &leafNode{}
 )
 
 type treeNode interface {
@@ -349,7 +349,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	}
 	// Hash siblings from bottom up.
 	var sideNodes [][]byte
-	for i, _ := range siblings {
+	for i := range siblings {
 		var sideNode []byte
 		sibling := siblings[len(siblings)-i-1]
 		sideNode = smt.hashNode(sibling)

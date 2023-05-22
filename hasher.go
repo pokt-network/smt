@@ -11,8 +11,10 @@ var (
 	extPrefix   = []byte{2}
 )
 
-var _ PathHasher = (*pathHasher)(nil)
-var _ ValueHasher = (*valueHasher)(nil)
+var (
+	_ PathHasher  = &pathHasher{}
+	_ ValueHasher = &valueHasher{}
+)
 
 // PathHasher defines how key inputs are hashed to produce tree paths.
 type PathHasher interface {
