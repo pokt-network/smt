@@ -2,9 +2,9 @@
 
 A Go library that implements a Sparse Merkle tree for a key-value map. The tree implements the same optimisations specified in the [Libra whitepaper][libra whitepaper], to reduce the number of hash operations required per tree operation to O(k) where k is the number of non-empty elements in the tree.
 
-[![Tests](https://github.com/celestiaorg/smt/actions/workflows/test.yml/badge.svg)](https://github.com/celestiaorg/smt/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/celestiaorg/smt/branch/master/graph/badge.svg?token=U3GGEDSA94)](https://codecov.io/gh/celestiaorg/smt)
-[![GoDoc](https://godoc.org/github.com/celestiaorg/smt?status.svg)](https://godoc.org/github.com/celestiaorg/smt)
+[![Tests](https://github.com/pokt-network/smt/actions/workflows/test.yml/badge.svg)](https://github.com/pokt-network/smt/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/pokt-network/smt/branch/master/graph/badge.svg?token=U3GGEDSA94)](https://codecov.io/gh/pokt-network/smt)
+[![GoDoc](https://godoc.org/github.com/pokt-network/smt?status.svg)](https://godoc.org/github.com/pokt-network/smt)
 
 ## Example
 
@@ -15,7 +15,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/celestiaorg/smt"
+	"github.com/pokt-network/smt"
 )
 
 func main() {

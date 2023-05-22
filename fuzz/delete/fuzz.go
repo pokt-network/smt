@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 
-	"github.com/celestiaorg/smt"
+	"github.com/pokt-network/smt"
 )
 
 func Fuzz(data []byte) int {
