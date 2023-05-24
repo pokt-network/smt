@@ -6,6 +6,12 @@ A Go library that implements a Sparse Merkle tree for a key-value map. The tree 
 [![codecov](https://codecov.io/gh/pokt-network/smt/branch/master/graph/badge.svg?token=U3GGEDSA94)](https://codecov.io/gh/pokt-network/smt)
 [![GoDoc](https://godoc.org/github.com/pokt-network/smt?status.svg)](https://godoc.org/github.com/pokt-network/smt)
 
+## Features
+
+- **Lazy Loading**: This SMT library utilizes a cached, lazy-loaded tree structure to optimize performance. It optimises performance by not reading from/writing to the underlying database on each operationdeferring any underlying changes until the `Commit()` function is called.
+- **Persistence**: Data can be persisted and orphaned nodes can be removed using the `Commit()` function.
+- **Merkle Proof Generation**: This library can generate efficient Sparse Merkle proofs for key-value pairs in the tree.
+
 ## Example
 
 ```go
@@ -19,20 +25,21 @@ import (
 )
 
 func main() {
-	// Initialise two new key-value store to store the nodes of the tree
+	// Initialise a new key-value store to store the nodes of the tree
 	// (Note: the tree only stores hashed values, not raw value data)
 	nodeStore := smt.NewSimpleMap()
+
 	// Initialise the tree
 	tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
 
 	// Update the key "foo" with the value "bar"
 	_ = tree.Update([]byte("foo"), []byte("bar"))
 
-	// Generate a Merkle proof for foo=bar
+	// Generate a Merkle proof for "foo"
 	proof, _ := tree.Prove([]byte("foo"))
 	root := tree.Root() // We also need the current tree root for the proof
 
-	// Verify the Merkle proof for foo=bar
+	// Verify the Merkle proof for "foo"="bar"
 	if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), tree.Spec()) {
 		fmt.Println("Proof verification succeeded.")
 	} else {
