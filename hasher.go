@@ -47,10 +47,13 @@ func newTreeHasher(hasher hash.Hash) *treeHasher {
 	return &th
 }
 
+// Path returns the digest of a key (preimage) produced by the path hasher
 func (ph *pathHasher) Path(key []byte) []byte {
 	return ph.digest(key)[:ph.PathSize()]
 }
 
+// PathSize returns the length (in bytes) of digests produced by the path hasher
+// which is the length of any path in the tree
 func (ph *pathHasher) PathSize() int {
 	return ph.hasher.Size()
 }

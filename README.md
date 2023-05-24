@@ -23,7 +23,7 @@ func main() {
 	// (Note: the tree only stores hashed values, not raw value data)
 	nodeStore := smt.NewSimpleMap()
 	// Initialise the tree
-	tree := smt.NewSMT(nodeStore, sha256.New())
+	tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
 
 	// Update the key "foo" with the value "bar"
 	_ = tree.Update([]byte("foo"), []byte("bar"))

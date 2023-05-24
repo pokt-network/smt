@@ -12,6 +12,7 @@ const (
 var (
 	defaultValue []byte = nil
 
+	// ErrKeyNotPresent is returned when a key is not present in the tree.
 	ErrKeyNotPresent = errors.New("key already empty")
 )
 
