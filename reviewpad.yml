@@ -105,14 +105,10 @@ workflows:
     run:
       # Label pull requests with `docs` if they only modify Markdown or txt files.
       - if: $hasFileExtensions([".md", ".txt"])
-        then: $addLabel("docs")
-        else: $removeLabel("docs")
-      # Label pull requests with `infra` if they modify Terraform files.
-      - if: $hasFileExtensions([".tf"])
-        then: $addLabel("infra")
-        else: $removeLabel("infra")
+        then: $addLabel("documentation")
+        else: $removeLabel("documentation")
       # Label pull requests with `dependencies` if they only modify `package.json` and `package.lock` files.
-      - if: $hasFileExtensions(["package.json", "package-lock.json"])
+      - if: $hasFileExtensions(["go.mod", "go.sum"])
         then: $addLabel("dependencies")
         else: $removeLabel("dependencies")
 
