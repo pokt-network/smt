@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"math"
 
 	"github.com/pokt-network/smt"
@@ -46,21 +47,21 @@ func Fuzz(input []byte) int {
 		switch op {
 		case Get:
 			if _, err := tree.Get(key()); err != nil {
-				return 0
+				panic(fmt.Sprintf("error getting key: %s (%s)", key(), err.Error()))
 			}
 		case Update:
 			value := make([]byte, 32)
 			binary.BigEndian.PutUint64(value, uint64(i))
 			if err := tree.Update(key(), value); err != nil {
-				return 0
+				panic(fmt.Sprintf("error updating key: %s (%s)", key(), err.Error()))
 			}
 		case Delete:
 			if err := tree.Delete(key()); err != nil {
-				return 0
+				panic(fmt.Sprintf("error deleting key: %s (%s)", key(), err.Error()))
 			}
 		case Prove:
 			if _, err := tree.Prove(key()); err != nil {
-				return 0
+				panic(fmt.Sprintf("error proving key: %s (%s)", key(), err.Error()))
 			}
 		}
 	}

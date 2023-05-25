@@ -3,6 +3,7 @@ package delete
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 
 	"github.com/pokt-network/smt"
 )
@@ -22,13 +23,13 @@ func Fuzz(data []byte) int {
 	for i := 0; i < len(splits)-1; i += 2 {
 		key, value := splits[i], splits[i+1]
 		if err := tree.Update(key, value); err != nil {
-			return 0
+			panic(fmt.Sprintf("error updating key: %s (%s)", key, err.Error()))
 		}
 	}
 
 	deleteKey := splits[len(splits)-1]
 	if err := tree.Delete(deleteKey); err != nil {
-		return 0
+		panic(fmt.Sprintf("error deleting key: %s (%s)", deleteKey, err.Error()))
 	}
 
 	newRoot := tree.Root()
