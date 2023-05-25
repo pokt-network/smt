@@ -22,13 +22,15 @@ func Fuzz(data []byte) int {
 	tree := smt.NewSparseMerkleTree(smn, sha256.New())
 	for i := 0; i < len(splits)-1; i += 2 {
 		key, value := splits[i], splits[i+1]
-		if err := tree.Update(key, value); err != nil {
+		err := tree.Update(key, value)
+		if err != smt.ErrKeyNotPresent && err != nil {
 			panic(fmt.Sprintf("error updating key: %s (%s)", key, err.Error()))
 		}
 	}
 
 	deleteKey := splits[len(splits)-1]
-	if err := tree.Delete(deleteKey); err != nil {
+	err := tree.Delete(deleteKey)
+	if err != smt.ErrKeyNotPresent && err != nil {
 		panic(fmt.Sprintf("error deleting key: %s (%s)", deleteKey, err.Error()))
 	}
 

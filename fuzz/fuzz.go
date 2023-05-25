@@ -46,21 +46,26 @@ func Fuzz(input []byte) int {
 		op := op(int(b) % int(Noop))
 		switch op {
 		case Get:
-			if _, err := tree.Get(key()); err != nil {
+			_, err := tree.Get(key())
+			if err != smt.ErrKeyNotPresent && err != nil {
 				panic(fmt.Sprintf("error getting key: %s (%s)", key(), err.Error()))
 			}
 		case Update:
 			value := make([]byte, 32)
 			binary.BigEndian.PutUint64(value, uint64(i))
-			if err := tree.Update(key(), value); err != nil {
+
+			err := tree.Update(key(), value)
+			if err != smt.ErrKeyNotPresent && err != nil {
 				panic(fmt.Sprintf("error updating key: %s (%s)", key(), err.Error()))
 			}
 		case Delete:
-			if err := tree.Delete(key()); err != nil {
+			err := tree.Delete(key())
+			if err != smt.ErrKeyNotPresent && err != nil {
 				panic(fmt.Sprintf("error deleting key: %s (%s)", key(), err.Error()))
 			}
 		case Prove:
-			if _, err := tree.Prove(key()); err != nil {
+			_, err := tree.Prove(key())
+			if err != smt.ErrKeyNotPresent && err != nil {
 				panic(fmt.Sprintf("error proving key: %s (%s)", key(), err.Error()))
 			}
 		}
