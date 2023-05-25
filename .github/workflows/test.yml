@@ -7,6 +7,10 @@ on:
       - main
       - release/**
 
+env:
+  # Even though we can test against multiple versions, this one is considered a target version.
+  TARGET_GOLANG_VERSION: "1.19"
+
 jobs:
   tests:
     runs-on: ubuntu-latest
