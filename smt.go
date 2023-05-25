@@ -376,6 +376,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	return
 }
 
+//nolint:unused
 func (smt *SMT) recursiveLoad(hash []byte) (treeNode, error) {
 	return smt.resolve(hash, smt.recursiveLoad)
 }
@@ -525,6 +526,7 @@ func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
 	return ext.length(), true
 }
 
+//nolint:unused
 func (ext *extensionNode) commonPrefix(path []byte) int {
 	count := 0
 	for i := ext.pathStart(); i < ext.pathEnd(); i++ {

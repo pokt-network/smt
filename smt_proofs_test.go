@@ -92,10 +92,14 @@ func TestProofsSanityCheck(t *testing.T) {
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()
 
-	smt.Update([]byte("testKey1"), []byte("testValue1"))
-	smt.Update([]byte("testKey2"), []byte("testValue2"))
-	smt.Update([]byte("testKey3"), []byte("testValue3"))
-	smt.Update([]byte("testKey4"), []byte("testValue4"))
+	err := smt.Update([]byte("testKey1"), []byte("testValue1"))
+	require.NoError(t, err)
+	err = smt.Update([]byte("testKey2"), []byte("testValue2"))
+	require.NoError(t, err)
+	err = smt.Update([]byte("testKey3"), []byte("testValue3"))
+	require.NoError(t, err)
+	err = smt.Update([]byte("testKey4"), []byte("testValue4"))
+	require.NoError(t, err)
 	root := smt.Root()
 
 	// Case: invalid number of sidenodes.
@@ -108,7 +112,7 @@ func TestProofsSanityCheck(t *testing.T) {
 	require.False(t, proof.sanityCheck(base))
 	result := VerifyProof(proof, root, []byte("testKey1"), []byte("testValue1"), base)
 	require.False(t, result)
-	_, err := CompactProof(proof, base)
+	_, err = CompactProof(proof, base)
 	require.Error(t, err)
 
 	// Case: incorrect size for NonMembershipLeafData.

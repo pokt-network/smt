@@ -21,17 +21,21 @@ func Fuzz(data []byte) int {
 	tree := smt.NewSparseMerkleTree(smn, sha256.New())
 	for i := 0; i < len(splits)-1; i += 2 {
 		key, value := splits[i], splits[i+1]
-		tree.Update(key, value)
+		if err := tree.Update(key, value); err != nil {
+			return 0
+		}
 	}
 
 	deleteKey := splits[len(splits)-1]
-	err := tree.Delete(deleteKey)
-	newRoot := tree.Root()
-	if err != nil {
+	if err := tree.Delete(deleteKey); err != nil {
 		return 0
 	}
+
+	newRoot := tree.Root()
+
 	if len(newRoot) == 0 {
 		panic("newRoot is nil yet err==nil")
 	}
+
 	return 1
 }
