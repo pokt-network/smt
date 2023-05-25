@@ -31,7 +31,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-golang-${{ matrix.go }}-
       - name: Create coverage report and run tests
-        # Not utilizing makefile target here to make use of pipefail bash feature.
         run: |
           set -euo pipefail
           GODEBUG=netdns=cgo go test -p 1 -json ./... -covermode=count -coverprofile=coverage.out 2>&1 | tee test_results.json
@@ -65,6 +64,8 @@ jobs:
       - name: Upload coverage to Codecov
         if: ${{ always() && env.TARGET_GOLANG_VERSION == matrix.go }}
         uses: codecov/codecov-action@v3
+        with:
+          files: coverage.out
       - name: golangci-lint
         if: ${{ always() && env.TARGET_GOLANG_VERSION == matrix.go }}
         uses: golangci/golangci-lint-action@v3
