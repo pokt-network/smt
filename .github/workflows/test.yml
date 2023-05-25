@@ -14,8 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         go: ["1.19"]
-    steps:
-      name: Go ${{ matrix.go }} test
+    name: Go ${{ matrix.go }} test
     steps:
       - uses: actions/checkout@v3
       - name: Setup go
