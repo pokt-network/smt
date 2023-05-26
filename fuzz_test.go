@@ -10,6 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// FuzzSMT uses fuzzing to attempt to break the SMT implementation
+// in its current state this fuzzing test does not confirm the SMT
+// functions correctly, it only trys to detect when it fails unexpectedly
 func FuzzSMT(f *testing.F) {
 	seeds := [][]byte{
 		[]byte(""),
@@ -22,15 +25,18 @@ func FuzzSMT(f *testing.F) {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, input []byte) {
-		t.Log(input)
 		smn := NewSimpleMap()
 		tree := NewSparseMerkleTree(smn, sha256.New())
 
 		r := bytes.NewReader(input)
 		var keys [][]byte
+
+		// key returns a random byte to be used as a key, either generating a new
+		// one or using a previously generated one with a 50/50 chance of either
 		key := func() []byte {
-			if readByte(r) < math.MaxUint8/2 {
-				k := make([]byte, readByte(r)/2)
+			b := readByte(r)
+			if b < math.MaxUint8/2 {
+				k := make([]byte, b/2)
 				if _, err := r.Read(k); err != nil {
 					return nil
 				}
@@ -42,39 +48,49 @@ func FuzzSMT(f *testing.F) {
 				return nil
 			}
 
-			return keys[int(readByte(r))%len(keys)]
+			return keys[int(b)%len(keys)]
 		}
 
 		for i := 0; r.Len() != 0; i++ {
+			originalRoot := tree.Root()
 			b, err := r.ReadByte()
 			if err != nil {
 				continue
 			}
 
-			op := op(int(b) % int(Noop))
+			// Randomly select an operation to perform
+			op := op(int(b) % int(NumOps))
 			switch op {
 			case Get:
 				_, err := tree.Get(key())
 				if err != nil {
 					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while getting")
 				}
+				newRoot := tree.Root()
+				require.Equal(t, originalRoot, newRoot, "root changed while getting")
 			case Update:
 				value := make([]byte, 32)
 				binary.BigEndian.PutUint64(value, uint64(i))
 				err := tree.Update(key(), value)
-				if err != nil {
-					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while updating")
-				}
+				require.NoErrorf(t, err, "unknown error occured while updating")
+				newRoot := tree.Root()
+				require.NotEqual(t, originalRoot, newRoot, "root unchanged while updating")
 			case Delete:
 				err := tree.Delete(key())
 				if err != nil {
 					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while deleting")
+					continue
 				}
+				// If the key was present check root has changed
+				newRoot := tree.Root()
+				require.NotEqual(t, originalRoot, newRoot, "root unchanged while deleting")
 			case Prove:
 				_, err := tree.Prove(key())
 				if err != nil {
 					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while proving")
 				}
+				newRoot := tree.Root()
+				require.Equal(t, originalRoot, newRoot, "root changed while proving")
 			}
 
 			newRoot := tree.Root()
@@ -91,7 +107,7 @@ const (
 	Update
 	Delete
 	Prove
-	Noop
+	NumOps
 )
 
 func readByte(r *bytes.Reader) byte {
