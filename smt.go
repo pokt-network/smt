@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	_ treeNode = &innerNode{}
-	_ treeNode = &leafNode{}
+	_ treeNode = (*innerNode)(nil)
+	_ treeNode = (*leafNode)(nil)
 )
 
 type treeNode interface {

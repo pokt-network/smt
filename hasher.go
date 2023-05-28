@@ -12,8 +12,8 @@ var (
 )
 
 var (
-	_ PathHasher  = &pathHasher{}
-	_ ValueHasher = &valueHasher{}
+	_ PathHasher  = (*pathHasher)(nil)
+	_ ValueHasher = (*valueHasher)(nil)
 )
 
 // PathHasher defines how key inputs are hashed to produce tree paths.
