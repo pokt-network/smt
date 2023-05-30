@@ -435,7 +435,7 @@ func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 	return &inner, nil
 }
 
-// Commit persists all dirty nodes in the tree and deletes all orphaned
+// Commit persists all dirty nodes in the tree, deletes all orphaned
 // nodes from the database and then computes and saves the root hash
 func (smt *SMT) Commit() (err error) {
 	// All orphans are persisted and have cached digests, so we don't need to check for null
