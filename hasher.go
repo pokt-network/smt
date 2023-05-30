@@ -47,7 +47,7 @@ func newTreeHasher(hasher hash.Hash) *treeHasher {
 	return &th
 }
 
-// Path returns the digest of a key (preimage) produced by the path hasher
+// Path returns the digest of a key produced by the path hasher
 func (ph *pathHasher) Path(key []byte) []byte {
 	return ph.digest(key)[:ph.PathSize()]
 }
