@@ -177,6 +177,7 @@ Whenever we do an operation on the tree, the `PathHasher` is used to hash the ke
 The digests of all nodes, regardless of the `PathHasher` and `ValueHasher`s being used, will be the result of writing to the `TreeHasher` and calculating the `Sum`. The exact data hashed will depend on the type of node, this is described in the [implementation](#implementation) section.
 
 The following diagram represents the creation of a leaf node in an abstracted and simplified manner.
+
 _Note_: This diagram is not entirely accurate regarding the process of creating a leaf node, but is a good representation of the process.
 
 ```mermaid
