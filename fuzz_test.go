@@ -11,7 +11,7 @@ import (
 )
 
 // FuzzSMT uses fuzzing to attempt to break the SMT implementation
-// in its current state this fuzzing test does not confirm the SMT
+// in its current state. This fuzzing test does not confirm the SMT
 // functions correctly, it only trys to detect when it fails unexpectedly
 func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 	seeds := [][]byte{
