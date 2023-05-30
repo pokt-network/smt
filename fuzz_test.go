@@ -51,6 +51,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			return keys[int(b)%len(keys)]
 		}
 
+                // `i` is the loop counter but also used as the input value to `Update` operations
 		for i := 0; r.Len() != 0; i++ {
 			originalRoot := tree.Root()
 			b, err := r.ReadByte()
