@@ -1,4 +1,4 @@
-name: Test and build push artifacts
+name: Test & Build
 
 on:
   pull_request:
