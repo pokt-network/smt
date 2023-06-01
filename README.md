@@ -19,8 +19,11 @@ Note: **Requires Go 1.18+**
     - [General Tree Structure](#general-tree-structure)
     - [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
+  - [Visualisation](#visualisation)
 - [Values](#values)
 - [Hashers \& Digests](#hashers--digests)
+- [Proofs](#proofs)
+  - [Verification](#verification)
 - [Database](#database)
   - [Data Loss](#data-loss)
 - [Example](#example)
@@ -161,6 +164,50 @@ Paths are **only** stored in two types of nodes: Leaf nodes and Extension nodes.
 
 Inner nodes do **not** contain a path, as they represent a branch in the tree and not a path. As such their children, _if they are extension nodes or leaf nodes_, will hold a path value.
 
+### Visualisation
+
+The following diagram shows how paths are stored in the different nodes of the tree. In the actual SMT paths are not 8 bit binary strings but are instead the returned values of the `PathHasher` (discussed below). These are then used to calculate the path bit (`0` or `1`) at any index of the path byte slice.
+
+```mermaid
+graph LR
+	subgraph RI[Inner Node]
+		A[Root Hash]
+	end
+	subgraph I1[Inner Node]
+		B[Hash]
+	end
+	subgraph I2[Inner Node]
+		C[Hash]
+	end
+	subgraph L1[Leaf Node]
+		D[Path: 0b0010000]
+		E[Value: 0x01]
+	end
+	subgraph L3[Leaf Node]
+		F[Path: 0b1010000]
+		G[Value: 0x03]
+	end
+	subgraph L4[Leaf Node]
+		H[Path: 0b1100000]
+		I[Value: 0x04]
+	end
+	subgraph E1[Extension Node]
+		J[Path: 0b01100101]
+		K["Path Bounds: [2, 6)"]
+	end
+	subgraph L2[Leaf Node]
+		L[Path: 0b01100101]
+		M[Value: 0x02]
+	end
+	RI -->|0| I1
+	RI -->|1| I2
+	I1 -->|0| L1
+	I1 -->|1| E1
+	E1 --> L2
+	I2 -->|0| L3
+	I2 -->|1| L4
+```
+
 ## Values
 
 By default the SMT will use the `hasher` passed into `NewSparseMerkleTree` to hash both the keys into their paths in the tree, as well as the values. This means the data stored in a leaf node will be the hash of the value, not the value itself.
@@ -173,7 +220,7 @@ If `nil` is passed into `WithValueHasher` functions, it will act as identity has
 
 When creating a new SMT or importing one a `hasher` is provided, typically this would be `sha256.New()` but could be any hasher implementing the go `hash.Hash` interface. By default this hasher, referred to as the `TreeHasher` will be used on both keys (to create paths) and values (to store). But separate hashers can be passed in via the option functions mentioned above.
 
-Whenever we do an operation on the tree, the `PathHasher` is used to hash the key and return its digest - the path. When we store a value in a leaf node we hash it using the `ValueHasher`. These digests are calculated by writing to the hasher and then calling `Sum(nil)`.
+Whenever we do an operation on the tree, the `PathHasher` is used to hash the key and return its digest - the path. When we store a value in a leaf node we hash it using the `ValueHasher`. These digests are calculated by writing to the hasher and then calculating the checksum by calling `Sum(nil)`.
 
 The digests of all nodes, regardless of the `PathHasher` and `ValueHasher`s being used, will be the result of writing to the `TreeHasher` and calculating the `Sum`. The exact data hashed will depend on the type of node, this is described in the [implementation](#implementation) section.
 
@@ -213,6 +260,25 @@ graph TD
 	PH --Path-->L
 	VH --ValueHash-->L
 ```
+
+## Proofs
+
+The `SparseMerkleProof` type contains the information required for membership and non-membership proofs, depending on the key provided to the tree method `Prove(key []byte)` either a membership or non-membership proof will be generated.
+
+The `SparseMerkleProof` type contains the relevant information required to rebuild the root hash of the tree from the given key. This information is:
+
+- Any side nodes
+- Data of the sibling node
+- Data for the unrelated leaf at the path
+  - This is `nil` for membership proofs, and only used for non-membership proofs
+
+`SparseMerkleProof`s can be compressed into `SparseCompactMerkleProof` objects, which are smaller and more efficient to store. These can be created by calling `CompactProof()` with a `SparseMerkleProof`.
+
+### Verification
+
+In order to verify a `SparseMerkleProof` the `VerifyProof` method is called with the proof, tree spec, root hash as well as the key and value (if a membership proof) that the proof is for.
+
+The verification step simply uses the proof data to recompute the root hash with the data provided and the digests stored in the proof. If the root hash matches the one provided then the proof is valid, otherwise it is an invalid proof.
 
 ## Database
 
