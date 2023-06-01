@@ -228,7 +228,7 @@ type MapStore interface {
 
 This interface abstracts the `SimpleMap` key-value store and can be used by the SMT to store the nodes of the tree. Any key-value store that implements the `MapStore` interface can be used with this library.
 
-When changes are commited to the underlying database using `Commit()` the digests of the leaf nodes are stored at their respective paths. If retrieved manually from the database the returned value will be the digest of the leaf node **not** the leaf node's value, even when `WithValueHasher(nil)` is used. The value can be parsed from this value, as the tree `Get` function does by remove the prefix and path bytes from the returned value.
+When changes are commited to the underlying database using `Commit()` the digests of the leaf nodes are stored at their respective paths. If retrieved manually from the database the returned value will be the digest of the leaf node, **not** the leaf node's value, even when `WithValueHasher(nil)` is used. The node value can be parsed from this value, as the tree `Get` function does by removing the prefix and path bytes from the returned value.
 
 ### Data Loss
 
