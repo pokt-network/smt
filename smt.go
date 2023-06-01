@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	_ treeNode = &innerNode{}
-	_ treeNode = &leafNode{}
+	_ treeNode = (*innerNode)(nil)
+	_ treeNode = (*leafNode)(nil)
 )
 
 type treeNode interface {
@@ -62,6 +62,7 @@ type SMT struct {
 // Hashes of persisted nodes deleted from tree
 type orphanNodes = [][]byte
 
+// NewSparseMerkleTree returns a new pointer to an SMT struct, and applys any options provided
 func NewSparseMerkleTree(nodes MapStore, hasher hash.Hash, options ...Option) *SMT {
 	smt := SMT{
 		TreeSpec: newTreeSpec(hasher),
@@ -73,6 +74,7 @@ func NewSparseMerkleTree(nodes MapStore, hasher hash.Hash, options ...Option) *S
 	return &smt
 }
 
+// ImportSparseMerkleTree returns a pointer to an SMT struct with the provided root hash
 func ImportSparseMerkleTree(nodes MapStore, hasher hash.Hash, root []byte, options ...Option) *SMT {
 	smt := NewSparseMerkleTree(nodes, hasher, options...)
 	smt.tree = &lazyNode{root}
@@ -80,6 +82,7 @@ func ImportSparseMerkleTree(nodes MapStore, hasher hash.Hash, root []byte, optio
 	return smt
 }
 
+// Get returns the digest of the value stored at the given key
 func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
 	var leaf *leafNode
@@ -122,6 +125,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 	return leaf.valueHash, nil
 }
 
+// Update sets the value for the given key, to the digest of the provided value
 func (smt *SMT) Update(key []byte, value []byte) error {
 	path := smt.ph.Path(key)
 	valueHash := smt.digestValue(value)
@@ -203,6 +207,7 @@ func (smt *SMT) update(
 	return node, nil
 }
 
+// Delete removes the node at the path corresponding to the given key
 func (smt *SMT) Delete(key []byte) error {
 	path := smt.ph.Path(key)
 	var orphans orphanNodes
@@ -294,6 +299,7 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 	return node, nil
 }
 
+// Prove generates a SparseMerkleProof for the given key
 func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	path := smt.ph.Path(key)
 	var siblings []treeNode
@@ -370,6 +376,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	return
 }
 
+//nolint:unused
 func (smt *SMT) recursiveLoad(hash []byte) (treeNode, error) {
 	return smt.resolve(hash, smt.recursiveLoad)
 }
@@ -428,6 +435,8 @@ func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 	return &inner, nil
 }
 
+// Commit persists all dirty nodes in the tree, deletes all orphaned
+// nodes from the database and then computes and saves the root hash
 func (smt *SMT) Commit() (err error) {
 	// All orphans are persisted and have cached digests, so we don't need to check for null
 	for _, orphans := range smt.orphans {
@@ -517,6 +526,7 @@ func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
 	return ext.length(), true
 }
 
+//nolint:unused
 func (ext *extensionNode) commonPrefix(path []byte) int {
 	count := 0
 	for i := ext.pathStart(); i < ext.pathEnd(); i++ {

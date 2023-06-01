@@ -35,7 +35,7 @@ func (smt *SMTWithStorage) Delete(key []byte) error {
 
 // Get gets the value of a key from the tree.
 func (smt *SMTWithStorage) GetValue(key []byte) ([]byte, error) {
-	valueHash, err := smt.SMT.Get(key)
+	valueHash, err := smt.Get(key)
 	if err != nil {
 		return nil, err
 	}

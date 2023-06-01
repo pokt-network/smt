@@ -146,7 +146,7 @@ func TestTreeDeleteBasic(t *testing.T) {
 	err = smt.Update([]byte("foo"), []byte("testValue"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("foo"))
+	_, err = smt.GetValue([]byte("foo"))
 	require.NoError(t, err)
 
 	err = smt.Delete([]byte("foo"))
@@ -201,7 +201,7 @@ func TestTreeKnownPath(t *testing.T) {
 
 	baseKey := make([]byte, ph.PathSize())
 	keys := make([][]byte, 7)
-	for i, _ := range keys {
+	for i := range keys {
 		keys[i] = make([]byte, ph.PathSize())
 		copy(keys[i], baseKey)
 	}
