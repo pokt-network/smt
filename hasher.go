@@ -130,7 +130,6 @@ func encodeLeaf(path []byte, leafData []byte) []byte {
 	return value
 }
 
-// encodeSumLeaf returns the pre-image digest of a sum leaf node
 func encodeSumLeaf(path []byte, leafData []byte, sum [16]byte) []byte {
 	value := make([]byte, 0, len(leafPrefix)+len(path)+len(leafData))
 	value = append(value, leafPrefix...)
@@ -148,8 +147,7 @@ func encodeInner(leftData []byte, rightData []byte) []byte {
 	return value
 }
 
-// encodeSumInner returns the pre-image digest of the innernode, as well as the sum of its children
-func encodeSumInner(leftData []byte, rightData []byte) ([]byte, [16]byte, error) {
+func encodeSumInner(leftData []byte, rightData []byte) ([]byte, error) {
 	value := make([]byte, 0, len(innerPrefix)+len(leftData)+len(rightData))
 	value = append(value, innerPrefix...)
 	value = append(value, leftData...)
@@ -157,14 +155,15 @@ func encodeSumInner(leftData []byte, rightData []byte) ([]byte, [16]byte, error)
 	var sum [16]byte
 	leftSum, err := strconv.ParseUint(string(leftData[len(leftData)-16:]), 16, 64)
 	if err != nil {
-		return nil, sum, err
+		return nil, err
 	}
 	rightSum, err := strconv.ParseUint(string(rightData[len(rightData)-16:]), 16, 64)
 	if err != nil {
-		return nil, sum, err
+		return nil, err
 	}
 	copy(sum[:], []byte(fmt.Sprintf("%016x", leftSum+rightSum)))
-	return value, sum, nil
+	value = append(value, sum[:]...)
+	return value, nil
 }
 
 func encodeExtension(pathBounds [2]byte, path []byte, childData []byte) []byte {
@@ -176,8 +175,7 @@ func encodeExtension(pathBounds [2]byte, path []byte, childData []byte) []byte {
 	return value
 }
 
-// encodeSumExtension returns the pre-image digest of the extension node and the sum of its child
-func encodeSumExtension(pathBounds [2]byte, path []byte, childData []byte) ([]byte, [16]byte) {
+func encodeSumExtension(pathBounds [2]byte, path []byte, childData []byte) []byte {
 	value := make([]byte, 0, len(extPrefix)+len(path)+2+len(childData))
 	value = append(value, extPrefix...)
 	value = append(value, pathBounds[:]...)
@@ -185,5 +183,6 @@ func encodeSumExtension(pathBounds [2]byte, path []byte, childData []byte) ([]by
 	value = append(value, childData...)
 	var sum [16]byte
 	copy(sum[:], childData[len(childData)-16:])
-	return value, sum
+	value = append(value, sum[:]...)
+	return value
 }

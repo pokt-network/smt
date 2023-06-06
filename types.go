@@ -99,3 +99,58 @@ func (spec *TreeSpec) hashNode(node treeNode) []byte {
 	}
 	return *cache
 }
+
+// sumSerialize serializes a node returning the preimage hash, its sum and any errors encountered
+func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte, err error) {
+	switch n := node.(type) {
+	case *lazyNode:
+		panic("serialize(lazyNode)")
+	case *sumLeafNode:
+		return encodeSumLeaf(n.path, n.valueHash, n.sum), nil
+	case *innerNode:
+		lchild := spec.hashNode(n.leftChild)
+		rchild := spec.hashNode(n.rightChild)
+		preimage, err = encodeSumInner(lchild, rchild)
+		if err != nil {
+			return nil, err
+		}
+		return preimage, nil
+	case *extensionNode:
+		child := spec.hashNode(n.child)
+		return encodeSumExtension(n.pathBounds, n.path, child), nil
+	}
+	return nil, nil
+}
+
+// hashSumNode hashes a node returning its digest in the following form
+// digest = [node hash]+[16 byte hex sum]
+func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
+	if node == nil {
+		return spec.th.placeholder()
+	}
+
+	var cache *[]byte
+	switch n := node.(type) {
+	case *lazyNode:
+		return n.digest
+	case *sumLeafNode:
+		cache = &n.digest
+	case *innerNode:
+		cache = &n.digest
+	case *extensionNode:
+		if n.digest == nil {
+			n.digest = spec.hashNode(n.expand())
+		}
+		return n.digest
+	}
+
+	if *cache == nil {
+		preimage, err := spec.sumSerialize(node)
+		if err != nil {
+			panic("error serialising sum node")
+		}
+		*cache = spec.th.digest(preimage)
+	}
+
+	return *cache
+}

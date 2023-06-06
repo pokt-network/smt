@@ -190,6 +190,173 @@ func (smst *SMST) update(
 	return node, nil
 }
 
+// Delete removes the node at the path corresponding to the given key
+func (smst *SMST) Delete(key []byte) error {
+	path := smst.ph.Path(key)
+	var orphans orphanNodes
+
+	tree, err := smst.delete(smst.tree, 0, path, &orphans)
+	if err != nil {
+		return err
+	}
+	smst.tree = tree
+
+	if len(orphans) > 0 {
+		smst.orphans = append(smst.orphans, orphans)
+	}
+
+	return nil
+}
+
+func (smst *SMST) delete(node treeNode, depth int, path []byte, orphans *orphanNodes,
+) (treeNode, error) {
+	node, err := smst.resolveLazy(node)
+	if err != nil {
+		return node, err
+	}
+	if node == nil {
+		return node, ErrKeyNotPresent
+	}
+
+	if leaf, ok := node.(*sumLeafNode); ok {
+		if !bytes.Equal(path, leaf.path) {
+			return node, ErrKeyNotPresent
+		}
+		smst.addOrphan(orphans, node)
+		return nil, nil
+	}
+	smst.addOrphan(orphans, node)
+
+	if ext, ok := node.(*extensionNode); ok {
+		if _, match := ext.match(path, depth); !match {
+			return node, ErrKeyNotPresent
+		}
+		ext.child, err = smst.delete(ext.child, depth+ext.length(), path, orphans)
+		if err != nil {
+			return node, err
+		}
+		switch n := ext.child.(type) {
+		case *sumLeafNode:
+			return n, nil
+		case *extensionNode:
+			// Join this extension with the child
+			smst.addOrphan(orphans, n)
+			n.pathBounds[0] = ext.pathBounds[0]
+			node = n
+		}
+		ext.setDirty()
+		return node, nil
+	}
+
+	inner := node.(*innerNode)
+	var child, sib *treeNode
+	if getPathBit(path, depth) == left {
+		child, sib = &inner.leftChild, &inner.rightChild
+	} else {
+		child, sib = &inner.rightChild, &inner.leftChild
+	}
+
+	*child, err = smst.delete(*child, depth+1, path, orphans)
+	if err != nil {
+		return node, err
+	}
+
+	*sib, err = smst.resolveLazy(*sib)
+	if err != nil {
+		return node, err
+	}
+
+	// Handle replacement of this node, depending on the new child states.
+	// Note that inner nodes exist at a fixed depth, and can't be moved.
+	children := [2]*treeNode{child, sib}
+	for i := 0; i < 2; i++ {
+		if *children[i] == nil {
+			switch n := (*children[1-i]).(type) {
+			case *leafNode:
+				return n, nil
+			case *extensionNode:
+				// "Absorb" this node into the extension by prepending
+				smst.addOrphan(orphans, n)
+				n.pathBounds[0]--
+				n.setDirty()
+				return n, nil
+			}
+		}
+	}
+
+	inner.setDirty()
+
+	return node, nil
+}
+
+// Commit persists all dirty nodes in the tree, deletes all orphaned
+// nodes from the database and then computes and saves the root hash
+func (smst *SMST) Commit() (err error) {
+	// All orphans are persisted and have cached digests, so we don't need to check for null
+	for _, orphans := range smst.orphans {
+		for _, hash := range orphans {
+			if err = smst.nodes.Delete(hash); err != nil {
+				return
+			}
+		}
+	}
+	smst.orphans = nil
+	if err = smst.commit(smst.tree); err != nil {
+		return
+	}
+	smst.savedRoot = smst.Root()
+	return
+}
+
+func (smst *SMST) commit(node treeNode) error {
+	if node != nil && node.Persisted() {
+		return nil
+	}
+
+	switch n := node.(type) {
+	case *sumLeafNode:
+		n.persisted = true
+	case *innerNode:
+		n.persisted = true
+		if err := smst.commit(n.leftChild); err != nil {
+			return err
+		}
+		if err := smst.commit(n.rightChild); err != nil {
+			return err
+		}
+	case *extensionNode:
+		n.persisted = true
+		if err := smst.commit(n.child); err != nil {
+			return err
+		}
+	default:
+		return nil
+	}
+
+	preimage, err := smst.sumSerialize(node)
+	if err != nil {
+		return err
+	}
+
+	return smst.nodes.Set(smst.hashSumNode(node), preimage)
+}
+
+func (smst *SMST) Root() []byte {
+	return smst.hashSumNode(smst.tree)
+}
+
+// Sum returns the uint64 sum of the entire tree
+func (smst *SMST) Sum() (uint64, error) {
+	var hexSum [16]byte
+	digest := smst.hashSumNode(smst.tree)
+	copy(hexSum[:], digest[len(digest)-16:])
+	sum, err := strconv.ParseUint(string(hexSum[:]), 16, 64)
+	if err != nil {
+		return 0, err
+	}
+	return sum, nil
+}
+
 // resolves a stub into a cached node
 func (smst *SMST) resolveLazy(node treeNode) (treeNode, error) {
 	stub, ok := node.(*lazyNode)
