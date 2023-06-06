@@ -3,6 +3,7 @@ package smt
 import (
 	"errors"
 	"hash"
+	"log"
 )
 
 const (
@@ -108,15 +109,15 @@ func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte, err error) {
 	case *sumLeafNode:
 		return encodeSumLeaf(n.path, n.valueHash, n.sum), nil
 	case *innerNode:
-		lchild := spec.hashNode(n.leftChild)
-		rchild := spec.hashNode(n.rightChild)
+		lchild := spec.hashSumNode(n.leftChild)
+		rchild := spec.hashSumNode(n.rightChild)
 		preimage, err = encodeSumInner(lchild, rchild)
 		if err != nil {
 			return nil, err
 		}
 		return preimage, nil
 	case *extensionNode:
-		child := spec.hashNode(n.child)
+		child := spec.hashSumNode(n.child)
 		return encodeSumExtension(n.pathBounds, n.path, child), nil
 	}
 	return nil, nil
@@ -139,7 +140,7 @@ func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 		cache = &n.digest
 	case *extensionNode:
 		if n.digest == nil {
-			n.digest = spec.hashNode(n.expand())
+			n.digest = spec.hashSumNode(n.expand())
 		}
 		return n.digest
 	}
@@ -147,9 +148,10 @@ func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 	if *cache == nil {
 		preimage, err := spec.sumSerialize(node)
 		if err != nil {
-			panic("error serialising sum node")
+			log.Fatalf("error serialising sum node: %s", err.Error())
 		}
 		*cache = spec.th.digest(preimage)
+		*cache = append(*cache, preimage[len(preimage)-16:]...)
 	}
 
 	return *cache

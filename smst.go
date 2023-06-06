@@ -135,7 +135,7 @@ func (smst *SMST) update(
 	if node == nil {
 		return newLeaf, nil
 	}
-	if leaf, ok := node.(*leafNode); ok {
+	if leaf, ok := node.(*sumLeafNode); ok {
 		prefixlen := countCommonPrefix(path, leaf.path, depth)
 		if prefixlen == smst.depth() { // replace leaf if paths are equal
 			smst.addOrphan(orphans, node)
@@ -375,7 +375,7 @@ func (smst *SMST) resolveLazy(node treeNode) (treeNode, error) {
 
 func (smst *SMST) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 ) (ret treeNode, err error) {
-	if bytes.Equal(smst.th.placeholder(), hash) {
+	if bytes.Equal(smst.th.sumPlaceholder(), hash) {
 		return
 	}
 	data, err := smst.nodes.Get(hash)
@@ -383,15 +383,13 @@ func (smst *SMST) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 		return nil, err
 	}
 	if isLeaf(data) {
-		var sum [16]byte
-		copy(sum[:], data[len(data)-16:])
-		leaf := sumLeafNode{persisted: true, digest: hash, sum: sum}
+		leaf := sumLeafNode{persisted: true, digest: hash}
 		leaf.path, leaf.valueHash, leaf.sum = parseSumLeaf(data, smst.ph)
 		return &leaf, nil
 	}
 	if isExtension(data) {
 		ext := extensionNode{persisted: true, digest: hash}
-		pathBounds, path, childHash := parseExtension(data, smst.ph)
+		pathBounds, path, childHash, _ := parseSumExtension(data, smst.ph)
 		ext.path = path
 		copy(ext.pathBounds[:], pathBounds)
 		ext.child, err = resolver(childHash)
