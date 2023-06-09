@@ -76,9 +76,24 @@ func (th *treeHasher) digestLeaf(path []byte, leafData []byte) ([]byte, []byte) 
 	return th.digest(value), value
 }
 
+func (th *treeHasher) digestSumLeaf(path []byte, leafData []byte, sum [16]byte) ([]byte, []byte) {
+	value := encodeSumLeaf(path, leafData, sum)
+	digest := th.digest(value)
+	digest = append(digest, value[len(value)-16:]...)
+	return digest, value
+}
+
 func (th *treeHasher) digestNode(leftData []byte, rightData []byte) ([]byte, []byte) {
 	value := encodeInner(leftData, rightData)
 	return th.digest(value), value
+}
+
+func (th *treeHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte, error) {
+	value, err := encodeSumInner(leftData, rightData)
+	if err != nil {
+		return nil, nil, err
+	}
+	return th.digest(value), value, nil
 }
 
 func (th *treeHasher) parseNode(data []byte) ([]byte, []byte) {

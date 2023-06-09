@@ -272,7 +272,7 @@ func (smst *SMST) delete(node treeNode, depth int, path []byte, orphans *orphanN
 	for i := 0; i < 2; i++ {
 		if *children[i] == nil {
 			switch n := (*children[1-i]).(type) {
-			case *leafNode:
+			case *sumLeafNode:
 				return n, nil
 			case *extensionNode:
 				// "Absorb" this node into the extension by prepending
@@ -287,6 +287,89 @@ func (smst *SMST) delete(node treeNode, depth int, path []byte, orphans *orphanN
 	inner.setDirty()
 
 	return node, nil
+}
+
+// Prove generates a SparseMerkleSumProof for the given key
+func (smst *SMST) Prove(key []byte) (proof SparseMerkleSumProof, err error) {
+	path := smst.ph.Path(key)
+	var siblings []treeNode
+	var sib treeNode
+
+	node := smst.tree
+	for depth := 0; depth < smst.depth(); depth++ {
+		node, err = smst.resolveLazy(node)
+		if err != nil {
+			return SparseMerkleSumProof{}, err
+		}
+		if node == nil {
+			break
+		}
+		if _, ok := node.(*sumLeafNode); ok {
+			break
+		}
+		if ext, ok := node.(*extensionNode); ok {
+			length, match := ext.match(path, depth)
+			if match {
+				for i := 0; i < length; i++ {
+					siblings = append(siblings, nil)
+				}
+				depth += length
+				node = ext.child
+				node, err = smst.resolveLazy(node)
+				if err != nil {
+					return SparseMerkleSumProof{}, err
+				}
+			} else {
+				node = ext.expand()
+			}
+		}
+		inner := node.(*innerNode)
+		if getPathBit(path, depth) == left {
+			node, sib = inner.leftChild, inner.rightChild
+		} else {
+			node, sib = inner.rightChild, inner.leftChild
+		}
+		siblings = append(siblings, sib)
+	}
+
+	// Deal with non-membership proofs. If there is no leaf on this path,
+	// we do not need to add anything else to the proof.
+	var leafData []byte
+	if node != nil {
+		leaf := node.(*sumLeafNode)
+		if !bytes.Equal(leaf.path, path) {
+			// This is a non-membership proof that involves showing a different leaf.
+			// Add the leaf data to the proof.
+			leafData = encodeSumLeaf(leaf.path, leaf.valueHash, leaf.sum)
+		}
+	}
+
+	// Hash siblings from bottom up.
+	var sideNodes [][]byte
+	for i := range siblings {
+		var sideNode []byte
+		sibling := siblings[len(siblings)-i-1]
+		sideNode = smst.hashSumNode(sibling)
+		sideNodes = append(sideNodes, sideNode)
+	}
+
+	proof = SparseMerkleSumProof{
+		SideNodes:             sideNodes,
+		NonMembershipLeafData: leafData,
+	}
+
+	if sib != nil {
+		sib, err = smst.resolveLazy(sib)
+		if err != nil {
+			return SparseMerkleSumProof{}, err
+		}
+		proof.SiblingData, err = smst.sumSerialize(sib)
+		if err != nil {
+			return SparseMerkleSumProof{}, err
+		}
+	}
+
+	return proof, nil
 }
 
 // Commit persists all dirty nodes in the tree, deletes all orphaned
@@ -341,8 +424,9 @@ func (smst *SMST) commit(node treeNode) error {
 	return smst.nodes.Set(smst.hashSumNode(node), preimage)
 }
 
+// DISCUSSION: Should Root() return the hash+sum or just the hash?
 func (smst *SMST) Root() []byte {
-	return smst.hashSumNode(smst.tree)
+	return smst.hashSumNode(smst.tree) // [digest]+[16 byte hex sum]
 }
 
 // Sum returns the uint64 sum of the entire tree
@@ -378,15 +462,18 @@ func (smst *SMST) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 	if bytes.Equal(smst.th.sumPlaceholder(), hash) {
 		return
 	}
+
 	data, err := smst.nodes.Get(hash)
 	if err != nil {
 		return nil, err
 	}
+
 	if isLeaf(data) {
 		leaf := sumLeafNode{persisted: true, digest: hash}
 		leaf.path, leaf.valueHash, leaf.sum = parseSumLeaf(data, smst.ph)
 		return &leaf, nil
 	}
+
 	if isExtension(data) {
 		ext := extensionNode{persisted: true, digest: hash}
 		pathBounds, path, childHash, _ := parseSumExtension(data, smst.ph)
@@ -398,6 +485,7 @@ func (smst *SMST) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 		}
 		return &ext, nil
 	}
+
 	leftHash, rightHash := smst.th.parseSumNode(data)
 	inner := innerNode{persisted: true, digest: hash}
 	inner.leftChild, err = resolver(leftHash)
@@ -408,6 +496,7 @@ func (smst *SMST) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 	if err != nil {
 		return
 	}
+
 	return &inner, nil
 }
 

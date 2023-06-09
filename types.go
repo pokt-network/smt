@@ -127,7 +127,7 @@ func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte, err error) {
 // digest = [node hash]+[16 byte hex sum]
 func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 	if node == nil {
-		return spec.th.placeholder()
+		return spec.th.sumPlaceholder()
 	}
 
 	var cache *[]byte
