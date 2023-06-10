@@ -30,13 +30,16 @@ type SMST struct {
 	orphans []orphanNodes
 }
 
-// TODO: Figure out options
 // NewSparseMerkleSumTree returns a pointer to an SMST struct
-func NewSparseMerkleSumTree(nodes MapStore, hasher hash.Hash) *SMST {
-	return &SMST{
+func NewSparseMerkleSumTree(nodes MapStore, hasher hash.Hash, options ...Option) *SMST {
+	smst := &SMST{
 		TreeSpec: newTreeSpec(hasher),
 		nodes:    nodes,
 	}
+	for _, option := range options {
+		option(&smst.TreeSpec)
+	}
+	return smst
 }
 
 // ImportSparseMerkleSumTree returns a pointer to an SMST struct with the root hash provided

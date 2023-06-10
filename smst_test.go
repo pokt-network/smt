@@ -22,13 +22,9 @@ func TestSMST_SumWorks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, sum, uint64(15))
 
-	t.Log(string(smst.Root()))
-
 	err = smst.Delete([]byte("key1"))
 	require.NoError(t, err)
 	sum, err = smst.Sum()
 	require.NoError(t, err)
 	require.Equal(t, sum, uint64(10))
-
-	t.Log(string(smst.Root()))
 }

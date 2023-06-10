@@ -69,7 +69,7 @@ func NewSparseMerkleTree(nodes MapStore, hasher hash.Hash, options ...Option) *S
 		nodes:    nodes,
 	}
 	for _, option := range options {
-		option(&smt)
+		option(&smt.TreeSpec)
 	}
 	return &smt
 }

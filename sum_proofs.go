@@ -74,7 +74,7 @@ type SparseCompactMerkleSumProof struct {
 	SiblingData []byte
 }
 
-func (proof *SparseCompactMerkleProof) sanityCheck(spec *TreeSpec) bool {
+func (proof *SparseCompactMerkleSumProof) sanityCheck(spec *TreeSpec) bool {
 	// Do a basic sanity check on the proof on the fields of the proof specific to
 	// the compact proof only.
 	//
@@ -169,12 +169,12 @@ func verifySumProofWithUpdates(proof SparseMerkleSumProof, root []byte, key []by
 }
 
 // VerifyCompactProof verifies a compacted Merkle proof.
-func VerifyCompactSumProof(proof SparseCompactMerkleSumProof, root []byte, key, value []byte, spec *TreeSpec) bool {
+func VerifyCompactSumProof(proof SparseCompactMerkleSumProof, root []byte, key, value []byte, sum uint64, spec *TreeSpec) (bool, error) {
 	decompactedProof, err := DecompactSumProof(proof, spec)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return VerifyProof(decompactedProof, root, key, value, spec)
+	return VerifySumProof(decompactedProof, root, key, value, sum, spec)
 }
 
 // CompactProof compacts a proof, to reduce its size.
