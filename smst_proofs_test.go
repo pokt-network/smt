@@ -78,10 +78,10 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Try proving a default value for a non-default leaf.
-	var sum [16]byte
+	var sum [sumLength]byte
 	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", 5))
 	require.NoError(t, err)
-	copy(sum[16-len(hexBz):], hexBz)
+	copy(sum[sumLength-len(hexBz):], hexBz)
 	_, leafData := base.th.digestSumLeaf(base.ph.Path([]byte("testKey2")), base.digestValue([]byte("testValue")), sum)
 	proof = SparseMerkleSumProof{
 		SideNodes:             proof.SideNodes,

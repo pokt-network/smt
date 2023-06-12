@@ -6,11 +6,13 @@ import (
 )
 
 const (
-	left = 0
+	left      = 0
+	sumLength = 8
 )
 
 var (
 	defaultValue []byte = nil
+	defaultSum   [sumLength]byte
 
 	// ErrKeyNotPresent is returned when a key is not present in the tree.
 	ErrKeyNotPresent = errors.New("key already empty")
@@ -143,7 +145,7 @@ func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte, err error) {
 }
 
 // hashSumNode hashes a node returning its digest in the following form
-// digest = [node hash]+[16 byte hex sum]
+// digest = [node hash]+[8 byte hex sum]
 func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 	if node == nil {
 		return spec.th.sumPlaceholder()
@@ -168,7 +170,7 @@ func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 			panic("error serialising sum node: " + err.Error())
 		}
 		*cache = spec.th.digest(preimage)
-		*cache = append(*cache, preimage[len(preimage)-16:]...)
+		*cache = append(*cache, preimage[len(preimage)-sumLength:]...)
 	}
 	return *cache
 }

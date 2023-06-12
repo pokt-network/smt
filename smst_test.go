@@ -431,7 +431,7 @@ func TestSMST_TotalSum(t *testing.T) {
 
 	// Check root hash contains the correct hex sum
 	root1 := smst.Root()
-	hexSum := root1[len(root1)-16:]
+	hexSum := root1[len(root1)-sumLength:]
 	rootSum, err := strconv.ParseUint(hex.EncodeToString(hexSum[:]), 16, 64)
 	require.NoError(t, err)
 
@@ -464,6 +464,7 @@ func TestSMST_TotalSum(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.NoError(t, smst.Commit())
+	t.Log(hex.EncodeToString(smst.Root()), smst.Root(), len(smst.Root()), len(hex.EncodeToString(smst.Root())))
 	sum, err = smst.Sum()
 	require.NoError(t, err)
 	require.Equal(t, sum, uint64(49995000))

@@ -17,7 +17,7 @@ var (
 type sumLeafNode struct {
 	path      []byte
 	valueHash []byte
-	sum       [16]byte // 16 byte hex string representing a uint64
+	sum       [sumLength]byte // hex string representing a uint64
 	persisted bool
 	digest    []byte
 }
@@ -26,7 +26,7 @@ type sumLeafNode struct {
 type SMST struct {
 	TreeSpec
 	nodes MapStore
-	// Last persisted root hash: hash = [digest]+[16 byte hex sum]
+	// Last persisted root hash: hash = [digest]+[8 byte hex sum]
 	savedRoot []byte
 	// Current state of the tree
 	tree treeNode
@@ -105,12 +105,12 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 func (smst *SMST) Update(key []byte, value []byte, sum uint64) error {
 	path := smst.ph.Path(key)
 	valueHash := smst.digestValue(value)
-	var hexSum [16]byte
+	var hexSum [sumLength]byte
 	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", sum))
 	if err != nil {
 		return err
 	}
-	copy(hexSum[16-len(hexBz):], hexBz)
+	copy(hexSum[sumLength-len(hexBz):], hexBz)
 	var orphans orphanNodes
 	tree, err := smst.update(smst.tree, 0, path, valueHash, hexSum, &orphans)
 	if err != nil {
@@ -124,7 +124,7 @@ func (smst *SMST) Update(key []byte, value []byte, sum uint64) error {
 }
 
 func (smst *SMST) update(
-	node treeNode, depth int, path, value []byte, sum [16]byte, orphans *orphanNodes,
+	node treeNode, depth int, path, value []byte, sum [sumLength]byte, orphans *orphanNodes,
 ) (treeNode, error) {
 	node, err := smst.resolveLazy(node)
 	if err != nil {
@@ -401,14 +401,14 @@ func (smst *SMST) commit(node treeNode) error {
 
 // DISCUSSION: Should Root() return the hash+sum or just the hash?
 func (smst *SMST) Root() []byte {
-	return smst.hashSumNode(smst.tree) // [digest]+[16 byte hex sum]
+	return smst.hashSumNode(smst.tree) // [digest]+[sumLength byte hex sum]
 }
 
 // Sum returns the uint64 sum of the entire tree
 func (smst *SMST) Sum() (uint64, error) {
-	var hexSum [16]byte
+	var hexSum [sumLength]byte
 	digest := smst.hashSumNode(smst.tree)
-	copy(hexSum[:], digest[len(digest)-16:])
+	copy(hexSum[:], digest[len(digest)-sumLength:])
 	sum, err := strconv.ParseUint(hex.EncodeToString(hexSum[:]), 16, 64)
 	if err != nil {
 		return 0, err

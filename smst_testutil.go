@@ -21,12 +21,12 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 		return err
 	}
 	valueHash := smst.digestValue(value)
-	var hexSum [16]byte
+	var hexSum [sumLength]byte
 	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", sum))
 	if err != nil {
 		return err
 	}
-	copy(hexSum[16-len(hexBz):], hexBz)
+	copy(hexSum[sumLength-len(hexBz):], hexBz)
 	value = append(value, hexSum[:]...)
 	err = smst.preimages.Set(valueHash, value)
 	if err != nil {
@@ -60,8 +60,8 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 			return nil, 0, err
 		}
 	}
-	var hexSum [16]byte
-	copy(hexSum[:], value[len(value)-16:])
+	var hexSum [sumLength]byte
+	copy(hexSum[:], value[len(value)-sumLength:])
 	storedSum, err := strconv.ParseUint(hex.EncodeToString(hexSum[:]), 16, 64)
 	if err != nil {
 		return nil, 0, err
@@ -69,7 +69,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	if storedSum != sum {
 		return nil, 0, fmt.Errorf("sum mismatch for %s: got %d, expected %d", string(key), storedSum, sum)
 	}
-	return value[:len(value)-16], storedSum, nil
+	return value[:len(value)-sumLength], storedSum, nil
 }
 
 // Has returns true if the value at the given key is non-default, false

@@ -59,7 +59,7 @@ func hashSumSerialization(smt *TreeSpec, data []byte) []byte {
 		return smt.hashSumNode(&ext)
 	} else {
 		digest := smt.th.digest(data)
-		digest = append(digest, data[len(data)-16:]...)
+		digest = append(digest, data[len(data)-sumLength:]...)
 		return digest
 	}
 }

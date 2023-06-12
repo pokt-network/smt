@@ -37,7 +37,7 @@ func (proof *SparseMerkleSumProof) sanityCheck(spec *TreeSpec) bool {
 
 	// Check that all supplied sidenodes are the correct size.
 	for _, v := range proof.SideNodes {
-		if len(v) != spec.th.hashSize()+16 {
+		if len(v) != spec.th.hashSize()+sumLength {
 			return false
 		}
 	}
@@ -100,12 +100,12 @@ func (proof *SparseCompactMerkleSumProof) sanityCheck(spec *TreeSpec) bool {
 
 // VerifyProof verifies a Merkle proof.
 func VerifySumProof(proof SparseMerkleSumProof, root []byte, key []byte, value []byte, sum uint64, spec *TreeSpec) (bool, error) {
-	var hexSum [16]byte
+	var hexSum [sumLength]byte
 	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", sum))
 	if err != nil {
 		return false, err
 	}
-	copy(hexSum[16-len(hexBz):], hexBz)
+	copy(hexSum[sumLength-len(hexBz):], hexBz)
 	result, _, err := verifySumProofWithUpdates(proof, root, key, value, hexSum, spec)
 	if err != nil {
 		return false, err
@@ -113,7 +113,7 @@ func VerifySumProof(proof SparseMerkleSumProof, root []byte, key []byte, value [
 	return result, nil
 }
 
-func verifySumProofWithUpdates(proof SparseMerkleSumProof, root []byte, key []byte, value []byte, sum [16]byte, spec *TreeSpec) (bool, [][][]byte, error) {
+func verifySumProofWithUpdates(proof SparseMerkleSumProof, root []byte, key []byte, value []byte, sum [sumLength]byte, spec *TreeSpec) (bool, [][][]byte, error) {
 	path := spec.ph.Path(key)
 
 	if !proof.sanityCheck(spec) {
@@ -150,7 +150,7 @@ func verifySumProofWithUpdates(proof SparseMerkleSumProof, root []byte, key []by
 	// Recompute root.
 	var err error
 	for i := 0; i < len(proof.SideNodes); i++ {
-		node := make([]byte, spec.th.hashSize()+16)
+		node := make([]byte, spec.th.hashSize()+sumLength)
 		copy(node, proof.SideNodes[i])
 
 		if getPathBit(path, len(proof.SideNodes)-1-i) == left {
@@ -191,7 +191,7 @@ func CompactSumProof(proof SparseMerkleSumProof, spec *TreeSpec) (SparseCompactM
 	bitMask := make([]byte, int(math.Ceil(float64(len(proof.SideNodes))/float64(8))))
 	var compactedSideNodes [][]byte
 	for i := 0; i < len(proof.SideNodes); i++ {
-		node := make([]byte, spec.th.hashSize()+16)
+		node := make([]byte, spec.th.hashSize()+sumLength)
 		copy(node, proof.SideNodes[i])
 		if bytes.Equal(node, spec.th.sumPlaceholder()) {
 			setPathBit(bitMask, i)

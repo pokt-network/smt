@@ -77,10 +77,10 @@ func (th *treeHasher) digestLeaf(path []byte, leafData []byte) ([]byte, []byte) 
 	return th.digest(value), value
 }
 
-func (th *treeHasher) digestSumLeaf(path []byte, leafData []byte, sum [16]byte) ([]byte, []byte) {
+func (th *treeHasher) digestSumLeaf(path []byte, leafData []byte, sum [sumLength]byte) ([]byte, []byte) {
 	value := encodeSumLeaf(path, leafData, sum)
 	digest := th.digest(value)
-	digest = append(digest, value[len(value)-16:]...)
+	digest = append(digest, value[len(value)-sumLength:]...)
 	return digest, value
 }
 
@@ -95,7 +95,7 @@ func (th *treeHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, 
 		return nil, nil, err
 	}
 	digest := th.digest(value)
-	digest = append(digest, value[len(value)-16:]...)
+	digest = append(digest, value[len(value)-sumLength:]...)
 	return digest, value, nil
 }
 
@@ -104,8 +104,8 @@ func (th *treeHasher) parseNode(data []byte) ([]byte, []byte) {
 }
 
 func (th *treeHasher) parseSumNode(data []byte) ([]byte, []byte) {
-	sumless := data[:len(data)-16]
-	return sumless[len(innerPrefix) : th.hashSize()+len(innerPrefix)+16], sumless[len(innerPrefix)+th.hashSize()+16:]
+	sumless := data[:len(data)-sumLength]
+	return sumless[len(innerPrefix) : th.hashSize()+len(innerPrefix)+sumLength], sumless[len(innerPrefix)+th.hashSize()+sumLength:]
 }
 
 func (th *treeHasher) hashSize() int {
@@ -118,8 +118,7 @@ func (th *treeHasher) placeholder() []byte {
 
 func (th *treeHasher) sumPlaceholder() []byte {
 	placeholder := th.zeroValue
-	var emptySum [16]byte
-	placeholder = append(placeholder, emptySum[:]...)
+	placeholder = append(placeholder, defaultSum[:]...)
 	return placeholder
 }
 
@@ -136,10 +135,10 @@ func parseLeaf(data []byte, ph PathHasher) ([]byte, []byte) {
 }
 
 // parseSumLeaf returns the path, value hash and hex sum of the leaf node
-func parseSumLeaf(data []byte, ph PathHasher) ([]byte, []byte, [16]byte) {
-	var sum [16]byte
-	copy(sum[:], data[len(data)-16:])
-	return data[len(leafPrefix) : ph.PathSize()+len(leafPrefix)], data[len(leafPrefix)+ph.PathSize() : len(data)-16], sum
+func parseSumLeaf(data []byte, ph PathHasher) ([]byte, []byte, [sumLength]byte) {
+	var sum [sumLength]byte
+	copy(sum[:], data[len(data)-sumLength:])
+	return data[len(leafPrefix) : ph.PathSize()+len(leafPrefix)], data[len(leafPrefix)+ph.PathSize() : len(data)-sumLength], sum
 }
 
 func parseExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte) {
@@ -148,12 +147,12 @@ func parseExtension(data []byte, ph PathHasher) (pathBounds, path, childData []b
 		data[len(extPrefix)+2+ph.PathSize():]
 }
 
-func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [16]byte) {
-	var hexSum [16]byte
-	copy(hexSum[:], data[len(data)-16:])
+func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [sumLength]byte) {
+	var hexSum [sumLength]byte
+	copy(hexSum[:], data[len(data)-sumLength:])
 	return data[len(extPrefix) : len(extPrefix)+2],
 		data[len(extPrefix)+2 : len(extPrefix)+2+ph.PathSize()],
-		data[len(extPrefix)+2+ph.PathSize() : len(data)-16],
+		data[len(extPrefix)+2+ph.PathSize() : len(data)-sumLength],
 		hexSum
 }
 
@@ -165,7 +164,7 @@ func encodeLeaf(path []byte, leafData []byte) []byte {
 	return value
 }
 
-func encodeSumLeaf(path []byte, leafData []byte, sum [16]byte) []byte {
+func encodeSumLeaf(path []byte, leafData []byte, sum [sumLength]byte) []byte {
 	value := make([]byte, 0, len(leafPrefix)+len(path)+len(leafData))
 	value = append(value, leafPrefix...)
 	value = append(value, path...)
@@ -187,18 +186,18 @@ func encodeSumInner(leftData []byte, rightData []byte) ([]byte, error) {
 	value = append(value, innerPrefix...)
 	value = append(value, leftData...)
 	value = append(value, rightData...)
-	var sum [16]byte
+	var sum [sumLength]byte
 	var err error
 	leftSum := uint64(0)
 	rightSum := uint64(0)
-	if !bytes.Equal(leftData[len(leftData)-16:], sum[:]) {
-		leftSum, err = strconv.ParseUint(hex.EncodeToString(leftData[len(leftData)-16:]), 16, 64)
+	if !bytes.Equal(leftData[len(leftData)-sumLength:], defaultSum[:]) {
+		leftSum, err = strconv.ParseUint(hex.EncodeToString(leftData[len(leftData)-sumLength:]), 16, 64)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if !bytes.Equal(rightData[len(rightData)-16:], sum[:]) {
-		rightSum, err = strconv.ParseUint(hex.EncodeToString(rightData[len(rightData)-16:]), 16, 64)
+	if !bytes.Equal(rightData[len(rightData)-sumLength:], defaultSum[:]) {
+		rightSum, err = strconv.ParseUint(hex.EncodeToString(rightData[len(rightData)-sumLength:]), 16, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +206,7 @@ func encodeSumInner(leftData []byte, rightData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	copy(sum[len(totalBz):], totalBz)
+	copy(sum[sumLength-len(totalBz):], totalBz)
 	value = append(value, sum[:]...)
 	return value, nil
 }
@@ -227,8 +226,8 @@ func encodeSumExtension(pathBounds [2]byte, path []byte, childData []byte) []byt
 	value = append(value, pathBounds[:]...)
 	value = append(value, path...)
 	value = append(value, childData...)
-	var sum [16]byte
-	copy(sum[:], childData[len(childData)-16:])
+	var sum [sumLength]byte
+	copy(sum[:], childData[len(childData)-sumLength:])
 	value = append(value, sum[:]...)
 	return value
 }
