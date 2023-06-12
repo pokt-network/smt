@@ -12,7 +12,6 @@
 - [Example](#example)
 
 ## Overview
-
 Merkle Sum trees function very similarly to a regular Merkle tree, however the main difference is that each leaf node in a Merkle sum tree includes a `sum` in addition to is value. This allows for the entire tree's total sum to be calculated very easily as the sum of any branch is the sum of its children, thus the sum of the root node is the sum of the entire tree. Like a normal Merkle tree the Merkle sum tree allows for the efficient verification of its members, as well as proving non-membership of certain elements, and in general functions the same.
 
 Merkle sum trees can be very useful for blockchain applications in that they can easily track balances of accounts, and thus the total balance of all accounts. They can be very useful in proof of reserve systems whereby one needs to prove the membership of an element in the total sum calculation, as well as providing a verifiable total sum.
@@ -201,7 +200,7 @@ func main() {
 	proof, _ := tree.Prove([]byte("foo"))
 	root := tree.Root() // We also need the current tree root for the proof
 
-	// Verify the Merkle proof for "foo"="bar" where "foo" has a sum of 10
+	// Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
 	if valid, _ := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, tree.Spec()); valid {
 		fmt.Println("Proof verification succeeded.")
 	} else {
