@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash"
-	"strconv"
 )
 
 var (
@@ -94,11 +93,11 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	if leaf == nil {
 		return defaultValue, 0, nil
 	}
-	sum, err := strconv.ParseUint(hex.EncodeToString(leaf.sum[:]), 16, 64)
+	sum, err := sumFromHex(leaf.sum[:])
 	if err != nil {
 		return nil, 0, err
 	}
-	return leaf.valueHash, uint64(sum), nil
+	return leaf.valueHash, sum, nil
 }
 
 // Update sets the value for the given key, to the digest of the provided value
@@ -409,7 +408,7 @@ func (smst *SMST) Sum() (uint64, error) {
 	var hexSum [sumLength]byte
 	digest := smst.hashSumNode(smst.tree)
 	copy(hexSum[:], digest[len(digest)-sumLength:])
-	sum, err := strconv.ParseUint(hex.EncodeToString(hexSum[:]), 16, 64)
+	sum, err := sumFromHex(hexSum[:])
 	if err != nil {
 		return 0, err
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash"
-	"strconv"
 )
 
 var (
@@ -191,13 +190,13 @@ func encodeSumInner(leftData []byte, rightData []byte) ([]byte, error) {
 	leftSum := uint64(0)
 	rightSum := uint64(0)
 	if !bytes.Equal(leftData[len(leftData)-sumLength:], defaultSum[:]) {
-		leftSum, err = strconv.ParseUint(hex.EncodeToString(leftData[len(leftData)-sumLength:]), 16, 64)
+		leftSum, err = sumFromHex(leftData[len(leftData)-sumLength:])
 		if err != nil {
 			return nil, err
 		}
 	}
 	if !bytes.Equal(rightData[len(rightData)-sumLength:], defaultSum[:]) {
-		rightSum, err = strconv.ParseUint(hex.EncodeToString(rightData[len(rightData)-sumLength:]), 16, 64)
+		rightSum, err = sumFromHex(rightData[len(rightData)-sumLength:])
 		if err != nil {
 			return nil, err
 		}

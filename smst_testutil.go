@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"strconv"
 )
 
 // SMSTWithStorage Wraps an SMST with a mapping of value hashes to values with sums (preimages), for use in tests.
@@ -62,7 +61,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	}
 	var hexSum [sumLength]byte
 	copy(hexSum[:], value[len(value)-sumLength:])
-	storedSum, err := strconv.ParseUint(hex.EncodeToString(hexSum[:]), 16, 64)
+	storedSum, err := sumFromHex(hexSum[:])
 	if err != nil {
 		return nil, 0, err
 	}

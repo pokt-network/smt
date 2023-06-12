@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -432,7 +431,7 @@ func TestSMST_TotalSum(t *testing.T) {
 	// Check root hash contains the correct hex sum
 	root1 := smst.Root()
 	hexSum := root1[len(root1)-sumLength:]
-	rootSum, err := strconv.ParseUint(hex.EncodeToString(hexSum[:]), 16, 64)
+	rootSum, err := sumFromHex(hexSum)
 	require.NoError(t, err)
 
 	// Calculate total sum of the tree

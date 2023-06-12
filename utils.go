@@ -1,5 +1,10 @@
 package smt
 
+import (
+	"encoding/hex"
+	"strconv"
+)
+
 // getPathBit gets the bit at an offset from the most significant bit
 func getPathBit(data []byte, position int) int {
 	if int(data[position/8])&(1<<(8-1-uint(position)%8)) > 0 {
@@ -62,4 +67,13 @@ func hashSumSerialization(smt *TreeSpec, data []byte) []byte {
 		digest = append(digest, data[len(data)-sumLength:]...)
 		return digest
 	}
+}
+
+// Used to convert a []byte hex sum to a uint64
+func sumFromHex(data []byte) (uint64, error) {
+	sum, err := strconv.ParseUint(hex.EncodeToString(data[:]), 16, 64)
+	if err != nil {
+		return 0, err
+	}
+	return sum, nil
 }
