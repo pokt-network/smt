@@ -10,7 +10,7 @@ func randomiseProof(proof SparseMerkleProof) SparseMerkleProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
 		sideNodes[i] = make([]byte, len(proof.SideNodes[i]))
-		rand.Read(sideNodes[i])
+		rand.Read(sideNodes[i]) //nolint: errcheck
 	}
 	return SparseMerkleProof{
 		SideNodes:             sideNodes,
@@ -22,7 +22,7 @@ func randomiseSumProof(proof SparseMerkleSumProof) SparseMerkleSumProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
 		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumLength)
-		rand.Read(sideNodes[i])
+		rand.Read(sideNodes[i]) //nolint: errcheck
 		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumLength:]...)
 	}
 	return SparseMerkleSumProof{

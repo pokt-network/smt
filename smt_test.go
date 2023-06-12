@@ -274,7 +274,8 @@ func TestSMT_TreeMaxHeightCase(t *testing.T) {
 	// The dummy hash function will return the preimage itself as the digest.
 	key1 := make([]byte, ph.PathSize())
 	key2 := make([]byte, ph.PathSize())
-	rand.Read(key1)
+	_, err = rand.Read(key1)
+	require.NoError(t, err)
 	copy(key2, key1)
 	// We make key2's least significant bit different than key1's
 	key1[ph.PathSize()-1] = byte(0)

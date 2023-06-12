@@ -3,7 +3,6 @@ package smt
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"hash"
 	"testing"
@@ -303,7 +302,8 @@ func TestSMST_TreeMaxHeightCase(t *testing.T) {
 	// The dummy hash function will return the preimage itself as the digest.
 	key1 := make([]byte, ph.PathSize())
 	key2 := make([]byte, ph.PathSize())
-	rand.Read(key1)
+	_, err = rand.Read(key1)
+	require.NoError(t, err)
 	copy(key2, key1)
 	// We make key2's least significant bit different than key1's
 	key1[ph.PathSize()-1] = byte(0)
@@ -463,7 +463,6 @@ func TestSMST_TotalSum(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.NoError(t, smst.Commit())
-	t.Log(hex.EncodeToString(smst.Root()), smst.Root(), len(smst.Root()), len(hex.EncodeToString(smst.Root())))
 	sum, err = smst.Sum()
 	require.NoError(t, err)
 	require.Equal(t, sum, uint64(49995000))

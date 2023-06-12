@@ -2,18 +2,21 @@ package smt
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-type opCounts struct{ ops, inserts, updates, deletes int }
-type bulkop struct{ key, val []byte }
+type (
+	opCounts struct{ ops, inserts, updates, deletes int }
+	bulkop   struct{ key, val []byte }
+)
 
 // Test all tree operations in bulk.
 func TestBulkOperations(t *testing.T) {
-	rand.Seed(1)
-
 	cases := []opCounts{
 		// Test more inserts/updates than deletions.
 		{200, 100, 100, 50},
@@ -35,18 +38,21 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 	max := insert + update + delete
 	var kv []bulkop
 
+	r := rand.New(rand.NewSource(1))
 	for i := 0; i < operations; i++ {
 		n := rand.Intn(max)
 		if n < insert { // Insert
-			keyLen := 16 + rand.Intn(32)
+			keyLen := 16 + r.Intn(32)
 			key := make([]byte, keyLen)
-			rand.Read(key)
+			_, err := crand.Read(key)
+			require.NoError(t, err)
 
-			valLen := 1 + rand.Intn(64)
+			valLen := 1 + r.Intn(64)
 			val := make([]byte, valLen)
-			rand.Read(val)
+			_, err = crand.Read(val)
+			require.NoError(t, err)
 
-			err := smt.Update(key, val)
+			err = smt.Update(key, val)
 			if err != nil {
 				t.Fatalf("error: %v", err)
 			}
@@ -56,11 +62,12 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 				continue
 			}
 			ki := rand.Intn(len(kv))
-			valLen := 1 + rand.Intn(64)
+			valLen := 1 + r.Intn(64)
 			val := make([]byte, valLen)
-			rand.Read(val)
+			_, err := crand.Read(val)
+			require.NoError(t, err)
 
-			err := smt.Update(kv[ki].key, val)
+			err = smt.Update(kv[ki].key, val)
 			if err != nil {
 				t.Fatalf("error: %v", err)
 			}
@@ -69,7 +76,7 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			if len(kv) == 0 {
 				continue
 			}
-			ki := rand.Intn(len(kv))
+			ki := r.Intn(len(kv))
 
 			err := smt.Delete(kv[ki].key)
 			if err != nil && err != ErrKeyNotPresent {
