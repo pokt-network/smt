@@ -26,6 +26,7 @@ Note: **Requires Go 1.18+**
   - [Verification](#verification)
 - [Database](#database)
   - [Data Loss](#data-loss)
+- [Sparse Merkle Sum Tree](#sparse-merkle-sum-tree)
 - [Example](#example)
 
 ## Overview
@@ -299,6 +300,10 @@ When changes are commited to the underlying database using `Commit()` the digest
 ### Data Loss
 
 In the event of a system crash or unexpected failure of the program utilising the SMT, if the `Commit()` function has not been called, any changes to the tree will be lost. This is due to the underlying database not being changed **until** the `Commit()` function is called and changes are persisted.
+
+## Sparse Merkle Sum Tree
+
+This library also implements a Sparse Merkle Sum Tree (SMST), the documentation for which can be found [here](./MerkleSumTree.md).
 
 ## Example
 
