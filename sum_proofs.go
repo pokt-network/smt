@@ -2,6 +2,7 @@ package smt
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math"
 )
@@ -36,7 +37,7 @@ func (proof *SparseMerkleSumProof) sanityCheck(spec *TreeSpec) bool {
 
 	// Check that all supplied sidenodes are the correct size.
 	for _, v := range proof.SideNodes {
-		if len(v) != spec.th.hashSize() {
+		if len(v) != spec.th.hashSize()+16 {
 			return false
 		}
 	}
@@ -46,7 +47,7 @@ func (proof *SparseMerkleSumProof) sanityCheck(spec *TreeSpec) bool {
 		return true
 	}
 
-	siblingHash := hashSerialization(spec, proof.SiblingData)
+	siblingHash := hashSumSerialization(spec, proof.SiblingData)
 	return bytes.Equal(proof.SideNodes[0], siblingHash)
 }
 
@@ -100,7 +101,11 @@ func (proof *SparseCompactMerkleSumProof) sanityCheck(spec *TreeSpec) bool {
 // VerifyProof verifies a Merkle proof.
 func VerifySumProof(proof SparseMerkleSumProof, root []byte, key []byte, value []byte, sum uint64, spec *TreeSpec) (bool, error) {
 	var hexSum [16]byte
-	copy(hexSum[:], []byte(fmt.Sprintf("%016x", sum)))
+	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", sum))
+	if err != nil {
+		return false, err
+	}
+	copy(hexSum[16-len(hexBz):], hexBz)
 	result, _, err := verifySumProofWithUpdates(proof, root, key, value, hexSum, spec)
 	if err != nil {
 		return false, err
@@ -121,7 +126,7 @@ func verifySumProofWithUpdates(proof SparseMerkleSumProof, root []byte, key []by
 	var currentHash, currentData []byte
 	if bytes.Equal(value, defaultValue) { // Non-membership proof.
 		if proof.NonMembershipLeafData == nil { // Leaf is a placeholder value.
-			currentHash = spec.th.placeholder()
+			currentHash = spec.th.sumPlaceholder()
 		} else { // Leaf is an unrelated leaf.
 			actualPath, valueHash, actualSum := parseSumLeaf(proof.NonMembershipLeafData, spec.ph)
 			if bytes.Equal(actualPath, path) {
@@ -145,7 +150,7 @@ func verifySumProofWithUpdates(proof SparseMerkleSumProof, root []byte, key []by
 	// Recompute root.
 	var err error
 	for i := 0; i < len(proof.SideNodes); i++ {
-		node := make([]byte, spec.th.hashSize())
+		node := make([]byte, spec.th.hashSize()+16)
 		copy(node, proof.SideNodes[i])
 
 		if getPathBit(path, len(proof.SideNodes)-1-i) == left {
@@ -186,9 +191,9 @@ func CompactSumProof(proof SparseMerkleSumProof, spec *TreeSpec) (SparseCompactM
 	bitMask := make([]byte, int(math.Ceil(float64(len(proof.SideNodes))/float64(8))))
 	var compactedSideNodes [][]byte
 	for i := 0; i < len(proof.SideNodes); i++ {
-		node := make([]byte, spec.th.hashSize())
+		node := make([]byte, spec.th.hashSize()+16)
 		copy(node, proof.SideNodes[i])
-		if bytes.Equal(node, spec.th.placeholder()) {
+		if bytes.Equal(node, spec.th.sumPlaceholder()) {
 			setPathBit(bitMask, i)
 		} else {
 			compactedSideNodes = append(compactedSideNodes, node)
@@ -214,7 +219,7 @@ func DecompactSumProof(proof SparseCompactMerkleSumProof, spec *TreeSpec) (Spars
 	position := 0
 	for i := 0; i < proof.NumSideNodes; i++ {
 		if getPathBit(proof.BitMask, i) == 1 {
-			decompactedSideNodes[i] = spec.th.placeholder()
+			decompactedSideNodes[i] = spec.th.sumPlaceholder()
 		} else {
 			decompactedSideNodes[i] = proof.SideNodes[position]
 			position++

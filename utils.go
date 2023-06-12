@@ -49,3 +49,17 @@ func hashSerialization(smt *TreeSpec, data []byte) []byte {
 		return smt.th.digest(data)
 	}
 }
+
+// Used for verification of serialized proof data
+func hashSumSerialization(smt *TreeSpec, data []byte) []byte {
+	if isExtension(data) {
+		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
+		ext := extensionNode{path: path, child: &lazyNode{childHash}}
+		copy(ext.pathBounds[:], pathBounds)
+		return smt.hashSumNode(&ext)
+	} else {
+		digest := smt.th.digest(data)
+		digest = append(digest, data[len(data)-16:]...)
+		return digest
+	}
+}

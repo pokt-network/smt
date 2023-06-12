@@ -8,7 +8,7 @@ import (
 )
 
 // Test base case Merkle proof operations.
-func TestProofsBasic(t *testing.T) {
+func TestSMT_ProofsBasic(t *testing.T) {
 	var smn, smv *SimpleMap
 	var smt *SMTWithStorage
 	var proof SparseMerkleProof
@@ -87,7 +87,7 @@ func TestProofsBasic(t *testing.T) {
 }
 
 // Test sanity check cases for non-compact proofs.
-func TestProofsSanityCheck(t *testing.T) {
+func TestSMT_ProofsSanityCheck(t *testing.T) {
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()

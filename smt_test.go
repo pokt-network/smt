@@ -1,9 +1,9 @@
 package smt
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"hash"
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,7 +16,7 @@ func NewSMTWithStorage(nodes, preimages MapStore, hasher hash.Hash, options ...O
 	}
 }
 
-func TestTreeUpdateBasic(t *testing.T) {
+func TestSMT_TreeUpdateBasic(t *testing.T) {
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	lazy := NewSparseMerkleTree(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
@@ -95,7 +95,7 @@ func TestTreeUpdateBasic(t *testing.T) {
 }
 
 // Test base case tree delete operations with a few keys.
-func TestTreeDeleteBasic(t *testing.T) {
+func TestSMT_TreeDeleteBasic(t *testing.T) {
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	lazy := NewSparseMerkleTree(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
@@ -192,7 +192,7 @@ func TestTreeDeleteBasic(t *testing.T) {
 }
 
 // Test tree ops with known paths
-func TestTreeKnownPath(t *testing.T) {
+func TestSMT_TreeKnownPath(t *testing.T) {
 	ph := dummyPathHasher{32}
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
@@ -263,7 +263,7 @@ func TestTreeKnownPath(t *testing.T) {
 }
 
 // Test tree operations when two leafs are immediate neighbors.
-func TestTreeMaxHeightCase(t *testing.T) {
+func TestSMT_TreeMaxHeightCase(t *testing.T) {
 	ph := dummyPathHasher{32}
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
@@ -299,7 +299,7 @@ func TestTreeMaxHeightCase(t *testing.T) {
 	require.Equal(t, 256, len(proof.SideNodes), "unexpected proof size")
 }
 
-func TestOrphanRemoval(t *testing.T) {
+func TestSMT_OrphanRemoval(t *testing.T) {
 	var smn, smv *SimpleMap
 	var impl *SMT
 	var smt *SMTWithStorage

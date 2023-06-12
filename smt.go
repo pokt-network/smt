@@ -6,8 +6,9 @@ import (
 )
 
 var (
-	_ treeNode = (*innerNode)(nil)
-	_ treeNode = (*leafNode)(nil)
+	_ treeNode         = (*innerNode)(nil)
+	_ treeNode         = (*leafNode)(nil)
+	_ SparseMerkleTree = (*SMT)(nil)
 )
 
 type treeNode interface {

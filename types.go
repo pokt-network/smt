@@ -3,7 +3,6 @@ package smt
 import (
 	"errors"
 	"hash"
-	"log"
 )
 
 const (
@@ -29,6 +28,26 @@ type SparseMerkleTree interface {
 	Root() []byte
 	// Prove computes a Merkle proof of membership or non-membership of a key.
 	Prove(key []byte) (SparseMerkleProof, error)
+	// Commit saves the tree's state to its persistent storage.
+	Commit() error
+
+	Spec() *TreeSpec
+}
+
+// SparseMerkleSumTree represents a Sparse Merkle sum tree.
+type SparseMerkleSumTree interface {
+	// Update inserts a value and its sum into the SMST.
+	Update(key, value []byte, sum uint64) error
+	// Delete deletes a value from the SMST. Raises an error if the key is not present.
+	Delete(key []byte) error
+	// Get descends the tree to access a value. Returns nil if key is not present.
+	Get(key []byte) ([]byte, uint64, error)
+	// Root computes the Merkle root digest.
+	Root() []byte
+	// Sum computes the total sum of the Merkle tree
+	Sum() (uint64, error)
+	// Prove computes a Merkle proof of membership or non-membership of a key.
+	Prove(key []byte) (SparseMerkleSumProof, error)
 	// Commit saves the tree's state to its persistent storage.
 	Commit() error
 
@@ -129,7 +148,6 @@ func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 	if node == nil {
 		return spec.th.sumPlaceholder()
 	}
-
 	var cache *[]byte
 	switch n := node.(type) {
 	case *lazyNode:
@@ -144,15 +162,13 @@ func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 		}
 		return n.digest
 	}
-
 	if *cache == nil {
 		preimage, err := spec.sumSerialize(node)
 		if err != nil {
-			log.Fatalf("error serialising sum node: %s", err.Error())
+			panic("error serialising sum node: " + err.Error())
 		}
 		*cache = spec.th.digest(preimage)
 		*cache = append(*cache, preimage[len(preimage)-16:]...)
 	}
-
 	return *cache
 }

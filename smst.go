@@ -2,12 +2,16 @@ package smt
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"strconv"
 )
 
-var _ treeNode = (*sumLeafNode)(nil)
+var (
+	_ treeNode            = (*sumLeafNode)(nil)
+	_ SparseMerkleSumTree = (*SMST)(nil)
+)
 
 // sumLeafNode stores data and a full path as well as a hex sum
 type sumLeafNode struct {
@@ -22,7 +26,7 @@ type sumLeafNode struct {
 type SMST struct {
 	TreeSpec
 	nodes MapStore
-	// Last persisted root hash: hash = [32 byte digest]+[16 byte hex sum]
+	// Last persisted root hash: hash = [digest]+[16 byte hex sum]
 	savedRoot []byte
 	// Current state of the tree
 	tree treeNode
@@ -55,7 +59,6 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	path := smst.ph.Path(key)
 	var leaf *sumLeafNode
 	var err error
-
 	for node, depth := &smst.tree, 0; ; depth++ {
 		*node, err = smst.resolveLazy(*node)
 		if err != nil {
@@ -64,14 +67,12 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 		if *node == nil {
 			break
 		}
-
 		if n, ok := (*node).(*sumLeafNode); ok {
 			if bytes.Equal(path, n.path) {
 				leaf = n
 			}
 			break
 		}
-
 		if ext, ok := (*node).(*extensionNode); ok {
 			if _, match := ext.match(path, depth); !match {
 				break
@@ -83,7 +84,6 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 				return nil, 0, err
 			}
 		}
-
 		inner := (*node).(*innerNode)
 		if getPathBit(path, depth) == left {
 			node = &inner.leftChild
@@ -91,16 +91,13 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 			node = &inner.rightChild
 		}
 	}
-
 	if leaf == nil {
 		return defaultValue, 0, nil
 	}
-
-	sum, err := strconv.ParseUint(string(leaf.sum[:]), 16, 64)
+	sum, err := strconv.ParseUint(hex.EncodeToString(leaf.sum[:]), 16, 64)
 	if err != nil {
 		return nil, 0, err
 	}
-
 	return leaf.valueHash, uint64(sum), nil
 }
 
@@ -109,19 +106,20 @@ func (smst *SMST) Update(key []byte, value []byte, sum uint64) error {
 	path := smst.ph.Path(key)
 	valueHash := smst.digestValue(value)
 	var hexSum [16]byte
-	copy(hexSum[:], fmt.Sprintf("%016x", sum))
-
+	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", sum))
+	if err != nil {
+		return err
+	}
+	copy(hexSum[16-len(hexBz):], hexBz)
 	var orphans orphanNodes
 	tree, err := smst.update(smst.tree, 0, path, valueHash, hexSum, &orphans)
 	if err != nil {
 		return err
 	}
-
 	smst.tree = tree
 	if len(orphans) > 0 {
 		smst.orphans = append(smst.orphans, orphans)
 	}
-
 	return nil
 }
 
@@ -132,7 +130,6 @@ func (smst *SMST) update(
 	if err != nil {
 		return node, err
 	}
-
 	newLeaf := &sumLeafNode{path: path, valueHash: value, sum: sum}
 	// Empty subtree is always replaced by a single leaf
 	if node == nil {
@@ -162,9 +159,7 @@ func (smst *SMST) update(
 		}
 		return node, nil
 	}
-
 	smst.addOrphan(orphans, node)
-
 	if ext, ok := node.(*extensionNode); ok {
 		var branch *treeNode
 		node, branch, depth = ext.split(path, depth)
@@ -175,7 +170,6 @@ func (smst *SMST) update(
 		ext.setDirty()
 		return node, nil
 	}
-
 	inner := node.(*innerNode)
 	var child *treeNode
 	if getPathBit(path, depth) == left {
@@ -183,12 +177,10 @@ func (smst *SMST) update(
 	} else {
 		child = &inner.rightChild
 	}
-
 	*child, err = smst.update(*child, depth+1, path, value, sum, orphans)
 	if err != nil {
 		return node, err
 	}
-
 	inner.setDirty()
 	return node, nil
 }
@@ -197,17 +189,14 @@ func (smst *SMST) update(
 func (smst *SMST) Delete(key []byte) error {
 	path := smst.ph.Path(key)
 	var orphans orphanNodes
-
 	tree, err := smst.delete(smst.tree, 0, path, &orphans)
 	if err != nil {
 		return err
 	}
 	smst.tree = tree
-
 	if len(orphans) > 0 {
 		smst.orphans = append(smst.orphans, orphans)
 	}
-
 	return nil
 }
 
@@ -220,7 +209,6 @@ func (smst *SMST) delete(node treeNode, depth int, path []byte, orphans *orphanN
 	if node == nil {
 		return node, ErrKeyNotPresent
 	}
-
 	if leaf, ok := node.(*sumLeafNode); ok {
 		if !bytes.Equal(path, leaf.path) {
 			return node, ErrKeyNotPresent
@@ -229,7 +217,6 @@ func (smst *SMST) delete(node treeNode, depth int, path []byte, orphans *orphanN
 		return nil, nil
 	}
 	smst.addOrphan(orphans, node)
-
 	if ext, ok := node.(*extensionNode); ok {
 		if _, match := ext.match(path, depth); !match {
 			return node, ErrKeyNotPresent
@@ -250,7 +237,6 @@ func (smst *SMST) delete(node treeNode, depth int, path []byte, orphans *orphanN
 		ext.setDirty()
 		return node, nil
 	}
-
 	inner := node.(*innerNode)
 	var child, sib *treeNode
 	if getPathBit(path, depth) == left {
@@ -258,17 +244,14 @@ func (smst *SMST) delete(node treeNode, depth int, path []byte, orphans *orphanN
 	} else {
 		child, sib = &inner.rightChild, &inner.leftChild
 	}
-
 	*child, err = smst.delete(*child, depth+1, path, orphans)
 	if err != nil {
 		return node, err
 	}
-
 	*sib, err = smst.resolveLazy(*sib)
 	if err != nil {
 		return node, err
 	}
-
 	// Handle replacement of this node, depending on the new child states.
 	// Note that inner nodes exist at a fixed depth, and can't be moved.
 	children := [2]*treeNode{child, sib}
@@ -286,9 +269,7 @@ func (smst *SMST) delete(node treeNode, depth int, path []byte, orphans *orphanN
 			}
 		}
 	}
-
 	inner.setDirty()
-
 	return node, nil
 }
 
@@ -297,7 +278,6 @@ func (smst *SMST) Prove(key []byte) (proof SparseMerkleSumProof, err error) {
 	path := smst.ph.Path(key)
 	var siblings []treeNode
 	var sib treeNode
-
 	node := smst.tree
 	for depth := 0; depth < smst.depth(); depth++ {
 		node, err = smst.resolveLazy(node)
@@ -334,7 +314,6 @@ func (smst *SMST) Prove(key []byte) (proof SparseMerkleSumProof, err error) {
 		}
 		siblings = append(siblings, sib)
 	}
-
 	// Deal with non-membership proofs. If there is no leaf on this path,
 	// we do not need to add anything else to the proof.
 	var leafData []byte
@@ -346,7 +325,6 @@ func (smst *SMST) Prove(key []byte) (proof SparseMerkleSumProof, err error) {
 			leafData = encodeSumLeaf(leaf.path, leaf.valueHash, leaf.sum)
 		}
 	}
-
 	// Hash siblings from bottom up.
 	var sideNodes [][]byte
 	for i := range siblings {
@@ -355,12 +333,10 @@ func (smst *SMST) Prove(key []byte) (proof SparseMerkleSumProof, err error) {
 		sideNode = smst.hashSumNode(sibling)
 		sideNodes = append(sideNodes, sideNode)
 	}
-
 	proof = SparseMerkleSumProof{
 		SideNodes:             sideNodes,
 		NonMembershipLeafData: leafData,
 	}
-
 	if sib != nil {
 		sib, err = smst.resolveLazy(sib)
 		if err != nil {
@@ -371,7 +347,6 @@ func (smst *SMST) Prove(key []byte) (proof SparseMerkleSumProof, err error) {
 			return SparseMerkleSumProof{}, err
 		}
 	}
-
 	return proof, nil
 }
 
@@ -398,7 +373,6 @@ func (smst *SMST) commit(node treeNode) error {
 	if node != nil && node.Persisted() {
 		return nil
 	}
-
 	switch n := node.(type) {
 	case *sumLeafNode:
 		n.persisted = true
@@ -418,12 +392,10 @@ func (smst *SMST) commit(node treeNode) error {
 	default:
 		return nil
 	}
-
 	preimage, err := smst.sumSerialize(node)
 	if err != nil {
 		return err
 	}
-
 	return smst.nodes.Set(smst.hashSumNode(node), preimage)
 }
 
@@ -437,7 +409,7 @@ func (smst *SMST) Sum() (uint64, error) {
 	var hexSum [16]byte
 	digest := smst.hashSumNode(smst.tree)
 	copy(hexSum[:], digest[len(digest)-16:])
-	sum, err := strconv.ParseUint(string(hexSum[:]), 16, 64)
+	sum, err := strconv.ParseUint(hex.EncodeToString(hexSum[:]), 16, 64)
 	if err != nil {
 		return 0, err
 	}
@@ -465,18 +437,15 @@ func (smst *SMST) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 	if bytes.Equal(smst.th.sumPlaceholder(), hash) {
 		return
 	}
-
 	data, err := smst.nodes.Get(hash)
 	if err != nil {
 		return nil, err
 	}
-
 	if isLeaf(data) {
 		leaf := sumLeafNode{persisted: true, digest: hash}
 		leaf.path, leaf.valueHash, leaf.sum = parseSumLeaf(data, smst.ph)
 		return &leaf, nil
 	}
-
 	if isExtension(data) {
 		ext := extensionNode{persisted: true, digest: hash}
 		pathBounds, path, childHash, _ := parseSumExtension(data, smst.ph)
@@ -488,7 +457,6 @@ func (smst *SMST) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 		}
 		return &ext, nil
 	}
-
 	leftHash, rightHash := smst.th.parseSumNode(data)
 	inner := innerNode{persisted: true, digest: hash}
 	inner.leftChild, err = resolver(leftHash)
@@ -499,7 +467,6 @@ func (smst *SMST) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 	if err != nil {
 		return
 	}
-
 	return &inner, nil
 }
 

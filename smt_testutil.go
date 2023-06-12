@@ -12,7 +12,7 @@ type SMTWithStorage struct {
 	preimages MapStore
 }
 
-func (smt *SMTWithStorage) Update(key []byte, value []byte) error {
+func (smt *SMTWithStorage) Update(key, value []byte) error {
 	err := smt.SMT.Update(key, value)
 	if err != nil {
 		return err

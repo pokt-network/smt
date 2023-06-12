@@ -2,6 +2,7 @@ package smt
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"strconv"
@@ -93,7 +94,9 @@ func (th *treeHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, 
 	if err != nil {
 		return nil, nil, err
 	}
-	return th.digest(value), value, nil
+	digest := th.digest(value)
+	digest = append(digest, value[len(value)-16:]...)
+	return digest, value, nil
 }
 
 func (th *treeHasher) parseNode(data []byte) ([]byte, []byte) {
@@ -102,7 +105,7 @@ func (th *treeHasher) parseNode(data []byte) ([]byte, []byte) {
 
 func (th *treeHasher) parseSumNode(data []byte) ([]byte, []byte) {
 	sumless := data[:len(data)-16]
-	return sumless[len(innerPrefix) : th.hashSize()+len(innerPrefix)], sumless[len(innerPrefix)+th.hashSize():]
+	return sumless[len(innerPrefix) : th.hashSize()+len(innerPrefix)+16], sumless[len(innerPrefix)+th.hashSize()+16:]
 }
 
 func (th *treeHasher) hashSize() int {
@@ -145,11 +148,13 @@ func parseExtension(data []byte, ph PathHasher) (pathBounds, path, childData []b
 		data[len(extPrefix)+2+ph.PathSize():]
 }
 
-func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData, sum []byte) {
+func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [16]byte) {
+	var hexSum [16]byte
+	copy(hexSum[:], data[len(data)-16:])
 	return data[len(extPrefix) : len(extPrefix)+2],
 		data[len(extPrefix)+2 : len(extPrefix)+2+ph.PathSize()],
 		data[len(extPrefix)+2+ph.PathSize() : len(data)-16],
-		data[len(data)-16:]
+		hexSum
 }
 
 func encodeLeaf(path []byte, leafData []byte) []byte {
@@ -187,18 +192,22 @@ func encodeSumInner(leftData []byte, rightData []byte) ([]byte, error) {
 	leftSum := uint64(0)
 	rightSum := uint64(0)
 	if !bytes.Equal(leftData[len(leftData)-16:], sum[:]) {
-		leftSum, err = strconv.ParseUint(string(leftData[len(leftData)-16:]), 16, 64)
+		leftSum, err = strconv.ParseUint(hex.EncodeToString(leftData[len(leftData)-16:]), 16, 64)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if !bytes.Equal(rightData[len(rightData)-16:], sum[:]) {
-		rightSum, err = strconv.ParseUint(string(rightData[len(rightData)-16:]), 16, 64)
+		rightSum, err = strconv.ParseUint(hex.EncodeToString(rightData[len(rightData)-16:]), 16, 64)
 		if err != nil {
 			return nil, err
 		}
 	}
-	copy(sum[:], []byte(fmt.Sprintf("%016x", leftSum+rightSum)))
+	totalBz, err := hex.DecodeString(fmt.Sprintf("%016x", leftSum+rightSum))
+	if err != nil {
+		return nil, err
+	}
+	copy(sum[len(totalBz):], totalBz)
 	value = append(value, sum[:]...)
 	return value, nil
 }
