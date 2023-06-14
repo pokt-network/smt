@@ -60,7 +60,7 @@ The following diagrams are representations of how the tree and its components ca
 
 #### General Tree Structure
 
-In reality the only nodes that actually hold a sum value are the `sumLeafNode` types and all other nodes store their sum as part of their digest. However, for the sake of visualisation the sum is included in all nodes.
+The only nodes that hold a separate sum value are the `sumLeafNode` nodes, while all other nodes store their sum as part of their digest. For the purposes of visualization, the sum is included in all nodes.
 
 ```mermaid
 graph TB
