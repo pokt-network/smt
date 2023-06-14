@@ -46,7 +46,7 @@ Therefore for the following node types, the digests are computed as follows:
   - Prefix of the actual node type is stored in the digest
   - `digest = persistedDigest`
 
-This means that with a hasher such as `sha256.New()` whose hash size is 32 bytes, the digest of any node will be 40 bytes in length.
+This means that with a hasher such as `sha256.New()` whose hash size is `32 bytes`, the digest of any node will be `40 bytes` in length.
 
 ### Sum Leaves
 
