@@ -31,7 +31,7 @@ The digest for any node in the SMST is calculated in partially the same manner a
 
 `digest = [node digest]+[8 byte hex sum]`
 
-Therefore for the following node types the digests are as follows:
+Therefore for the following node types, the digests are computed as follows:
 
 - Inner Nodes
   - Prefixed `[]byte{1}`
