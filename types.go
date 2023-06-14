@@ -47,7 +47,7 @@ type SparseMerkleSumTree interface {
 	// Root computes the Merkle root digest.
 	Root() []byte
 	// Sum computes the total sum of the Merkle tree
-	Sum() (uint64, error)
+	Sum() uint64
 	// Prove computes a Merkle proof of membership or non-membership of a key.
 	Prove(key []byte) (SparseMerkleSumProof, error)
 	// Commit saves the tree's state to its persistent storage.
@@ -123,25 +123,22 @@ func (spec *TreeSpec) hashNode(node treeNode) []byte {
 }
 
 // sumSerialize serializes a node returning the preimage hash, its sum and any errors encountered
-func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte, err error) {
+func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte) {
 	switch n := node.(type) {
 	case *lazyNode:
 		panic("serialize(lazyNode)")
 	case *sumLeafNode:
-		return encodeSumLeaf(n.path, n.valueHash, n.sum), nil
+		return encodeSumLeaf(n.path, n.valueHash, n.sum)
 	case *innerNode:
 		lchild := spec.hashSumNode(n.leftChild)
 		rchild := spec.hashSumNode(n.rightChild)
-		preimage, err = encodeSumInner(lchild, rchild)
-		if err != nil {
-			return nil, err
-		}
-		return preimage, nil
+		preimage = encodeSumInner(lchild, rchild)
+		return preimage
 	case *extensionNode:
 		child := spec.hashSumNode(n.child)
-		return encodeSumExtension(n.pathBounds, n.path, child), nil
+		return encodeSumExtension(n.pathBounds, n.path, child)
 	}
-	return nil, nil
+	return nil
 }
 
 // hashSumNode hashes a node returning its digest in the following form
@@ -165,10 +162,7 @@ func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 		return n.digest
 	}
 	if *cache == nil {
-		preimage, err := spec.sumSerialize(node)
-		if err != nil {
-			panic("error serialising sum node: " + err.Error())
-		}
+		preimage := spec.sumSerialize(node)
 		*cache = spec.th.digest(preimage)
 		*cache = append(*cache, preimage[len(preimage)-sumLength:]...)
 	}

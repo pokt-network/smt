@@ -2,8 +2,7 @@ package smt
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
+	"encoding/binary"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -79,9 +78,7 @@ func TestSMST_ProofsBasic(t *testing.T) {
 
 	// Try proving a default value for a non-default leaf.
 	var sum [sumLength]byte
-	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", 5))
-	require.NoError(t, err)
-	copy(sum[sumLength-len(hexBz):], hexBz)
+	binary.BigEndian.PutUint64(sum[:], 5)
 	_, leafData := base.th.digestSumLeaf(base.ph.Path([]byte("testKey2")), base.digestValue([]byte("testValue")), sum)
 	proof = SparseMerkleSumProof{
 		SideNodes:             proof.SideNodes,

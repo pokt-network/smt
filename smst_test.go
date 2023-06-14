@@ -3,6 +3,7 @@ package smt
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"hash"
 	"testing"
@@ -430,29 +431,26 @@ func TestSMST_TotalSum(t *testing.T) {
 
 	// Check root hash contains the correct hex sum
 	root1 := smst.Root()
-	hexSum := root1[len(root1)-sumLength:]
-	rootSum, err := sumFromHex(hexSum)
+	sumBz := root1[len(root1)-sumLength:]
+	rootSum := binary.BigEndian.Uint64(sumBz)
 	require.NoError(t, err)
 
 	// Calculate total sum of the tree
-	sum, err := smst.Sum()
-	require.NoError(t, err)
+	sum := smst.Sum()
 	require.Equal(t, sum, uint64(15))
 	require.Equal(t, sum, rootSum)
 
 	// Check that the sum is correct after deleting a key
 	err = smst.Delete([]byte("key1"))
 	require.NoError(t, err)
-	sum, err = smst.Sum()
-	require.NoError(t, err)
+	sum = smst.Sum()
 	require.Equal(t, sum, uint64(10))
 
 	// Check that the sum is correct after importing the tree
 	require.NoError(t, smst.Commit())
 	root2 := smst.Root()
 	smst = ImportSparseMerkleSumTree(snm, sha256.New(), root2)
-	sum, err = smst.Sum()
-	require.NoError(t, err)
+	sum = smst.Sum()
 	require.Equal(t, sum, uint64(10))
 
 	// Calculate the total sum of a larger tree
@@ -463,7 +461,6 @@ func TestSMST_TotalSum(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.NoError(t, smst.Commit())
-	sum, err = smst.Sum()
-	require.NoError(t, err)
+	sum = smst.Sum()
 	require.Equal(t, sum, uint64(49995000))
 }

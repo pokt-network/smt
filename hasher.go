@@ -2,8 +2,7 @@ package smt
 
 import (
 	"bytes"
-	"encoding/hex"
-	"fmt"
+	"encoding/binary"
 	"hash"
 )
 
@@ -88,14 +87,11 @@ func (th *treeHasher) digestNode(leftData []byte, rightData []byte) ([]byte, []b
 	return th.digest(value), value
 }
 
-func (th *treeHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte, error) {
-	value, err := encodeSumInner(leftData, rightData)
-	if err != nil {
-		return nil, nil, err
-	}
+func (th *treeHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte) {
+	value := encodeSumInner(leftData, rightData)
 	digest := th.digest(value)
 	digest = append(digest, value[len(value)-sumLength:]...)
-	return digest, value, nil
+	return digest, value
 }
 
 func (th *treeHasher) parseNode(data []byte) ([]byte, []byte) {
@@ -147,12 +143,12 @@ func parseExtension(data []byte, ph PathHasher) (pathBounds, path, childData []b
 }
 
 func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [sumLength]byte) {
-	var hexSum [sumLength]byte
-	copy(hexSum[:], data[len(data)-sumLength:])
+	var sumBz [sumLength]byte
+	copy(sumBz[:], data[len(data)-sumLength:])
 	return data[len(extPrefix) : len(extPrefix)+2],
 		data[len(extPrefix)+2 : len(extPrefix)+2+ph.PathSize()],
 		data[len(extPrefix)+2+ph.PathSize() : len(data)-sumLength],
-		hexSum
+		sumBz
 }
 
 func encodeLeaf(path []byte, leafData []byte) []byte {
@@ -180,34 +176,23 @@ func encodeInner(leftData []byte, rightData []byte) []byte {
 	return value
 }
 
-func encodeSumInner(leftData []byte, rightData []byte) ([]byte, error) {
+func encodeSumInner(leftData []byte, rightData []byte) []byte {
 	value := make([]byte, 0, len(innerPrefix)+len(leftData)+len(rightData))
 	value = append(value, innerPrefix...)
 	value = append(value, leftData...)
 	value = append(value, rightData...)
 	var sum [sumLength]byte
-	var err error
 	leftSum := uint64(0)
 	rightSum := uint64(0)
 	if !bytes.Equal(leftData[len(leftData)-sumLength:], defaultSum[:]) {
-		leftSum, err = sumFromHex(leftData[len(leftData)-sumLength:])
-		if err != nil {
-			return nil, err
-		}
+		leftSum = binary.BigEndian.Uint64(leftData[len(leftData)-sumLength:])
 	}
 	if !bytes.Equal(rightData[len(rightData)-sumLength:], defaultSum[:]) {
-		rightSum, err = sumFromHex(rightData[len(rightData)-sumLength:])
-		if err != nil {
-			return nil, err
-		}
+		rightSum = binary.BigEndian.Uint64(rightData[len(rightData)-sumLength:])
 	}
-	totalBz, err := hex.DecodeString(fmt.Sprintf("%016x", leftSum+rightSum))
-	if err != nil {
-		return nil, err
-	}
-	copy(sum[sumLength-len(totalBz):], totalBz)
+	binary.BigEndian.PutUint64(sum[:], leftSum+rightSum)
 	value = append(value, sum[:]...)
-	return value, nil
+	return value
 }
 
 func encodeExtension(pathBounds [2]byte, path []byte, childData []byte) []byte {

@@ -2,7 +2,7 @@ package smt
 
 import (
 	"bytes"
-	"encoding/hex"
+	"encoding/binary"
 	"errors"
 	"fmt"
 )
@@ -20,13 +20,9 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 		return err
 	}
 	valueHash := smst.digestValue(value)
-	var hexSum [sumLength]byte
-	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", sum))
-	if err != nil {
-		return err
-	}
-	copy(hexSum[sumLength-len(hexBz):], hexBz)
-	value = append(value, hexSum[:]...)
+	var sumBz [sumLength]byte
+	binary.BigEndian.PutUint64(sumBz[:], sum)
+	value = append(value, sumBz[:]...)
 	err = smst.preimages.Set(valueHash, value)
 	if err != nil {
 		return err
@@ -59,12 +55,9 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 			return nil, 0, err
 		}
 	}
-	var hexSum [sumLength]byte
-	copy(hexSum[:], value[len(value)-sumLength:])
-	storedSum, err := sumFromHex(hexSum[:])
-	if err != nil {
-		return nil, 0, err
-	}
+	var sumBz [sumLength]byte
+	copy(sumBz[:], value[len(value)-sumLength:])
+	storedSum := binary.BigEndian.Uint64(sumBz[:])
 	if storedSum != sum {
 		return nil, 0, fmt.Errorf("sum mismatch for %s: got %d, expected %d", string(key), storedSum, sum)
 	}

@@ -2,8 +2,7 @@ package smt
 
 import (
 	"bytes"
-	"encoding/hex"
-	"fmt"
+	"encoding/binary"
 	"hash"
 )
 
@@ -104,14 +103,10 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 func (smst *SMST) Update(key []byte, value []byte, sum uint64) error {
 	path := smst.ph.Path(key)
 	valueHash := smst.digestValue(value)
-	var hexSum [sumLength]byte
-	hexBz, err := hex.DecodeString(fmt.Sprintf("%016x", sum))
-	if err != nil {
-		return err
-	}
-	copy(hexSum[sumLength-len(hexBz):], hexBz)
+	var sumBz [sumLength]byte
+	binary.BigEndian.PutUint64(sumBz[:], sum)
 	var orphans orphanNodes
-	tree, err := smst.update(smst.tree, 0, path, valueHash, hexSum, &orphans)
+	tree, err := smst.update(smst.tree, 0, path, valueHash, sumBz, &orphans)
 	if err != nil {
 		return err
 	}
@@ -341,10 +336,7 @@ func (smst *SMST) Prove(key []byte) (proof SparseMerkleSumProof, err error) {
 		if err != nil {
 			return SparseMerkleSumProof{}, err
 		}
-		proof.SiblingData, err = smst.sumSerialize(sib)
-		if err != nil {
-			return SparseMerkleSumProof{}, err
-		}
+		proof.SiblingData = smst.sumSerialize(sib)
 	}
 	return proof, nil
 }
@@ -391,10 +383,7 @@ func (smst *SMST) commit(node treeNode) error {
 	default:
 		return nil
 	}
-	preimage, err := smst.sumSerialize(node)
-	if err != nil {
-		return err
-	}
+	preimage := smst.sumSerialize(node)
 	return smst.nodes.Set(smst.hashSumNode(node), preimage)
 }
 
@@ -404,15 +393,11 @@ func (smst *SMST) Root() []byte {
 }
 
 // Sum returns the uint64 sum of the entire tree
-func (smst *SMST) Sum() (uint64, error) {
-	var hexSum [sumLength]byte
+func (smst *SMST) Sum() uint64 {
+	var sumBz [sumLength]byte
 	digest := smst.hashSumNode(smst.tree)
-	copy(hexSum[:], digest[len(digest)-sumLength:])
-	sum, err := sumFromHex(hexSum[:])
-	if err != nil {
-		return 0, err
-	}
-	return sum, nil
+	copy(sumBz[:], digest[len(digest)-sumLength:])
+	return binary.BigEndian.Uint64(sumBz[:])
 }
 
 // resolves a stub into a cached node
