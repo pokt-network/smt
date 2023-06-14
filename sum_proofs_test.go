@@ -9,9 +9,9 @@ import (
 func randomiseSumProof(proof SparseMerkleSumProof) SparseMerkleSumProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
-		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumLength)
+		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumSize)
 		rand.Read(sideNodes[i]) //nolint: errcheck
-		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumLength:]...)
+		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumSize:]...)
 	}
 	return SparseMerkleSumProof{
 		SideNodes:             sideNodes,

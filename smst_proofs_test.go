@@ -77,7 +77,7 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Try proving a default value for a non-default leaf.
-	var sum [sumLength]byte
+	var sum [sumSize]byte
 	binary.BigEndian.PutUint64(sum[:], 5)
 	_, leafData := base.th.digestSumLeaf(base.ph.Path([]byte("testKey2")), base.digestValue([]byte("testValue")), sum)
 	proof = SparseMerkleSumProof{

@@ -11,12 +11,14 @@ var (
 	_ SparseMerkleSumTree = (*SMST)(nil)
 )
 
-// sumLeafNode stores data and a full path as well as a hex sum
+// sumLeafNode stores data and a full path as well as a binary sum
+// the sumLeafNode is encoded as [leafPrefix]+[path]+[valueHash]+[sum]
+// its digest is as follows: hash(encodedLeaf)+[sum]
 type sumLeafNode struct {
 	path      []byte
 	valueHash []byte
-	sum       [sumLength]byte // hex string representing a uint64
-	persisted bool
+	sum       [sumSize]byte // binary array representing a uint64
+	persisted bool          // when committing to disk if true, the node is skipped
 	digest    []byte
 }
 
@@ -100,7 +102,7 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 func (smst *SMST) Update(key []byte, value []byte, sum uint64) error {
 	path := smst.ph.Path(key)
 	valueHash := smst.digestValue(value)
-	var sumBz [sumLength]byte
+	var sumBz [sumSize]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	var orphans orphanNodes
 	tree, err := smst.update(smst.tree, 0, path, valueHash, sumBz, &orphans)
@@ -115,7 +117,7 @@ func (smst *SMST) Update(key []byte, value []byte, sum uint64) error {
 }
 
 func (smst *SMST) update(
-	node treeNode, depth int, path, value []byte, sum [sumLength]byte, orphans *orphanNodes,
+	node treeNode, depth int, path, value []byte, sum [sumSize]byte, orphans *orphanNodes,
 ) (treeNode, error) {
 	node, err := smst.resolveLazy(node)
 	if err != nil {
@@ -386,14 +388,14 @@ func (smst *SMST) commit(node treeNode) error {
 
 // DISCUSSION: Should Root() return the hash+sum or just the hash?
 func (smst *SMST) Root() []byte {
-	return smst.hashSumNode(smst.tree) // [digest]+[sumLength byte hex sum]
+	return smst.hashSumNode(smst.tree) // [digest]+[sumSize byte hex sum]
 }
 
 // Sum returns the uint64 sum of the entire tree
 func (smst *SMST) Sum() uint64 {
-	var sumBz [sumLength]byte
+	var sumBz [sumSize]byte
 	digest := smst.hashSumNode(smst.tree)
-	copy(sumBz[:], digest[len(digest)-sumLength:])
+	copy(sumBz[:], digest[len(digest)-sumSize:])
 	return binary.BigEndian.Uint64(sumBz[:])
 }
 
