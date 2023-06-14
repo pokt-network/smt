@@ -1,4 +1,4 @@
-# smst <!-- omit in toc -->
+# Sparse Merkle Sum Tree (smst) <!-- omit in toc -->
 
 - [Overview](#overview)
 - [Implementation](#implementation)
