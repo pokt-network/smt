@@ -112,51 +112,51 @@ The following diagram shows the structure of the digests of the nodes within the
 ```mermaid
 graph TB
 	subgraph RI[Inner Node]
-		RIA["Root Hash: Hash(Digest6+Digest7+Hex(15))+Hex(15)"]
+		RIA["Root Hash: Hash(D6+D7+Hex(15))+Hex(15)"]
         RIB[Sum: 15]
 	end
 	subgraph I1[Inner Node]
-		I1A["Digest7: Hash(Digest1+Digest5+Hex(8))+Hex(8)"]
+		I1A["D7: Hash(D1+D5+Hex(8))+Hex(8)"]
         I1B[Sum: 8]
 	end
 	subgraph I2[Inner Node]
-		I2A["Digest6: Hash(Digest3+Digest4+Hex(7))+Hex(7)"]
+		I2A["D6: Hash(D3+D4+Hex(7))+Hex(7)"]
         I2B[Sum: 7]
 	end
 	subgraph L1[Sum Leaf Node]
 		L1A[Path: 0b0010000]
 		L1B[Value: 0x01]
         L1C[Sum: 6]
-        L1D["Hash1: Hash(Path+Value+Hex(6))"]
-        L1E["Digest1: Hash1+Hex(6)"]
+        L1D["H1: Hash(Path+Value+Hex(6))"]
+        L1E["D1: H1+Hex(6)"]
 	end
 	subgraph L3[Sum Leaf Node]
 		L3A[Path: 0b1010000]
 		L3B[Value: 0x03]
         L3C[Sum: 3]
-        L3D["Hash3: Hash(Path+Value+Hex(3))"]
-        L3E["Digest3: Hash3+Hex(3)"]
+        L3D["H3: Hash(Path+Value+Hex(3))"]
+        L3E["D3: H3+Hex(3)"]
 	end
 	subgraph L4[Sum Leaf Node]
 		L4A[Path: 0b1100000]
 		L4B[Value: 0x04]
         L4C[Sum: 4]
-        L4D["Hash4: Hash(Path+Value+Hex(4))"]
-        L4E["Digest4: Hash4+Hex(4)"]
+        L4D["H4: Hash(Path+Value+Hex(4))"]
+        L4E["D4: H4+Hex(4)"]
 	end
 	subgraph E1[Extension Node]
 		E1A[Path: 0b01100101]
 		E1B["Path Bounds: [2, 6)"]
         E1C[Sum: 5]
-        E1D["Hash5: Hash(Path+PathBounds+Digest2+Hex(5))"]
-        E1E["Digest5: Hash5+Hex(5)"]
+        E1D["H5: Hash(Path+PathBounds+D2+Hex(5))"]
+        E1E["D5: H5+Hex(5)"]
 	end
 	subgraph L2[Sum Leaf Node]
 		L2A[Path: 0b01100101]
 		L2B[Value: 0x02]
         L2C[Sum: 5]
-        L2D["Hash2: Hash(Path+Value+Hex(5))+Hex(5)"]
-        L2E["Digest2: Hash2+Hex(5)"]
+        L2D["H2: Hash(Path+Value+Hex(5))+Hex(5)"]
+        L2E["D2: H2+Hex(5)"]
 	end
 	RI -->|0| I1
 	RI -->|1| I2
