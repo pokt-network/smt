@@ -49,7 +49,7 @@ type SparseMerkleSumTree interface {
 	// Sum computes the total sum of the Merkle tree
 	Sum() uint64
 	// Prove computes a Merkle proof of membership or non-membership of a key.
-	Prove(key []byte) (SparseMerkleSumProof, error)
+	Prove(key []byte) (SparseMerkleProof, error)
 	// Commit saves the tree's state to its persistent storage.
 	Commit() error
 
@@ -59,15 +59,17 @@ type SparseMerkleSumTree interface {
 // TreeSpec specifies the hashing functions used by a tree instance to encode leaf paths
 // and stored values, and the corresponding maximum tree depth.
 type TreeSpec struct {
-	th treeHasher
-	ph PathHasher
-	vh ValueHasher
+	th      treeHasher
+	ph      PathHasher
+	vh      ValueHasher
+	sumTree bool
 }
 
-func newTreeSpec(hasher hash.Hash) TreeSpec {
+func newTreeSpec(hasher hash.Hash, sumTree bool) TreeSpec {
 	spec := TreeSpec{th: *newTreeHasher(hasher)}
 	spec.ph = &pathHasher{spec.th}
 	spec.vh = &valueHasher{spec.th}
+	spec.sumTree = sumTree
 	return spec
 }
 
@@ -127,8 +129,10 @@ func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte) {
 	switch n := node.(type) {
 	case *lazyNode:
 		panic("serialize(lazyNode)")
-	case *sumLeafNode:
-		return encodeSumLeaf(n.path, n.valueHash, n.sum)
+	case *leafNode:
+		var sumBz [sumSize]byte
+		copy(sumBz[:], n.valueHash[len(n.valueHash)-sumSize:])
+		return encodeSumLeaf(n.path, n.valueHash, sumBz)
 	case *innerNode:
 		lchild := spec.hashSumNode(n.leftChild)
 		rchild := spec.hashSumNode(n.rightChild)
@@ -142,7 +146,7 @@ func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte) {
 }
 
 // hashSumNode hashes a node returning its digest in the following form
-// digest = [node hash]+[8 byte hex sum]
+// digest = [node hash]+[8 byte sum]
 func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 	if node == nil {
 		return spec.th.sumPlaceholder()
@@ -151,7 +155,7 @@ func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 	switch n := node.(type) {
 	case *lazyNode:
 		return n.digest
-	case *sumLeafNode:
+	case *leafNode:
 		cache = &n.digest
 	case *innerNode:
 		cache = &n.digest

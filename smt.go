@@ -12,7 +12,7 @@ var (
 )
 
 type treeNode interface {
-	Persisted() bool
+	Persisted() bool // when a node is being commited to disk, if already persisted it is skipped
 	CachedDigest() []byte
 }
 
@@ -66,7 +66,7 @@ type orphanNodes = [][]byte
 // NewSparseMerkleTree returns a new pointer to an SMT struct, and applys any options provided
 func NewSparseMerkleTree(nodes MapStore, hasher hash.Hash, options ...Option) *SMT {
 	smt := SMT{
-		TreeSpec: newTreeSpec(hasher),
+		TreeSpec: newTreeSpec(hasher, false),
 		nodes:    nodes,
 	}
 	for _, option := range options {
@@ -351,7 +351,13 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 		if !bytes.Equal(leaf.path, path) {
 			// This is a non-membership proof that involves showing a different leaf.
 			// Add the leaf data to the proof.
-			leafData = encodeLeaf(leaf.path, leaf.valueHash)
+			if smt.sumTree {
+				var sumBz [sumSize]byte
+				copy(sumBz[:], leaf.valueHash[len(leaf.valueHash)-sumSize:])
+				leafData = encodeSumLeaf(leaf.path, leaf.valueHash, sumBz)
+			} else {
+				leafData = encodeLeaf(leaf.path, leaf.valueHash)
+			}
 		}
 	}
 	// Hash siblings from bottom up.
@@ -359,7 +365,11 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	for i := range siblings {
 		var sideNode []byte
 		sibling := siblings[len(siblings)-i-1]
-		sideNode = smt.hashNode(sibling)
+		if smt.sumTree {
+			sideNode = smt.hashSumNode(sibling)
+		} else {
+			sideNode = smt.hashNode(sibling)
+		}
 		sideNodes = append(sideNodes, sideNode)
 	}
 
@@ -372,7 +382,11 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 		if err != nil {
 			return
 		}
-		proof.SiblingData = smt.serialize(sib)
+		if smt.sumTree {
+			proof.SiblingData = smt.sumSerialize(sib)
+		} else {
+			proof.SiblingData = smt.serialize(sib)
+		}
 	}
 	return
 }
@@ -391,9 +405,18 @@ func (smt *SMT) resolveLazy(node treeNode) (treeNode, error) {
 	resolver := func(hash []byte) (treeNode, error) {
 		return &lazyNode{hash}, nil
 	}
-	ret, err := smt.resolve(stub.digest, resolver)
-	if err != nil {
-		return node, err
+	var ret treeNode
+	var err error
+	if smt.sumTree {
+		ret, err = smt.resolveSum(stub.digest, resolver)
+		if err != nil {
+			return node, err
+		}
+	} else {
+		ret, err = smt.resolve(stub.digest, resolver)
+		if err != nil {
+			return node, err
+		}
 	}
 	return ret, nil
 }
@@ -424,6 +447,44 @@ func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 		return &ext, nil
 	}
 	leftHash, rightHash := smt.th.parseNode(data)
+	inner := innerNode{persisted: true, digest: hash}
+	inner.leftChild, err = resolver(leftHash)
+	if err != nil {
+		return
+	}
+	inner.rightChild, err = resolver(rightHash)
+	if err != nil {
+		return
+	}
+	return &inner, nil
+}
+
+func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (treeNode, error),
+) (ret treeNode, err error) {
+	if bytes.Equal(smt.th.sumPlaceholder(), hash) {
+		return
+	}
+	data, err := smt.nodes.Get(hash)
+	if err != nil {
+		return nil, err
+	}
+	if isLeaf(data) {
+		leaf := leafNode{persisted: true, digest: hash}
+		leaf.path, leaf.valueHash, _ = parseSumLeaf(data, smt.ph)
+		return &leaf, nil
+	}
+	if isExtension(data) {
+		ext := extensionNode{persisted: true, digest: hash}
+		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
+		ext.path = path
+		copy(ext.pathBounds[:], pathBounds)
+		ext.child, err = resolver(childHash)
+		if err != nil {
+			return
+		}
+		return &ext, nil
+	}
+	leftHash, rightHash := smt.th.parseSumNode(data)
 	inner := innerNode{persisted: true, digest: hash}
 	inner.leftChild, err = resolver(leftHash)
 	if err != nil {
@@ -478,11 +539,18 @@ func (smt *SMT) commit(node treeNode) error {
 	default:
 		return nil
 	}
-	data := smt.serialize(node)
-	return smt.nodes.Set(smt.hashNode(node), data)
+	if smt.sumTree {
+		preimage := smt.sumSerialize(node)
+		return smt.nodes.Set(smt.hashSumNode(node), preimage)
+	}
+	preimage := smt.serialize(node)
+	return smt.nodes.Set(smt.hashNode(node), preimage)
 }
 
 func (smt *SMT) Root() []byte {
+	if smt.sumTree {
+		return smt.hashSumNode(smt.tree)
+	}
 	return smt.hashNode(smt.tree)
 }
 

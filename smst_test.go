@@ -90,6 +90,7 @@ func TestSMST_TreeUpdateBasic(t *testing.T) {
 	require.NoError(t, err)
 	smst = &SMSTWithStorage{SMST: lazy, preimages: smv}
 
+	t.Log("here")
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue2"), value)
@@ -439,6 +440,13 @@ func TestSMST_TotalSum(t *testing.T) {
 	sum := smst.Sum()
 	require.Equal(t, sum, uint64(15))
 	require.Equal(t, sum, rootSum)
+
+	// Prove inclusion
+	proof, err := smst.Prove([]byte("key1"))
+	require.NoError(t, err)
+	checkCompactEquivalence(t, proof, smst.Spec())
+	valid := VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, smst.Spec())
+	require.True(t, valid)
 
 	// Check that the sum is correct after deleting a key
 	err = smst.Delete([]byte("key1"))

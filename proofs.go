@@ -2,6 +2,7 @@ package smt
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"math"
 )
@@ -39,7 +40,10 @@ func (proof *SparseMerkleProof) sanityCheck(spec *TreeSpec) bool {
 
 	// Check that all supplied sidenodes are the correct size.
 	for _, v := range proof.SideNodes {
-		if len(v) != spec.th.hashSize() {
+		if !spec.sumTree && len(v) != spec.th.hashSize() {
+			return false
+		}
+		if spec.sumTree && len(v) != spec.th.hashSize()+sumSize {
 			return false
 		}
 	}
@@ -49,7 +53,12 @@ func (proof *SparseMerkleProof) sanityCheck(spec *TreeSpec) bool {
 		return true
 	}
 
-	siblingHash := hashSerialization(spec, proof.SiblingData)
+	var siblingHash []byte
+	if spec.sumTree {
+		siblingHash = hashSumSerialization(spec, proof.SiblingData)
+	} else {
+		siblingHash = hashSerialization(spec, proof.SiblingData)
+	}
 	return bytes.Equal(proof.SideNodes[0], siblingHash)
 }
 
@@ -101,9 +110,30 @@ func (proof *SparseCompactMerkleProof) sanityCheck(spec *TreeSpec) bool {
 }
 
 // VerifyProof verifies a Merkle proof.
-func VerifyProof(proof SparseMerkleProof, root []byte, key []byte, value []byte, spec *TreeSpec) bool {
+func VerifyProof(proof SparseMerkleProof, root, key, value []byte, spec *TreeSpec) bool {
 	result, _ := verifyProofWithUpdates(proof, root, key, value, spec)
 	return result
+}
+
+// VerifySumProof verifies a Merkle proof for a sum tree.
+func VerifySumProof(proof SparseMerkleProof, root, key, value []byte, sum uint64, spec *TreeSpec) bool {
+	var valueHash []byte
+	valueHash = spec.digestValue(value)
+	var sumBz [sumSize]byte
+	binary.BigEndian.PutUint64(sumBz[:], sum)
+	valueHash = append(valueHash, sumBz[:]...)
+	if bytes.Equal(value, defaultValue) && sum == 0 {
+		valueHash = defaultValue
+	}
+	smtSpec := &TreeSpec{
+		th:      spec.th,
+		ph:      spec.ph,
+		vh:      spec.vh,
+		sumTree: spec.sumTree,
+	}
+	nvh := WithValueHasher(nil)
+	nvh(smtSpec)
+	return VerifyProof(proof, root, key, valueHash, smtSpec)
 }
 
 func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, value []byte, spec *TreeSpec) (bool, [][][]byte) {
@@ -119,14 +149,28 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 	var currentHash, currentData []byte
 	if bytes.Equal(value, defaultValue) { // Non-membership proof.
 		if proof.NonMembershipLeafData == nil { // Leaf is a placeholder value.
-			currentHash = spec.th.placeholder()
+			if spec.sumTree {
+				currentHash = spec.th.sumPlaceholder()
+			} else {
+				currentHash = spec.th.placeholder()
+			}
 		} else { // Leaf is an unrelated leaf.
-			actualPath, valueHash := parseLeaf(proof.NonMembershipLeafData, spec.ph)
+			var actualPath, valueHash []byte
+			var sumBz [sumSize]byte
+			if spec.sumTree {
+				actualPath, valueHash, sumBz = parseSumLeaf(proof.NonMembershipLeafData, spec.ph)
+			} else {
+				actualPath, valueHash = parseLeaf(proof.NonMembershipLeafData, spec.ph)
+			}
 			if bytes.Equal(actualPath, path) {
 				// This is not an unrelated leaf; non-membership proof failed.
 				return false, nil
 			}
-			currentHash, currentData = spec.th.digestLeaf(actualPath, valueHash)
+			if spec.sumTree {
+				currentHash, currentData = spec.th.digestSumLeaf(actualPath, valueHash, sumBz)
+			} else {
+				currentHash, currentData = spec.th.digestLeaf(actualPath, valueHash)
+			}
 
 			update := make([][]byte, 2)
 			update[0], update[1] = currentHash, currentData
@@ -134,7 +178,13 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 		}
 	} else { // Membership proof.
 		valueHash := spec.digestValue(value)
-		currentHash, currentData = spec.th.digestLeaf(path, valueHash)
+		if spec.sumTree {
+			var sumBz [sumSize]byte
+			copy(sumBz[:], valueHash[len(valueHash)-sumSize:])
+			currentHash, currentData = spec.th.digestSumLeaf(path, valueHash, sumBz)
+		} else {
+			currentHash, currentData = spec.th.digestLeaf(path, valueHash)
+		}
 		update := make([][]byte, 2)
 		update[0], update[1] = currentHash, currentData
 		updates = append(updates, update)
@@ -142,13 +192,26 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 
 	// Recompute root.
 	for i := 0; i < len(proof.SideNodes); i++ {
-		node := make([]byte, spec.th.hashSize())
+		var node []byte
+		if spec.sumTree {
+			node = make([]byte, spec.th.hashSize()+sumSize)
+		} else {
+			node = make([]byte, spec.th.hashSize())
+		}
 		copy(node, proof.SideNodes[i])
 
-		if getPathBit(path, len(proof.SideNodes)-1-i) == left {
-			currentHash, currentData = spec.th.digestNode(currentHash, node)
+		if spec.sumTree {
+			if getPathBit(path, len(proof.SideNodes)-1-i) == left {
+				currentHash, currentData = spec.th.digestSumNode(currentHash, node)
+			} else {
+				currentHash, currentData = spec.th.digestSumNode(node, currentHash)
+			}
 		} else {
-			currentHash, currentData = spec.th.digestNode(node, currentHash)
+			if getPathBit(path, len(proof.SideNodes)-1-i) == left {
+				currentHash, currentData = spec.th.digestNode(currentHash, node)
+			} else {
+				currentHash, currentData = spec.th.digestNode(node, currentHash)
+			}
 		}
 
 		update := make([][]byte, 2)
@@ -177,9 +240,16 @@ func CompactProof(proof SparseMerkleProof, spec *TreeSpec) (SparseCompactMerkleP
 	bitMask := make([]byte, int(math.Ceil(float64(len(proof.SideNodes))/float64(8))))
 	var compactedSideNodes [][]byte
 	for i := 0; i < len(proof.SideNodes); i++ {
-		node := make([]byte, spec.th.hashSize())
+		var node []byte
+		if spec.sumTree {
+			node = make([]byte, spec.th.hashSize()+sumSize)
+		} else {
+			node = make([]byte, spec.th.hashSize())
+		}
 		copy(node, proof.SideNodes[i])
-		if bytes.Equal(node, spec.th.placeholder()) {
+		if !spec.sumTree && bytes.Equal(node, spec.th.placeholder()) {
+			setPathBit(bitMask, i)
+		} else if spec.sumTree && bytes.Equal(node, spec.th.sumPlaceholder()) {
 			setPathBit(bitMask, i)
 		} else {
 			compactedSideNodes = append(compactedSideNodes, node)
@@ -205,7 +275,11 @@ func DecompactProof(proof SparseCompactMerkleProof, spec *TreeSpec) (SparseMerkl
 	position := 0
 	for i := 0; i < proof.NumSideNodes; i++ {
 		if getPathBit(proof.BitMask, i) == 1 {
-			decompactedSideNodes[i] = spec.th.placeholder()
+			if spec.sumTree {
+				decompactedSideNodes[i] = spec.th.sumPlaceholder()
+			} else {
+				decompactedSideNodes[i] = spec.th.placeholder()
+			}
 		} else {
 			decompactedSideNodes[i] = proof.SideNodes[position]
 			position++
