@@ -7,7 +7,7 @@
   - [Sum Leaves](#sum-leaves)
   - [Visualisations](#visualisations)
     - [General Tree Structure](#general-tree-structure)
-    - [Sum Hex Digests](#sum-hex-digests)
+    - [Binary Sum Digests](#binary-sum-digests)
 - [Sum](#sum)
 - [Example](#example)
 
@@ -110,7 +110,7 @@ graph TB
 	BE-->EL
 ```
 
-#### Sum Hex Digests
+#### Binary Sum Digests
 
 The following diagram shows the structure of the digests of the nodes within the tree in a simplified manner, again only the `sumLeafNode` objects have a `sum` field but for visualisation purposes the sum is included in all nodes.
 
