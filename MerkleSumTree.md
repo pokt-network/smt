@@ -50,7 +50,9 @@ This means that with a hasher such as `sha256.New()` whose hash size is `32 byte
 
 ### Sum Leaves
 
-The SMST introduces a new node type, the `sumLeafNode` which is almost identical to a `leafNode` from the SMT. However, it includes a `sum` field which is a `[8]byte` hexadecimal representation of the `uint64` sum of the node. In an SMST the `sumLeafNode` replaces the `leafNode` type.
+The SMST introduces a new node type, the `sumLeafNode`, which is almost identical to a `leafNode` from the SMT. However, it includes a `sum` field which is an `[8]byte` hexadecimal representation of the `uint64` sum of the node.
+
+  In an SMST, the `sumLeafNode` replaces the `leafNode` type.
 
 ### Visualisations
 
