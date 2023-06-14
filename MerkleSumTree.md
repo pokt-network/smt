@@ -19,7 +19,7 @@ Merkle sum trees can be very useful for blockchain applications in that they can
 
 ## Implementation
 
-The implementation of the Sparse Merkle Sum Tree (SMST) follows in principal the same implementation as the [Plasma Core Merkle Sum tree][plasma core docs]. The main differences with the current SMT implementation are detailed below, the SMST differs mainly in the encoding of node data within the tree to accommodate for the sum.
+The implementation of the Sparse Merkle Sum Tree (SMST) follows, in principle, the same implementation as the [Plasma Core Merkle Sum tree][plasma core docs]. The main differences with the current SMT implementation are outlined below. The primary difference lies in the encoding of node data within the tree to accommodate for the sum.
 
 ### Hexadecimal Encoding
 
