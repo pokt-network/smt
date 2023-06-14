@@ -27,7 +27,7 @@ The sum for any node is encoded in a hexadecimal byte array with a fixed size (`
 
 ### Digests
 
-The digest for any node in the SMST is calculated in partially the same manner as the regular SMT. The main differences are that the sum is included in the digest preimage - meaning the hash of any node's data includes its sum. But also the sum is appended to the digest of the node, resulting in a digest that looks like:
+The digest for any node in the SMST is calculated in partially the same manner as the regular SMT. The main differences are that the sum is included in the digest `preimage` - meaning the hash of any node's data includes **BOTH** its sum, and digest like so:
 
 `digest = [node digest]+[8 byte hex sum]`
 
