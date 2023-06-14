@@ -63,35 +63,35 @@ In reality the only nodes that actually hold a sum value are the `sumLeafNode` t
 ```mermaid
 graph TB
 	subgraph Root
-		A1["Digest: Hash(Hash(Path+Hash1)+Hash(Hash2+(Hash(Hash3+Hash4)))+Hex(20))+Hex(20)"]
+		A1["Digest: Hash(Hash(Path+H1)+Hash(H2+(Hash(H3+H4)))+Hex(20))+Hex(20)"]
         A2[Sum: 20]
 	end
 	subgraph BI[Inner Node]
-		B1["Digest: Hash(Hash2+(Hash(Hash3+Hash4))+Hex(12))+Hex(12)"]
+		B1["Digest: Hash(H2+(Hash(H3+H4))+Hex(12))+Hex(12)"]
         B2[Sum: 12]
 	end
 	subgraph BE[Extension Node]
-		B3["Digest: Hash(Path+Hash1+Hex(8))+Hex(8)"]
+		B3["Digest: Hash(Path+H1+Hex(8))+Hex(8)"]
         B4[Sum: 8]
 	end
 	subgraph CI[Inner Node]
-		C1["Digest: Hash(Hash3+Hash4+Hex(7))+Hex(7)"]
+		C1["Digest: Hash(H3+H4+Hex(7))+Hex(7)"]
         C2[Sum: 7]
 	end
 	subgraph CL[Sum Leaf Node]
-		C3[Hash2]
+		C3[Digest: H2]
         C4[Sum: 5]
 	end
 	subgraph DL1[Sum Leaf Node]
-		D1[Hash3]
+		D1[Digest: H3]
         D2[Sum: 4]
 	end
 	subgraph DL2[Sum Leaf Node]
-		D3[Hash4]
+		D3[Digest: H4]
         D4[Sum: 3]
 	end
 	subgraph EL[Sum Leaf Node]
-		E1[Hash1]
+		E1[Digest:  H1]
         E2[Sum: 8]
 	end
 	Root-->|0| BE
