@@ -49,7 +49,7 @@ The SMT has 4 node types that are used to construct the tree:
   - Prefixed `[]byte{0}`
   - `digest = hash([]byte{0} + path + value)`
 - Lazy Nodes
-  - Prefix of the actual node type is stored in the digest
+  - Prefix of the actual node type is stored in the persisted digest as determined above
   - `digest = persistedDigest`
 
 ### Inner Nodes

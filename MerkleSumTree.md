@@ -2,7 +2,7 @@
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  - [Hexadecimal Encoding](#hexadecimal-encoding)
+  - [Sum Encoding](#sum-encoding)
   - [Digests](#digests)
   - [Sum Leaves](#sum-leaves)
   - [Visualisations](#visualisations)
@@ -21,38 +21,43 @@ Merkle sum trees can be very useful for blockchain applications in that they can
 
 The implementation of the Sparse Merkle Sum Tree (SMST) follows, in principle, the same implementation as the [Plasma Core Merkle Sum tree][plasma core docs]. The main differences with the current SMT implementation are outlined below. The primary difference lies in the encoding of node data within the tree to accommodate for the sum.
 
-### Hexadecimal Encoding
+_Note_: The Plasma Core Merkle Sum tree uses a 16 byte hex string to encode the sum whereas this SMST implementation uses an 8 byte binary representation of the `uint64` sum.
 
-The sum for any node is encoded in a hexadecimal byte array with a fixed size (`[8]byte`) this allows for the sum to fully represent a `uint64` value in hexadecimal form. The golang `encoding/hex` package is used to encode the result of `fmt.Sprintf("%016x", uint64(sum))` into a byte array.
+### Sum Encoding
+
+The sum for any node is encoded in a hexadecimal byte array with a fixed size (`[8]byte`) this allows for the sum to fully represent a `uint64` value in binary form. The golang `encoding/binary` package is used to encode the sum with `binary.BigEndian.PutUint64(sumBz[:], sum)` into a byte array `sumBz`.
 
 ### Digests
 
 The digest for any node in the SMST is calculated in partially the same manner as the regular SMT. The main differences are that the sum is included in the digest `preimage` - meaning the hash of any node's data includes **BOTH** its sum, and digest like so:
 
-`digest = [node digest]+[8 byte hex sum]`
+`digest = [node digest]+[8 byte sum]`
 
 Therefore for the following node types, the digests are computed as follows:
 
 - **Inner Nodes**
-  - Prefix:`[]byte{1}`
-  - `digest = hash([]byte{1} + leftChild.digest + rightChild.digest + hex(leftChild.sum+rightChild.sum)) + [8 byte hex sum]`
+  - Prefix: `[]byte{1}`
+  - `sumBytes = binary(leftChild.sum+rightChild.sum)`
+  - `digest = hash([]byte{1} + leftChild.digest + rightChild.digest + sumBytes) + sumBytes`
 - **Extension Nodes**
   - Prefix: `[]byte{2}`
-  - `digest = hash([]byte{2} + pathBounds + path + child.digest + hex(child.sum)) + [8 byte hex sum]`
+  - `sumBytes = binary(child.sum)`
+  - `digest = hash([]byte{2} + pathBounds + path + child.digest + sumBytes) + sumBytes`
 - **Sum Leaf Nodes**
   - Prefix: `[]byte{0}`
-  - `digest = hash([]byte{0} + path + value + hexSum) + [8 byte hex sum]`
+  - `sumBytes = binary(sum)`
+  - `digest = hash([]byte{0} + path + value + sumBytes) + sumBytes`
 - **Lazy Nodes**
-  - Prefix of the actual node type is stored in the digest
+  - Prefix of the actual node type is stored in the persisted digest as determined above
   - `digest = persistedDigest`
 
 This means that with a hasher such as `sha256.New()` whose hash size is `32 bytes`, the digest of any node will be `40 bytes` in length.
 
 ### Sum Leaves
 
-The SMST introduces a new node type, the `sumLeafNode`, which is almost identical to a `leafNode` from the SMT. However, it includes a `sum` field which is an `[8]byte` hexadecimal representation of the `uint64` sum of the node.
+The SMST introduces a new node type, the `sumLeafNode`, which is almost identical to a `leafNode` from the SMT. However, it includes a `sum` field which is an `[8]byte` representation of the `uint64` sum of the node.
 
-  In an SMST, the `sumLeafNode` replaces the `leafNode` type.
+In an SMST, the `sumLeafNode` replaces the `leafNode` type.
 
 ### Visualisations
 
@@ -65,19 +70,19 @@ The only nodes that hold a separate sum value are the `sumLeafNode` nodes, while
 ```mermaid
 graph TB
 	subgraph Root
-		A1["Digest: Hash(Hash(Path+H1)+Hash(H2+(Hash(H3+H4)))+Hex(20))+Hex(20)"]
+		A1["Digest: Hash(Hash(Path+H1)+Hash(H2+(Hash(H3+H4)))+Binary(20))+Binary(20)"]
         A2[Sum: 20]
 	end
 	subgraph BI[Inner Node]
-		B1["Digest: Hash(H2+(Hash(H3+H4))+Hex(12))+Hex(12)"]
+		B1["Digest: Hash(H2+(Hash(H3+H4))+Binary(12))+Binary(12)"]
         B2[Sum: 12]
 	end
 	subgraph BE[Extension Node]
-		B3["Digest: Hash(Path+H1+Hex(8))+Hex(8)"]
+		B3["Digest: Hash(Path+H1+Binary(8))+Binary(8)"]
         B4[Sum: 8]
 	end
 	subgraph CI[Inner Node]
-		C1["Digest: Hash(H3+H4+Hex(7))+Hex(7)"]
+		C1["Digest: Hash(H3+H4+Binary(7))+Binary(7)"]
         C2[Sum: 7]
 	end
 	subgraph CL[Sum Leaf Node]
@@ -112,51 +117,51 @@ The following diagram shows the structure of the digests of the nodes within the
 ```mermaid
 graph TB
 	subgraph RI[Inner Node]
-		RIA["Root Hash: Hash(D6+D7+Hex(15))+Hex(15)"]
+		RIA["Root Hash: Hash(D6+D7+Binary(15))+Binary(15)"]
         RIB[Sum: 15]
 	end
 	subgraph I1[Inner Node]
-		I1A["D7: Hash(D1+D5+Hex(8))+Hex(8)"]
+		I1A["D7: Hash(D1+D5+Binary(8))+Binary(8)"]
         I1B[Sum: 8]
 	end
 	subgraph I2[Inner Node]
-		I2A["D6: Hash(D3+D4+Hex(7))+Hex(7)"]
+		I2A["D6: Hash(D3+D4+Binary(7))+Binary(7)"]
         I2B[Sum: 7]
 	end
 	subgraph L1[Sum Leaf Node]
 		L1A[Path: 0b0010000]
 		L1B[Value: 0x01]
         L1C[Sum: 6]
-        L1D["H1: Hash(Path+Value+Hex(6))"]
-        L1E["D1: H1+Hex(6)"]
+        L1D["H1: Hash(Path+Value+Binary(6))"]
+        L1E["D1: H1+Binary(6)"]
 	end
 	subgraph L3[Sum Leaf Node]
 		L3A[Path: 0b1010000]
 		L3B[Value: 0x03]
         L3C[Sum: 3]
-        L3D["H3: Hash(Path+Value+Hex(3))"]
-        L3E["D3: H3+Hex(3)"]
+        L3D["H3: Hash(Path+Value+Binary(3))"]
+        L3E["D3: H3+Binary(3)"]
 	end
 	subgraph L4[Sum Leaf Node]
 		L4A[Path: 0b1100000]
 		L4B[Value: 0x04]
         L4C[Sum: 4]
-        L4D["H4: Hash(Path+Value+Hex(4))"]
-        L4E["D4: H4+Hex(4)"]
+        L4D["H4: Hash(Path+Value+Binary(4))"]
+        L4E["D4: H4+Binary(4)"]
 	end
 	subgraph E1[Extension Node]
 		E1A[Path: 0b01100101]
 		E1B["Path Bounds: [2, 6)"]
         E1C[Sum: 5]
-        E1D["H5: Hash(Path+PathBounds+D2+Hex(5))"]
-        E1E["D5: H5+Hex(5)"]
+        E1D["H5: Hash(Path+PathBounds+D2+Binary(5))"]
+        E1E["D5: H5+Binary(5)"]
 	end
 	subgraph L2[Sum Leaf Node]
 		L2A[Path: 0b01100101]
 		L2B[Value: 0x02]
         L2C[Sum: 5]
-        L2D["H2: Hash(Path+Value+Hex(5))+Hex(5)"]
-        L2E["D2: H2+Hex(5)"]
+        L2D["H2: Hash(Path+Value+Hex(5))+Binary(5)"]
+        L2E["D2: H2+Binary(5)"]
 	end
 	RI -->|0| I1
 	RI -->|1| I2
@@ -196,7 +201,7 @@ func main() {
 	_ = tree.Update([]byte("baz"), []byte("zab"), 7)
 	_ = tree.Update([]byte("bin"), []byte("nib"), 3)
 
-	sum, _ := tree.Sum()
+	sum := tree.Sum()
 	fmt.Println(sum) // 20
 
 	// Generate a Merkle proof for "foo"
