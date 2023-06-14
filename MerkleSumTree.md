@@ -33,16 +33,16 @@ The digest for any node in the SMST is calculated in partially the same manner a
 
 Therefore for the following node types, the digests are computed as follows:
 
-- Inner Nodes
-  - Prefixed `[]byte{1}`
-  - `digest = hash([]byte{1} + leftChild.digest + rightChild.digest + hex(leftChildSum+rightChildSum))+[8 byte hex sum]`
-- Extension Nodes
-  - Prefixed `[]byte{2}`
-  - `digest = hash([]byte{2} + pathBounds + path + child.digest + hex(childSum))+[8 byte hex sum]`
-- Sum Leaf Nodes
-  - Prefixed `[]byte{0}`
-  - `digest = hash([]byte{0} + path + value + hexSum)+[8 byte hex sum]`
-- Lazy Nodes
+- **Inner Nodes**
+  - Prefix:`[]byte{1}`
+  - `digest = hash([]byte{1} + leftChild.digest + rightChild.digest + hex(leftChild.sum+rightChild.sum)) + [8 byte hex sum]`
+- **Extension Nodes**
+  - Prefix: `[]byte{2}`
+  - `digest = hash([]byte{2} + pathBounds + path + child.digest + hex(child.sum)) + [8 byte hex sum]`
+- **Sum Leaf Nodes**
+  - Prefix: `[]byte{0}`
+  - `digest = hash([]byte{0} + path + value + hexSum) + [8 byte hex sum]`
+- **Lazy Nodes**
   - Prefix of the actual node type is stored in the digest
   - `digest = persistedDigest`
 
