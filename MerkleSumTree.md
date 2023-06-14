@@ -15,7 +15,7 @@
 
 Merkle Sum trees function very similarly to regular Merkle trees, with the primary difference being that each leaf node in a Merkle sum tree includes a `sum` in addition to its value. This allows for the entire tree's total sum to be calculated easily, as the sum of any branch is the sum of its children. Thus the sum of the root node is the sum of the entire tree. Like a normal Merkle tree, the Merkle sum tree allows for the efficient verification of its members, proving non-membership / membership of certain elements and generally functions the same.
 
-Merkle sum trees can be very useful for blockchain applications in that they can easily track balances of accounts, and thus the total balance of all accounts. They can be very useful in proof of reserve systems whereby one needs to prove the membership of an element in the total sum calculation, as well as providing a verifiable total sum.
+Merkle sum trees can be very useful for blockchain applications in that they can easily track accounts balances and, thus, the total balance of all accounts. They can be very useful in proof of reserve systems whereby one needs to prove the membership of an element that is a component of the total sum, along with a verifiable total sum of all elements.
 
 ## Implementation
 
