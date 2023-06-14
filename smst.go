@@ -92,10 +92,7 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	if leaf == nil {
 		return defaultValue, 0, nil
 	}
-	sum, err := sumFromHex(leaf.sum[:])
-	if err != nil {
-		return nil, 0, err
-	}
+	sum := binary.BigEndian.Uint64(leaf.sum[:])
 	return leaf.valueHash, sum, nil
 }
 
