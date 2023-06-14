@@ -169,7 +169,7 @@ graph TB
 
 ## Sum
 
-The `Sum()` function adds the functionality to easily return the total sum of the entire tree, returned in its `uint64` format.
+The `Sum()` function adds functionality to easily retrieve the tree's current sum as a `uint64`.
 
 ## Example
 
