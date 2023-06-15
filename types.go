@@ -130,9 +130,7 @@ func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte) {
 	case *lazyNode:
 		panic("serialize(lazyNode)")
 	case *leafNode:
-		var sumBz [sumSize]byte
-		copy(sumBz[:], n.valueHash[len(n.valueHash)-sumSize:])
-		return encodeSumLeaf(n.path, n.valueHash, sumBz)
+		return encodeLeaf(n.path, n.valueHash)
 	case *innerNode:
 		lchild := spec.hashSumNode(n.leftChild)
 		rchild := spec.hashSumNode(n.rightChild)

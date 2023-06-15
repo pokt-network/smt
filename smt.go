@@ -351,13 +351,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 		if !bytes.Equal(leaf.path, path) {
 			// This is a non-membership proof that involves showing a different leaf.
 			// Add the leaf data to the proof.
-			if smt.sumTree {
-				var sumBz [sumSize]byte
-				copy(sumBz[:], leaf.valueHash[len(leaf.valueHash)-sumSize:])
-				leafData = encodeSumLeaf(leaf.path, leaf.valueHash, sumBz)
-			} else {
-				leafData = encodeLeaf(leaf.path, leaf.valueHash)
-			}
+			leafData = encodeLeaf(leaf.path, leaf.valueHash)
 		}
 	}
 	// Hash siblings from bottom up.
@@ -470,7 +464,7 @@ func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (treeNode, error),
 	}
 	if isLeaf(data) {
 		leaf := leafNode{persisted: true, digest: hash}
-		leaf.path, leaf.valueHash, _ = parseSumLeaf(data, smt.ph)
+		leaf.path, leaf.valueHash = parseLeaf(data, smt.ph)
 		return &leaf, nil
 	}
 	if isExtension(data) {

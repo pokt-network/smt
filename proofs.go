@@ -117,10 +117,9 @@ func VerifyProof(proof SparseMerkleProof, root, key, value []byte, spec *TreeSpe
 
 // VerifySumProof verifies a Merkle proof for a sum tree.
 func VerifySumProof(proof SparseMerkleProof, root, key, value []byte, sum uint64, spec *TreeSpec) bool {
-	var valueHash []byte
-	valueHash = spec.digestValue(value)
 	var sumBz [sumSize]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
+	valueHash := spec.digestValue(value)
 	valueHash = append(valueHash, sumBz[:]...)
 	if bytes.Equal(value, defaultValue) && sum == 0 {
 		valueHash = defaultValue
@@ -156,18 +155,13 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 			}
 		} else { // Leaf is an unrelated leaf.
 			var actualPath, valueHash []byte
-			var sumBz [sumSize]byte
-			if spec.sumTree {
-				actualPath, valueHash, sumBz = parseSumLeaf(proof.NonMembershipLeafData, spec.ph)
-			} else {
-				actualPath, valueHash = parseLeaf(proof.NonMembershipLeafData, spec.ph)
-			}
+			actualPath, valueHash = parseLeaf(proof.NonMembershipLeafData, spec.ph)
 			if bytes.Equal(actualPath, path) {
 				// This is not an unrelated leaf; non-membership proof failed.
 				return false, nil
 			}
 			if spec.sumTree {
-				currentHash, currentData = spec.th.digestSumLeaf(actualPath, valueHash, sumBz)
+				currentHash, currentData = spec.th.digestSumLeaf(actualPath, valueHash)
 			} else {
 				currentHash, currentData = spec.th.digestLeaf(actualPath, valueHash)
 			}
@@ -179,9 +173,7 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 	} else { // Membership proof.
 		valueHash := spec.digestValue(value)
 		if spec.sumTree {
-			var sumBz [sumSize]byte
-			copy(sumBz[:], valueHash[len(valueHash)-sumSize:])
-			currentHash, currentData = spec.th.digestSumLeaf(path, valueHash, sumBz)
+			currentHash, currentData = spec.th.digestSumLeaf(path, valueHash)
 		} else {
 			currentHash, currentData = spec.th.digestLeaf(path, valueHash)
 		}
