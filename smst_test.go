@@ -514,4 +514,28 @@ func TestSMST_Retrieval(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("value3"), value)
 	require.Equal(t, uint64(5), sum)
+
+	root := smst.Root()
+	sum = smst.Sum()
+	require.Equal(t, sum, uint64(15))
+
+	lazy := ImportSparseMerkleSumTree(snm, sha256.New(), root, WithValueHasher(nil))
+
+	value, sum, err = lazy.Get([]byte("key1"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value1"), value)
+	require.Equal(t, uint64(5), sum)
+
+	value, sum, err = lazy.Get([]byte("key2"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value2"), value)
+	require.Equal(t, uint64(5), sum)
+
+	value, sum, err = lazy.Get([]byte("key3"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value3"), value)
+	require.Equal(t, uint64(5), sum)
+
+	sum = lazy.Sum()
+	require.Equal(t, sum, uint64(15))
 }
