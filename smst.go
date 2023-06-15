@@ -25,15 +25,19 @@ func NewSparseMerkleSumTree(nodes MapStore, hasher hash.Hash, options ...Option)
 	}
 	nvh := WithValueHasher(nil)
 	nvh(&smt.TreeSpec)
-	return &SMST{
+	smst := &SMST{
 		TreeSpec: newTreeSpec(hasher, true),
 		SMT:      smt,
 	}
+	for _, option := range options {
+		option(&smst.TreeSpec)
+	}
+	return smst
 }
 
 // ImportSparseMerkleSumTree returns a pointer to an SMST struct with the root hash provided
-func ImportSparseMerkleSumTree(nodes MapStore, hasher hash.Hash, root []byte) *SMST {
-	smst := NewSparseMerkleSumTree(nodes, hasher)
+func ImportSparseMerkleSumTree(nodes MapStore, hasher hash.Hash, root []byte, options ...Option) *SMST {
+	smst := NewSparseMerkleSumTree(nodes, hasher, options...)
 	smst.tree = &lazyNode{root}
 	smst.savedRoot = root
 	return smst

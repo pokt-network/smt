@@ -90,7 +90,6 @@ func TestSMST_TreeUpdateBasic(t *testing.T) {
 	require.NoError(t, err)
 	smst = &SMSTWithStorage{SMST: lazy, preimages: smv}
 
-	t.Log("here")
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue2"), value)
@@ -471,4 +470,48 @@ func TestSMST_TotalSum(t *testing.T) {
 	require.NoError(t, smst.Commit())
 	sum = smst.Sum()
 	require.Equal(t, sum, uint64(49995000))
+}
+
+func TestSMST_Retrieval(t *testing.T) {
+	snm := NewSimpleMap()
+	smst := NewSparseMerkleSumTree(snm, sha256.New(), WithValueHasher(nil))
+
+	err := smst.Update([]byte("key1"), []byte("value1"), 5)
+	require.NoError(t, err)
+	err = smst.Update([]byte("key2"), []byte("value2"), 5)
+	require.NoError(t, err)
+	err = smst.Update([]byte("key3"), []byte("value3"), 5)
+	require.NoError(t, err)
+
+	value, sum, err := smst.Get([]byte("key1"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value1"), value)
+	require.Equal(t, uint64(5), sum)
+
+	value, sum, err = smst.Get([]byte("key2"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value2"), value)
+	require.Equal(t, uint64(5), sum)
+
+	value, sum, err = smst.Get([]byte("key3"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value3"), value)
+	require.Equal(t, uint64(5), sum)
+
+	require.NoError(t, smst.Commit())
+
+	value, sum, err = smst.Get([]byte("key1"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value1"), value)
+	require.Equal(t, uint64(5), sum)
+
+	value, sum, err = smst.Get([]byte("key2"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value2"), value)
+	require.Equal(t, uint64(5), sum)
+
+	value, sum, err = smst.Get([]byte("key3"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value3"), value)
+	require.Equal(t, uint64(5), sum)
 }
