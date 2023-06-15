@@ -50,7 +50,7 @@ func hashSerialization(smt *TreeSpec, data []byte) []byte {
 	}
 }
 
-// Used for verification of serialized proof data
+// Used for verification of serialized proof data for sum tree nodes
 func hashSumSerialization(smt *TreeSpec, data []byte) []byte {
 	if isExtension(data) {
 		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
