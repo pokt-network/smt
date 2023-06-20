@@ -40,10 +40,7 @@ func (proof *SparseMerkleProof) sanityCheck(spec *TreeSpec) bool {
 
 	// Check that all supplied sidenodes are the correct size.
 	for _, v := range proof.SideNodes {
-		if !spec.sumTree && len(v) != spec.th.hashSize() {
-			return false
-		}
-		if spec.sumTree && len(v) != spec.th.hashSize()+sumSize {
+		if len(v) != hashSize(spec) {
 			return false
 		}
 	}
@@ -175,12 +172,7 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 
 	// Recompute root.
 	for i := 0; i < len(proof.SideNodes); i++ {
-		var node []byte
-		if spec.sumTree {
-			node = make([]byte, spec.th.hashSize()+sumSize)
-		} else {
-			node = make([]byte, spec.th.hashSize())
-		}
+		node := make([]byte, hashSize(spec))
 		copy(node, proof.SideNodes[i])
 
 		if spec.sumTree {
@@ -223,12 +215,7 @@ func CompactProof(proof SparseMerkleProof, spec *TreeSpec) (SparseCompactMerkleP
 	bitMask := make([]byte, int(math.Ceil(float64(len(proof.SideNodes))/float64(8))))
 	var compactedSideNodes [][]byte
 	for i := 0; i < len(proof.SideNodes); i++ {
-		var node []byte
-		if spec.sumTree {
-			node = make([]byte, spec.th.hashSize()+sumSize)
-		} else {
-			node = make([]byte, spec.th.hashSize())
-		}
+		node := make([]byte, hashSize(spec))
 		copy(node, proof.SideNodes[i])
 		if bytes.Equal(node, placeholder(spec)) {
 			setPathBit(bitMask, i)

@@ -100,7 +100,7 @@ func (th *treeHasher) parseNode(data []byte) ([]byte, []byte) {
 
 func (th *treeHasher) parseSumNode(data []byte) ([]byte, []byte) {
 	sumless := data[:len(data)-sumSize]
-	return sumless[len(innerPrefix) : th.hashSize()+len(innerPrefix)+sumSize], sumless[len(innerPrefix)+th.hashSize()+sumSize:]
+	return sumless[len(innerPrefix) : th.hashSize()+sumSize+len(innerPrefix)], sumless[len(innerPrefix)+th.hashSize()+sumSize:]
 }
 
 func (th *treeHasher) hashSize() int {

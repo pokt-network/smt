@@ -48,6 +48,14 @@ func placeholder(spec *TreeSpec) []byte {
 	return spec.th.placeholder()
 }
 
+// hashSize returns the hash size depending on the tree type
+func hashSize(spec *TreeSpec) int {
+	if spec.sumTree {
+		return spec.th.hashSize() + sumSize
+	}
+	return spec.th.hashSize()
+}
+
 // hashPreimage hashes the serialised data provided depending on the tree type
 func hashPreimage(spec *TreeSpec, data []byte) []byte {
 	if spec.sumTree {
