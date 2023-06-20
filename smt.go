@@ -372,11 +372,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 		if err != nil {
 			return
 		}
-		if smt.sumTree {
-			proof.SiblingData = smt.sumSerialize(sib)
-		} else {
-			proof.SiblingData = smt.serialize(sib)
-		}
+		proof.SiblingData = serialize(smt.Spec(), sib)
 	}
 	return
 }
@@ -529,12 +525,8 @@ func (smt *SMT) commit(node treeNode) error {
 	default:
 		return nil
 	}
-	if smt.sumTree {
-		preimage := smt.sumSerialize(node)
-		return smt.nodes.Set(smt.hashSumNode(node), preimage)
-	}
-	preimage := smt.serialize(node)
-	return smt.nodes.Set(smt.hashNode(node), preimage)
+	preimage := serialize(smt.Spec(), node)
+	return smt.nodes.Set(hashNode(smt.Spec(), node), preimage)
 }
 
 func (smt *SMT) Root() []byte {

@@ -80,6 +80,14 @@ func hashNode(spec *TreeSpec, node treeNode) []byte {
 	return spec.hashNode(node)
 }
 
+// serialize serializes a node depending on the tree type
+func serialize(spec *TreeSpec, node treeNode) []byte {
+	if spec.sumTree {
+		return spec.sumSerialize(node)
+	}
+	return spec.serialize(node)
+}
+
 // hashPreimage hashes the serialised data provided depending on the tree type
 func hashPreimage(spec *TreeSpec, data []byte) []byte {
 	if spec.sumTree {
