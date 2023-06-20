@@ -391,18 +391,9 @@ func (smt *SMT) resolveLazy(node treeNode) (treeNode, error) {
 	resolver := func(hash []byte) (treeNode, error) {
 		return &lazyNode{hash}, nil
 	}
-	var ret treeNode
-	var err error
-	if smt.sumTree {
-		ret, err = smt.resolveSum(stub.digest, resolver)
-		if err != nil {
-			return node, err
-		}
-	} else {
-		ret, err = smt.resolve(stub.digest, resolver)
-		if err != nil {
-			return node, err
-		}
+	ret, err := resolve(smt, stub.digest, resolver)
+	if err != nil {
+		return node, err
 	}
 	return ret, nil
 }

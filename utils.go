@@ -121,3 +121,12 @@ func hashSumSerialization(smt *TreeSpec, data []byte) []byte {
 		return digest
 	}
 }
+
+// resolve resolves a lazy node depending on the tree type
+func resolve(smt *SMT, hash []byte, resolver func([]byte) (treeNode, error),
+) (treeNode, error) {
+	if smt.sumTree {
+		return smt.resolveSum(hash, resolver)
+	}
+	return smt.resolve(hash, resolver)
+}
