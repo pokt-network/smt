@@ -167,18 +167,10 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 		node := make([]byte, hashSize(spec))
 		copy(node, proof.SideNodes[i])
 
-		if spec.sumTree {
-			if getPathBit(path, len(proof.SideNodes)-1-i) == left {
-				currentHash, currentData = spec.th.digestSumNode(currentHash, node)
-			} else {
-				currentHash, currentData = spec.th.digestSumNode(node, currentHash)
-			}
+		if getPathBit(path, len(proof.SideNodes)-1-i) == left {
+			currentHash, currentData = digestNode(spec, currentHash, node)
 		} else {
-			if getPathBit(path, len(proof.SideNodes)-1-i) == left {
-				currentHash, currentData = spec.th.digestNode(currentHash, node)
-			} else {
-				currentHash, currentData = spec.th.digestNode(node, currentHash)
-			}
+			currentHash, currentData = digestNode(spec, node, currentHash)
 		}
 
 		update := make([][]byte, 2)

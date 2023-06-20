@@ -64,6 +64,22 @@ func digestLeaf(spec *TreeSpec, path, value []byte) ([]byte, []byte) {
 	return spec.th.digestLeaf(path, value)
 }
 
+// digestNode returns the hash and preimage of a node depending on the tree type
+func digestNode(spec *TreeSpec, left, right []byte) ([]byte, []byte) {
+	if spec.sumTree {
+		return spec.th.digestSumNode(left, right)
+	}
+	return spec.th.digestNode(left, right)
+}
+
+// hashNode hashes a node depending on the tree type
+func hashNode(spec *TreeSpec, node treeNode) []byte {
+	if spec.sumTree {
+		return spec.hashSumNode(node)
+	}
+	return spec.hashNode(node)
+}
+
 // hashPreimage hashes the serialised data provided depending on the tree type
 func hashPreimage(spec *TreeSpec, data []byte) []byte {
 	if spec.sumTree {

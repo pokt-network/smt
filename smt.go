@@ -359,11 +359,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	for i := range siblings {
 		var sideNode []byte
 		sibling := siblings[len(siblings)-i-1]
-		if smt.sumTree {
-			sideNode = smt.hashSumNode(sibling)
-		} else {
-			sideNode = smt.hashNode(sibling)
-		}
+		sideNode = hashNode(smt.Spec(), sibling)
 		sideNodes = append(sideNodes, sideNode)
 	}
 
@@ -542,10 +538,7 @@ func (smt *SMT) commit(node treeNode) error {
 }
 
 func (smt *SMT) Root() []byte {
-	if smt.sumTree {
-		return smt.hashSumNode(smt.tree)
-	}
-	return smt.hashNode(smt.tree)
+	return hashNode(smt.Spec(), smt.tree)
 }
 
 func (smt *SMT) addOrphan(orphans *[][]byte, node treeNode) {
