@@ -455,7 +455,7 @@ func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 
 func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (treeNode, error),
 ) (ret treeNode, err error) {
-	if bytes.Equal(smt.th.sumPlaceholder(), hash) {
+	if bytes.Equal(placeholder(smt.Spec()), hash) {
 		return
 	}
 	data, err := smt.nodes.Get(hash)

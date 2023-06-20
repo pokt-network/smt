@@ -111,12 +111,6 @@ func (th *treeHasher) placeholder() []byte {
 	return th.zeroValue
 }
 
-func (th *treeHasher) sumPlaceholder() []byte {
-	placeholder := th.zeroValue
-	placeholder = append(placeholder, defaultSum[:]...)
-	return placeholder
-}
-
 func isLeaf(data []byte) bool {
 	return bytes.Equal(data[:len(leafPrefix)], leafPrefix)
 }

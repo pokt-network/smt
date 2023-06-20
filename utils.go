@@ -38,6 +38,24 @@ func countCommonPrefix(data1, data2 []byte, from int) int {
 	return count + from
 }
 
+// placeholder returns the default placeholder value depending on the tree type
+func placeholder(spec *TreeSpec) []byte {
+	if spec.sumTree {
+		placeholder := spec.th.placeholder()
+		placeholder = append(placeholder, defaultSum[:]...)
+		return placeholder
+	}
+	return spec.th.placeholder()
+}
+
+// hashPreimage hashes the serialised data provided depending on the tree type
+func hashPreimage(spec *TreeSpec, data []byte) []byte {
+	if spec.sumTree {
+		return hashSumSerialization(spec, data)
+	}
+	return hashSerialization(spec, data)
+}
+
 // Used for verification of serialized proof data
 func hashSerialization(smt *TreeSpec, data []byte) []byte {
 	if isExtension(data) {

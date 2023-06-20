@@ -53,12 +53,7 @@ func (proof *SparseMerkleProof) sanityCheck(spec *TreeSpec) bool {
 		return true
 	}
 
-	var siblingHash []byte
-	if spec.sumTree {
-		siblingHash = hashSumSerialization(spec, proof.SiblingData)
-	} else {
-		siblingHash = hashSerialization(spec, proof.SiblingData)
-	}
+	siblingHash := hashPreimage(spec, proof.SiblingData)
 	return bytes.Equal(proof.SideNodes[0], siblingHash)
 }
 
@@ -148,11 +143,7 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 	var currentHash, currentData []byte
 	if bytes.Equal(value, defaultValue) { // Non-membership proof.
 		if proof.NonMembershipLeafData == nil { // Leaf is a placeholder value.
-			if spec.sumTree {
-				currentHash = spec.th.sumPlaceholder()
-			} else {
-				currentHash = spec.th.placeholder()
-			}
+			currentHash = placeholder(spec)
 		} else { // Leaf is an unrelated leaf.
 			var actualPath, valueHash []byte
 			actualPath, valueHash = parseLeaf(proof.NonMembershipLeafData, spec.ph)
@@ -239,9 +230,7 @@ func CompactProof(proof SparseMerkleProof, spec *TreeSpec) (SparseCompactMerkleP
 			node = make([]byte, spec.th.hashSize())
 		}
 		copy(node, proof.SideNodes[i])
-		if !spec.sumTree && bytes.Equal(node, spec.th.placeholder()) {
-			setPathBit(bitMask, i)
-		} else if spec.sumTree && bytes.Equal(node, spec.th.sumPlaceholder()) {
+		if bytes.Equal(node, placeholder(spec)) {
 			setPathBit(bitMask, i)
 		} else {
 			compactedSideNodes = append(compactedSideNodes, node)
@@ -267,11 +256,7 @@ func DecompactProof(proof SparseCompactMerkleProof, spec *TreeSpec) (SparseMerkl
 	position := 0
 	for i := 0; i < proof.NumSideNodes; i++ {
 		if getPathBit(proof.BitMask, i) == 1 {
-			if spec.sumTree {
-				decompactedSideNodes[i] = spec.th.sumPlaceholder()
-			} else {
-				decompactedSideNodes[i] = spec.th.placeholder()
-			}
+			decompactedSideNodes[i] = placeholder(spec)
 		} else {
 			decompactedSideNodes[i] = proof.SideNodes[position]
 			position++

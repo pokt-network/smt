@@ -25,7 +25,7 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, base.th.sumPlaceholder(), []byte("testKey3"), defaultValue, 0, base)
+	result = VerifySumProof(proof, placeholder(base), []byte("testKey3"), defaultValue, 0, base)
 	require.True(t, result)
 	result = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 5, base)
 	require.False(t, result)
