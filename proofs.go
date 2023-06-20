@@ -148,11 +148,7 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 				// This is not an unrelated leaf; non-membership proof failed.
 				return false, nil
 			}
-			if spec.sumTree {
-				currentHash, currentData = spec.th.digestSumLeaf(actualPath, valueHash)
-			} else {
-				currentHash, currentData = spec.th.digestLeaf(actualPath, valueHash)
-			}
+			currentHash, currentData = digestLeaf(spec, actualPath, valueHash)
 
 			update := make([][]byte, 2)
 			update[0], update[1] = currentHash, currentData
@@ -160,11 +156,7 @@ func verifyProofWithUpdates(proof SparseMerkleProof, root []byte, key []byte, va
 		}
 	} else { // Membership proof.
 		valueHash := spec.digestValue(value)
-		if spec.sumTree {
-			currentHash, currentData = spec.th.digestSumLeaf(path, valueHash)
-		} else {
-			currentHash, currentData = spec.th.digestLeaf(path, valueHash)
-		}
+		currentHash, currentData = digestLeaf(spec, path, valueHash)
 		update := make([][]byte, 2)
 		update[0], update[1] = currentHash, currentData
 		updates = append(updates, update)

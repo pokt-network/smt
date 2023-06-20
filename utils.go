@@ -56,6 +56,14 @@ func hashSize(spec *TreeSpec) int {
 	return spec.th.hashSize()
 }
 
+// digestLeaf returns the hash and preimage of a leaf node depending on the tree type
+func digestLeaf(spec *TreeSpec, path, value []byte) ([]byte, []byte) {
+	if spec.sumTree {
+		return spec.th.digestSumLeaf(path, value)
+	}
+	return spec.th.digestLeaf(path, value)
+}
+
 // hashPreimage hashes the serialised data provided depending on the tree type
 func hashPreimage(spec *TreeSpec, data []byte) []byte {
 	if spec.sumTree {
