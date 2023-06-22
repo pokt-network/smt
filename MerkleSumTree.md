@@ -40,7 +40,7 @@ In order for the SMST to include the sum into a leaf node the SMT the SMST initi
 graph TD
 	subgraph KVS[Key-Value-Sum]
 		K1["Key: foo"]
-		K2["Value: oof"]
+		K2["Value: bar"]
 		K3["Sum: 10"]
 	end
 	subgraph SMST[SMST]
@@ -147,12 +147,12 @@ The following diagram shows the structure of the digests of the nodes within the
 ```mermaid
 graph TB
 	subgraph RI[Inner Node]
-		RIA["Root Hash: Hash(D6+D7+Binary(15))+Binary(15)"]
+		RIA["Root Hash: Hash(D6+D7+Binary(18))+Binary(18)"]
         RIB[Sum: 15]
 	end
 	subgraph I1[Inner Node]
-		I1A["D7: Hash(D1+D5+Binary(8))+Binary(8)"]
-        I1B[Sum: 8]
+		I1A["D7: Hash(D1+D5+Binary(11))+Binary(11)"]
+        I1B[Sum: 11]
 	end
 	subgraph I2[Inner Node]
 		I2A["D6: Hash(D3+D4+Binary(7))+Binary(7)"]
