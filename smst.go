@@ -64,7 +64,8 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 }
 
 // Update sets the value for the given key, to the digest of the provided value
-func (smst *SMST) Update(key []byte, value []byte, sum uint64) error {
+// appended with the binary representation of the sum provided
+func (smst *SMST) Update(key, value []byte, sum uint64) error {
 	valueHash := smst.digestValue(value)
 	var sumBz [sumSize]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
@@ -78,13 +79,13 @@ func (smst *SMST) Delete(key []byte) error {
 }
 
 // Prove generates a SparseMerkleProof for the given key
-func (smst *SMST) Prove(key []byte) (proof SparseMerkleProof, err error) {
+func (smst *SMST) Prove(key []byte) (SparseMerkleProof, error) {
 	return smst.SMT.Prove(key)
 }
 
 // Commit persists all dirty nodes in the tree, deletes all orphaned
 // nodes from the database and then computes and saves the root hash
-func (smst *SMST) Commit() (err error) {
+func (smst *SMST) Commit() error {
 	return smst.SMT.Commit()
 }
 

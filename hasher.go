@@ -124,7 +124,7 @@ func parseLeaf(data []byte, ph PathHasher) ([]byte, []byte) {
 }
 
 func parseExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte) {
-	return data[len(extPrefix) : len(extPrefix)+2],
+	return data[len(extPrefix) : len(extPrefix)+2], // +2 represents the length of the pathBounds
 		data[len(extPrefix)+2 : len(extPrefix)+2+ph.PathSize()],
 		data[len(extPrefix)+2+ph.PathSize():]
 }
@@ -132,7 +132,7 @@ func parseExtension(data []byte, ph PathHasher) (pathBounds, path, childData []b
 func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [sumSize]byte) {
 	var sumBz [sumSize]byte
 	copy(sumBz[:], data[len(data)-sumSize:])
-	return data[len(extPrefix) : len(extPrefix)+2],
+	return data[len(extPrefix) : len(extPrefix)+2], // +2 represents the length of the pathBounds
 		data[len(extPrefix)+2 : len(extPrefix)+2+ph.PathSize()],
 		data[len(extPrefix)+2+ph.PathSize() : len(data)-sumSize],
 		sumBz
@@ -164,11 +164,13 @@ func encodeSumInner(leftData []byte, rightData []byte) []byte {
 	var sum [sumSize]byte
 	leftSum := uint64(0)
 	rightSum := uint64(0)
-	if !bytes.Equal(leftData[len(leftData)-sumSize:], defaultSum[:]) {
-		leftSum = binary.BigEndian.Uint64(leftData[len(leftData)-sumSize:])
+	leftSumBz := leftData[len(leftData)-sumSize:]
+	rightSumBz := rightData[len(rightData)-sumSize:]
+	if !bytes.Equal(leftSumBz, defaultSum[:]) {
+		leftSum = binary.BigEndian.Uint64(leftSumBz)
 	}
-	if !bytes.Equal(rightData[len(rightData)-sumSize:], defaultSum[:]) {
-		rightSum = binary.BigEndian.Uint64(rightData[len(rightData)-sumSize:])
+	if !bytes.Equal(rightSumBz, defaultSum[:]) {
+		rightSum = binary.BigEndian.Uint64(rightSumBz)
 	}
 	binary.BigEndian.PutUint64(sum[:], leftSum+rightSum)
 	value = append(value, sum[:]...)

@@ -115,7 +115,7 @@ func TestSMT_TreeDeleteBasic(t *testing.T) {
 
 	has, err := smt.Has([]byte("testKey"))
 	require.NoError(t, err)
-	require.False(t, has, "checking existernce of deleted key")
+	require.False(t, has, "checking existence of deleted key")
 
 	err = smt.Update([]byte("testKey"), []byte("testValue"))
 	require.NoError(t, err)
@@ -179,7 +179,7 @@ func TestSMT_TreeDeleteBasic(t *testing.T) {
 
 	has, err = smt.Has([]byte("testKey"))
 	require.NoError(t, err)
-	require.False(t, has, "checking existernce of deleted key")
+	require.False(t, has, "checking existence of deleted key")
 	require.Equal(t, rootEmpty, smt.Root())
 
 	err = smt.Update([]byte("testKey"), []byte("testValue"))
