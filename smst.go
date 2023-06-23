@@ -48,7 +48,7 @@ func (smst *SMST) Spec() *TreeSpec {
 	return &smst.TreeSpec
 }
 
-// Get returns the digest of the value stored at the given key and the sum of the leaf node
+// Get returns the digest of the value stored at the given key and the weight of the leaf node
 func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	valueHash, err := smst.SMT.Get(key)
 	if err != nil {
@@ -57,19 +57,20 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	if bytes.Equal(valueHash, defaultValue) {
 		return defaultValue, 0, nil
 	}
-	var sumBz [sumSize]byte
-	copy(sumBz[:], valueHash[len(valueHash)-sumSize:])
-	sum := binary.BigEndian.Uint64(sumBz[:])
-	return valueHash[:len(valueHash)-sumSize], sum, nil
+	var weightBz [sumSize]byte
+	copy(weightBz[:], valueHash[len(valueHash)-sumSize:])
+	weight := binary.BigEndian.Uint64(weightBz[:])
+	return valueHash[:len(valueHash)-sumSize], weight, nil
 }
 
 // Update sets the value for the given key, to the digest of the provided value
-// appended with the binary representation of the sum provided
-func (smst *SMST) Update(key, value []byte, sum uint64) error {
+// appended with the binary representation of the weight provided. The weight
+// is used to compute the interim and total sum of the tree.
+func (smst *SMST) Update(key, value []byte, weight uint64) error {
 	valueHash := smst.digestValue(value)
-	var sumBz [sumSize]byte
-	binary.BigEndian.PutUint64(sumBz[:], sum)
-	valueHash = append(valueHash, sumBz[:]...)
+	var weightBz [sumSize]byte
+	binary.BigEndian.PutUint64(weightBz[:], weight)
+	valueHash = append(valueHash, weightBz[:]...)
 	return smst.SMT.Update(key, valueHash)
 }
 
@@ -90,7 +91,7 @@ func (smst *SMST) Commit() error {
 }
 
 func (smst *SMST) Root() []byte {
-	return smst.SMT.Root() // [digest]+[sumSize byte hex sum]
+	return smst.SMT.Root() // [digest]+[binary sum]
 }
 
 // Sum returns the uint64 sum of the entire tree
