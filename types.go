@@ -29,10 +29,10 @@ type SparseMerkleTree interface {
 	// Root computes the Merkle root digest.
 	Root() []byte
 	// Prove computes a Merkle proof of membership or non-membership of a key.
-	Prove(key []byte) (SparseMerkleProof, error)
+	Prove(key []byte) (*SparseMerkleProof, error)
 	// Commit saves the tree's state to its persistent storage.
 	Commit() error
-
+	// Spec returns the TreeSpec for the tree
 	Spec() *TreeSpec
 }
 
@@ -49,10 +49,10 @@ type SparseMerkleSumTree interface {
 	// Sum computes the total sum of the Merkle tree
 	Sum() uint64
 	// Prove computes a Merkle proof of membership or non-membership of a key.
-	Prove(key []byte) (SparseMerkleProof, error)
+	Prove(key []byte) (*SparseMerkleProof, error)
 	// Commit saves the tree's state to its persistent storage.
 	Commit() error
-
+	// Spec returns the TreeSpec for the tree
 	Spec() *TreeSpec
 }
 

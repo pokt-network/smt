@@ -6,33 +6,33 @@ import (
 	"testing"
 )
 
-func randomiseProof(proof SparseMerkleProof) SparseMerkleProof {
+func randomiseProof(proof *SparseMerkleProof) *SparseMerkleProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
 		sideNodes[i] = make([]byte, len(proof.SideNodes[i]))
 		rand.Read(sideNodes[i]) //nolint: errcheck
 	}
-	return SparseMerkleProof{
+	return &SparseMerkleProof{
 		SideNodes:             sideNodes,
 		NonMembershipLeafData: proof.NonMembershipLeafData,
 	}
 }
 
-func randomiseSumProof(proof SparseMerkleProof) SparseMerkleProof {
+func randomiseSumProof(proof *SparseMerkleProof) *SparseMerkleProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
 		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumSize)
 		rand.Read(sideNodes[i]) //nolint: errcheck
 		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumSize:]...)
 	}
-	return SparseMerkleProof{
+	return &SparseMerkleProof{
 		SideNodes:             sideNodes,
 		NonMembershipLeafData: proof.NonMembershipLeafData,
 	}
 }
 
 // Check that a non-compact proof is equivalent to the proof returned when it is compacted and de-compacted.
-func checkCompactEquivalence(t *testing.T, proof SparseMerkleProof, base *TreeSpec) {
+func checkCompactEquivalence(t *testing.T, proof *SparseMerkleProof, base *TreeSpec) {
 	t.Helper()
 	compactedProof, err := CompactProof(proof, base)
 	if err != nil {

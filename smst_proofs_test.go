@@ -12,7 +12,7 @@ import (
 func TestSMST_ProofsBasic(t *testing.T) {
 	var smn, smv *SimpleMap
 	var smst *SMSTWithStorage
-	var proof SparseMerkleProof
+	var proof *SparseMerkleProof
 	var result bool
 	var root []byte
 	var err error
@@ -84,7 +84,7 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	tval := base.digestValue([]byte("testValue"))
 	tval = append(tval, sum[:]...)
 	_, leafData := base.th.digestSumLeaf(base.ph.Path([]byte("testKey2")), tval)
-	proof = SparseMerkleProof{
+	proof = &SparseMerkleProof{
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,
 	}

@@ -80,7 +80,7 @@ func (smst *SMST) Delete(key []byte) error {
 }
 
 // Prove generates a SparseMerkleProof for the given key
-func (smst *SMST) Prove(key []byte) (SparseMerkleProof, error) {
+func (smst *SMST) Prove(key []byte) (*SparseMerkleProof, error) {
 	return smst.SMT.Prove(key)
 }
 

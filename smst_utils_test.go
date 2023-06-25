@@ -68,10 +68,10 @@ func (smst *SMSTWithStorage) Has(key []byte) (bool, error) {
 }
 
 // ProveSumCompact generates a compacted Merkle proof for a key against the current root.
-func ProveSumCompact(key []byte, smst SparseMerkleSumTree) (SparseCompactMerkleProof, error) {
+func ProveSumCompact(key []byte, smst SparseMerkleSumTree) (*SparseCompactMerkleProof, error) {
 	proof, err := smst.Prove(key)
 	if err != nil {
-		return SparseCompactMerkleProof{}, err
+		return nil, err
 	}
 	return CompactProof(proof, smst.Spec())
 }

@@ -57,10 +57,10 @@ func (smt *SMTWithStorage) Has(key []byte) (bool, error) {
 }
 
 // ProveCompact generates a compacted Merkle proof for a key against the current root.
-func ProveCompact(key []byte, smt SparseMerkleTree) (SparseCompactMerkleProof, error) {
+func ProveCompact(key []byte, smt SparseMerkleTree) (*SparseCompactMerkleProof, error) {
 	proof, err := smt.Prove(key)
 	if err != nil {
-		return SparseCompactMerkleProof{}, err
+		return nil, err
 	}
 	return CompactProof(proof, smt.Spec())
 }

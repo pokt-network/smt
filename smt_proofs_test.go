@@ -11,7 +11,7 @@ import (
 func TestSMT_ProofsBasic(t *testing.T) {
 	var smn, smv *SimpleMap
 	var smt *SMTWithStorage
-	var proof SparseMerkleProof
+	var proof *SparseMerkleProof
 	var result bool
 	var root []byte
 	var err error
@@ -67,7 +67,7 @@ func TestSMT_ProofsBasic(t *testing.T) {
 
 	// Try proving a default value for a non-default leaf.
 	_, leafData := base.th.digestLeaf(base.ph.Path([]byte("testKey2")), base.digestValue([]byte("testValue")))
-	proof = SparseMerkleProof{
+	proof = &SparseMerkleProof{
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,
 	}

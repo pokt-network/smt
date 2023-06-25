@@ -301,7 +301,7 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 }
 
 // Prove generates a SparseMerkleProof for the given key
-func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
+func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	path := smt.ph.Path(key)
 	var siblings []treeNode
 	var sib treeNode
@@ -310,7 +310,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	for depth := 0; depth < smt.depth(); depth++ {
 		node, err = smt.resolveLazy(node)
 		if err != nil {
-			return
+			return nil, err
 		}
 		if node == nil {
 			break
@@ -328,7 +328,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 				node = ext.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
-					return
+					return nil, err
 				}
 			} else {
 				node = ext.expand()
@@ -363,18 +363,18 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 		sideNodes = append(sideNodes, sideNode)
 	}
 
-	proof = SparseMerkleProof{
+	proof = &SparseMerkleProof{
 		SideNodes:             sideNodes,
 		NonMembershipLeafData: leafData,
 	}
 	if sib != nil {
 		sib, err = smt.resolveLazy(sib)
 		if err != nil {
-			return
+			return nil, err
 		}
 		proof.SiblingData = serialize(smt.Spec(), sib)
 	}
-	return
+	return proof, nil
 }
 
 //nolint:unused
