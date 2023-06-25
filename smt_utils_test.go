@@ -24,10 +24,7 @@ func (smt *SMTWithStorage) Update(key, value []byte) error {
 }
 
 func (smt *SMTWithStorage) Delete(key []byte) error {
-	if err := smt.SMT.Delete(key); err != nil {
-		return err
-	}
-	return nil
+	return smt.SMT.Delete(key)
 }
 
 // Get gets the value of a key from the tree.

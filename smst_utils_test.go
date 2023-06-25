@@ -29,10 +29,7 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 }
 
 func (smst *SMSTWithStorage) Delete(key []byte) error {
-	if err := smst.SMST.Delete(key); err != nil {
-		return err
-	}
-	return nil
+	return smst.SMST.Delete(key)
 }
 
 // Get gets the value and sum of a key from the tree.
