@@ -37,9 +37,13 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, base)
+	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, base) // valid
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base)
+	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 5, base) // wrong value
+	require.False(t, result)
+	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 10, base) // wrong sum
+	require.False(t, result)
+	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base) // wrong value and sum
 	require.False(t, result)
 
 	// Add a key, generate and verify both Merkle proofs.
@@ -49,21 +53,29 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, base)
+	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, base) // valid
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base)
+	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 5, base) // wrong value
 	require.False(t, result)
-	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey"), []byte("testValue"), 5, base)
+	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 10, base) // wrong sum
+	require.False(t, result)
+	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base) // wrong value and sum
+	require.False(t, result)
+	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey"), []byte("testValue"), 5, base) // invalid proof
 	require.False(t, result)
 
 	proof, err = smst.Prove([]byte("testKey2"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("testValue"), 5, base)
+	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("testValue"), 5, base) // valid
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("badValue"), 10, base)
+	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("badValue"), 5, base) // wrong value
 	require.False(t, result)
-	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey2"), []byte("testValue"), 5, base)
+	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("testValue"), 10, base) // wrong sum
+	require.False(t, result)
+	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("badValue"), 10, base) // wrong value and sum
+	require.False(t, result)
+	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey2"), []byte("testValue"), 5, base) // invalid proof
 	require.False(t, result)
 
 	// Try proving a default value for a non-default leaf.
@@ -83,11 +95,13 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 0, base)
+	result = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 0, base) // valid
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 5, base)
+	result = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 0, base) // wrong value
 	require.False(t, result)
-	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey3"), defaultValue, 0, base)
+	result = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 5, base) // wrong sum
+	require.False(t, result)
+	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey3"), defaultValue, 0, base) // invalid proof
 	require.False(t, result)
 }
 

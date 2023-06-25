@@ -5,29 +5,26 @@ import (
 	"errors"
 )
 
-// SMTWithStorage Wraps an SMT with a mapping of value hashes to values (preimages), for use in tests.
-// Note: this doesn't delete from preimages, since there could be duplicate stored values.
+// SMTWithStorage wraps an SMT with a mapping of value hashes to values (preimages), for use in tests.
+// Note: this doesn't delete from preimages (inputs to hashing functions), since there could be duplicate stored values.
 type SMTWithStorage struct {
 	*SMT
 	preimages MapStore
 }
 
 func (smt *SMTWithStorage) Update(key, value []byte) error {
-	err := smt.SMT.Update(key, value)
-	if err != nil {
+	if err := smt.SMT.Update(key, value); err != nil {
 		return err
 	}
 	valueHash := smt.digestValue(value)
-	err = smt.preimages.Set(valueHash, value)
-	if err != nil {
+	if err := smt.preimages.Set(valueHash, value); err != nil {
 		return err
 	}
-	return err
+	return nil
 }
 
 func (smt *SMTWithStorage) Delete(key []byte) error {
-	err := smt.SMT.Delete(key)
-	if err != nil {
+	if err := smt.SMT.Delete(key); err != nil {
 		return err
 	}
 	return nil

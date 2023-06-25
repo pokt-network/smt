@@ -7,32 +7,29 @@ import (
 	"fmt"
 )
 
-// SMSTWithStorage Wraps an SMST with a mapping of value hashes to values with sums (preimages), for use in tests.
-// Note: this doesn't delete from preimages, since there could be duplicate stored values.
+// SMSTWithStorage wraps an SMST with a mapping of value hashes to values with sums (preimages), for use in tests.
+// Note: this doesn't delete from preimages (inputs to hashing functions), since there could be duplicate stored values.
 type SMSTWithStorage struct {
 	*SMST
 	preimages MapStore
 }
 
 func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
-	err := smst.SMST.Update(key, value, sum)
-	if err != nil {
+	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
 	}
 	valueHash := smst.digestValue(value)
 	var sumBz [sumSize]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	value = append(value, sumBz[:]...)
-	err = smst.preimages.Set(valueHash, value)
-	if err != nil {
+	if err := smst.preimages.Set(valueHash, value); err != nil {
 		return err
 	}
-	return err
+	return nil
 }
 
 func (smst *SMSTWithStorage) Delete(key []byte) error {
-	err := smst.SMST.Delete(key)
-	if err != nil {
+	if err := smst.SMST.Delete(key); err != nil {
 		return err
 	}
 	return nil
@@ -64,8 +61,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	return value[:len(value)-sumSize], storedSum, nil
 }
 
-// Has returns true if the value at the given key is non-default, false
-// otherwise.
+// Has returns true if the value at the given key is non-default, false otherwise.
 func (smst *SMSTWithStorage) Has(key []byte) (bool, error) {
 	val, sum, err := smst.GetValueSum(key)
 	return !bytes.Equal(defaultValue, val) || sum != 0, err
