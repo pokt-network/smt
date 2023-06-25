@@ -12,6 +12,7 @@ type SMTWithStorage struct {
 	preimages MapStore
 }
 
+// Update updates a key with a new value in the tree and adds the value to the preimages MapStore
 func (smt *SMTWithStorage) Update(key, value []byte) error {
 	if err := smt.SMT.Update(key, value); err != nil {
 		return err
@@ -23,6 +24,7 @@ func (smt *SMTWithStorage) Update(key, value []byte) error {
 	return nil
 }
 
+// Delete deletes a key from the tree.
 func (smt *SMTWithStorage) Delete(key []byte) error {
 	return smt.SMT.Delete(key)
 }

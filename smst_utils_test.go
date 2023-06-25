@@ -14,6 +14,7 @@ type SMSTWithStorage struct {
 	preimages MapStore
 }
 
+// Update updates a key with a new value in the tree and adds the value to the preimages MapStore
 func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
@@ -28,11 +29,13 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	return nil
 }
 
+// Delete deletes a key from the tree.
 func (smst *SMSTWithStorage) Delete(key []byte) error {
 	return smst.SMST.Delete(key)
 }
 
-// Get gets the value and sum of a key from the tree.
+// GetValueSum returns the value and sum of the key stored in the tree, by looking up
+// the value hash in the preimages MapStore and extracting the sum
 func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	valueHash, sum, err := smst.Get(key)
 	if err != nil {
