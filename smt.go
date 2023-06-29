@@ -6,12 +6,13 @@ import (
 )
 
 var (
-	_ treeNode = (*innerNode)(nil)
-	_ treeNode = (*leafNode)(nil)
+	_ treeNode         = (*innerNode)(nil)
+	_ treeNode         = (*leafNode)(nil)
+	_ SparseMerkleTree = (*SMT)(nil)
 )
 
 type treeNode interface {
-	Persisted() bool
+	Persisted() bool // when a node is being commited to disk, if already persisted it is skipped
 	CachedDigest() []byte
 }
 
@@ -65,11 +66,11 @@ type orphanNodes = [][]byte
 // NewSparseMerkleTree returns a new pointer to an SMT struct, and applys any options provided
 func NewSparseMerkleTree(nodes MapStore, hasher hash.Hash, options ...Option) *SMT {
 	smt := SMT{
-		TreeSpec: newTreeSpec(hasher),
+		TreeSpec: newTreeSpec(hasher, false),
 		nodes:    nodes,
 	}
 	for _, option := range options {
-		option(&smt)
+		option(&smt.TreeSpec)
 	}
 	return &smt
 }
@@ -300,7 +301,7 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 }
 
 // Prove generates a SparseMerkleProof for the given key
-func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
+func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	path := smt.ph.Path(key)
 	var siblings []treeNode
 	var sib treeNode
@@ -309,7 +310,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	for depth := 0; depth < smt.depth(); depth++ {
 		node, err = smt.resolveLazy(node)
 		if err != nil {
-			return
+			return nil, err
 		}
 		if node == nil {
 			break
@@ -327,7 +328,7 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 				node = ext.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
-					return
+					return nil, err
 				}
 			} else {
 				node = ext.expand()
@@ -358,22 +359,22 @@ func (smt *SMT) Prove(key []byte) (proof SparseMerkleProof, err error) {
 	for i := range siblings {
 		var sideNode []byte
 		sibling := siblings[len(siblings)-i-1]
-		sideNode = smt.hashNode(sibling)
+		sideNode = hashNode(smt.Spec(), sibling)
 		sideNodes = append(sideNodes, sideNode)
 	}
 
-	proof = SparseMerkleProof{
+	proof = &SparseMerkleProof{
 		SideNodes:             sideNodes,
 		NonMembershipLeafData: leafData,
 	}
 	if sib != nil {
 		sib, err = smt.resolveLazy(sib)
 		if err != nil {
-			return
+			return nil, err
 		}
-		proof.SiblingData = smt.serialize(sib)
+		proof.SiblingData = serialize(smt.Spec(), sib)
 	}
-	return
+	return proof, nil
 }
 
 //nolint:unused
@@ -390,7 +391,7 @@ func (smt *SMT) resolveLazy(node treeNode) (treeNode, error) {
 	resolver := func(hash []byte) (treeNode, error) {
 		return &lazyNode{hash}, nil
 	}
-	ret, err := smt.resolve(stub.digest, resolver)
+	ret, err := resolve(smt, stub.digest, resolver)
 	if err != nil {
 		return node, err
 	}
@@ -423,6 +424,44 @@ func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 		return &ext, nil
 	}
 	leftHash, rightHash := smt.th.parseNode(data)
+	inner := innerNode{persisted: true, digest: hash}
+	inner.leftChild, err = resolver(leftHash)
+	if err != nil {
+		return
+	}
+	inner.rightChild, err = resolver(rightHash)
+	if err != nil {
+		return
+	}
+	return &inner, nil
+}
+
+func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (treeNode, error),
+) (ret treeNode, err error) {
+	if bytes.Equal(placeholder(smt.Spec()), hash) {
+		return
+	}
+	data, err := smt.nodes.Get(hash)
+	if err != nil {
+		return nil, err
+	}
+	if isLeaf(data) {
+		leaf := leafNode{persisted: true, digest: hash}
+		leaf.path, leaf.valueHash = parseLeaf(data, smt.ph)
+		return &leaf, nil
+	}
+	if isExtension(data) {
+		ext := extensionNode{persisted: true, digest: hash}
+		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
+		ext.path = path
+		copy(ext.pathBounds[:], pathBounds)
+		ext.child, err = resolver(childHash)
+		if err != nil {
+			return
+		}
+		return &ext, nil
+	}
+	leftHash, rightHash := smt.th.parseSumNode(data)
 	inner := innerNode{persisted: true, digest: hash}
 	inner.leftChild, err = resolver(leftHash)
 	if err != nil {
@@ -477,12 +516,12 @@ func (smt *SMT) commit(node treeNode) error {
 	default:
 		return nil
 	}
-	data := smt.serialize(node)
-	return smt.nodes.Set(smt.hashNode(node), data)
+	preimage := serialize(smt.Spec(), node)
+	return smt.nodes.Set(hashNode(smt.Spec(), node), preimage)
 }
 
 func (smt *SMT) Root() []byte {
-	return smt.hashNode(smt.tree)
+	return hashNode(smt.Spec(), smt.tree)
 }
 
 func (smt *SMT) addOrphan(orphans *[][]byte, node treeNode) {

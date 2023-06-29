@@ -10,22 +10,24 @@ Note: **Requires Go 1.18+**
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  - [Inner Nodes](#inner-nodes)
-  - [Extension Nodes](#extension-nodes)
-  - [Leaf Nodes](#leaf-nodes)
-  - [Lazy Nodes](#lazy-nodes)
-  - [Lazy Loading](#lazy-loading)
-  - [Visualisations](#visualisations)
-    - [General Tree Structure](#general-tree-structure)
-    - [Lazy Nodes](#lazy-nodes-1)
+	- [Inner Nodes](#inner-nodes)
+	- [Extension Nodes](#extension-nodes)
+	- [Leaf Nodes](#leaf-nodes)
+	- [Lazy Nodes](#lazy-nodes)
+	- [Lazy Loading](#lazy-loading)
+	- [Visualisations](#visualisations)
+		- [General Tree Structure](#general-tree-structure)
+		- [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
-  - [Visualisation](#visualisation)
+	- [Visualisation](#visualisation)
 - [Values](#values)
+	- [Nil values](#nil-values)
 - [Hashers \& Digests](#hashers--digests)
 - [Proofs](#proofs)
-  - [Verification](#verification)
+	- [Verification](#verification)
 - [Database](#database)
-  - [Data Loss](#data-loss)
+	- [Data Loss](#data-loss)
+- [Sparse Merkle Sum Tree](#sparse-merkle-sum-tree)
 - [Example](#example)
 
 ## Overview
@@ -48,7 +50,7 @@ The SMT has 4 node types that are used to construct the tree:
   - Prefixed `[]byte{0}`
   - `digest = hash([]byte{0} + path + value)`
 - Lazy Nodes
-  - Prefix of the actual node type is stored in the digest
+  - Prefix of the actual node type is stored in the persisted digest as determined above
   - `digest = persistedDigest`
 
 ### Inner Nodes
@@ -216,6 +218,17 @@ However, if this is not desired, the two option functions `WithPathHasher` and `
 
 If `nil` is passed into `WithValueHasher` functions, it will act as identity hasher and store the values unaltered in the tree.
 
+### Nil values
+
+A `nil` value is the same as the placeholder value in the SMT and as such inserting a key with a `nil` value has specific behaviours. Although the insertion of a key-value pair with a `nil` value will alter the root hash, a proof will not recognise the key as being in the tree.
+
+Assume `(key, value)` pairs as follows:
+
+- `(key, nil)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will fail
+- `(key, value)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will succeed
+
 ## Hashers & Digests
 
 When creating a new SMT or importing one a `hasher` is provided, typically this would be `sha256.New()` but could be any hasher implementing the go `hash.Hash` interface. By default this hasher, referred to as the `TreeHasher` will be used on both keys (to create paths) and values (to store). But separate hashers can be passed in via the option functions mentioned above.
@@ -299,6 +312,10 @@ When changes are commited to the underlying database using `Commit()` the digest
 ### Data Loss
 
 In the event of a system crash or unexpected failure of the program utilising the SMT, if the `Commit()` function has not been called, any changes to the tree will be lost. This is due to the underlying database not being changed **until** the `Commit()` function is called and changes are persisted.
+
+## Sparse Merkle Sum Tree
+
+This library also implements a Sparse Merkle Sum Tree (SMST), the documentation for which can be found [here](./MerkleSumTree.md).
 
 ## Example
 

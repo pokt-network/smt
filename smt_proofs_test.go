@@ -8,10 +8,10 @@ import (
 )
 
 // Test base case Merkle proof operations.
-func TestProofsBasic(t *testing.T) {
+func TestSMT_ProofsBasic(t *testing.T) {
 	var smn, smv *SimpleMap
 	var smt *SMTWithStorage
-	var proof SparseMerkleProof
+	var proof *SparseMerkleProof
 	var result bool
 	var root []byte
 	var err error
@@ -67,7 +67,7 @@ func TestProofsBasic(t *testing.T) {
 
 	// Try proving a default value for a non-default leaf.
 	_, leafData := base.th.digestLeaf(base.ph.Path([]byte("testKey2")), base.digestValue([]byte("testValue")))
-	proof = SparseMerkleProof{
+	proof = &SparseMerkleProof{
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,
 	}
@@ -87,7 +87,7 @@ func TestProofsBasic(t *testing.T) {
 }
 
 // Test sanity check cases for non-compact proofs.
-func TestProofsSanityCheck(t *testing.T) {
+func TestSMT_ProofsSanityCheck(t *testing.T) {
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()

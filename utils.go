@@ -38,6 +38,64 @@ func countCommonPrefix(data1, data2 []byte, from int) int {
 	return count + from
 }
 
+// placeholder returns the default placeholder value depending on the tree type
+func placeholder(spec *TreeSpec) []byte {
+	if spec.sumTree {
+		placeholder := spec.th.placeholder()
+		placeholder = append(placeholder, defaultSum[:]...)
+		return placeholder
+	}
+	return spec.th.placeholder()
+}
+
+// hashSize returns the hash size depending on the tree type
+func hashSize(spec *TreeSpec) int {
+	if spec.sumTree {
+		return spec.th.hashSize() + sumSize
+	}
+	return spec.th.hashSize()
+}
+
+// digestLeaf returns the hash and preimage of a leaf node depending on the tree type
+func digestLeaf(spec *TreeSpec, path, value []byte) ([]byte, []byte) {
+	if spec.sumTree {
+		return spec.th.digestSumLeaf(path, value)
+	}
+	return spec.th.digestLeaf(path, value)
+}
+
+// digestNode returns the hash and preimage of a node depending on the tree type
+func digestNode(spec *TreeSpec, left, right []byte) ([]byte, []byte) {
+	if spec.sumTree {
+		return spec.th.digestSumNode(left, right)
+	}
+	return spec.th.digestNode(left, right)
+}
+
+// hashNode hashes a node depending on the tree type
+func hashNode(spec *TreeSpec, node treeNode) []byte {
+	if spec.sumTree {
+		return spec.hashSumNode(node)
+	}
+	return spec.hashNode(node)
+}
+
+// serialize serializes a node depending on the tree type
+func serialize(spec *TreeSpec, node treeNode) []byte {
+	if spec.sumTree {
+		return spec.sumSerialize(node)
+	}
+	return spec.serialize(node)
+}
+
+// hashPreimage hashes the serialised data provided depending on the tree type
+func hashPreimage(spec *TreeSpec, data []byte) []byte {
+	if spec.sumTree {
+		return hashSumSerialization(spec, data)
+	}
+	return hashSerialization(spec, data)
+}
+
 // Used for verification of serialized proof data
 func hashSerialization(smt *TreeSpec, data []byte) []byte {
 	if isExtension(data) {
@@ -48,4 +106,27 @@ func hashSerialization(smt *TreeSpec, data []byte) []byte {
 	} else {
 		return smt.th.digest(data)
 	}
+}
+
+// Used for verification of serialized proof data for sum tree nodes
+func hashSumSerialization(smt *TreeSpec, data []byte) []byte {
+	if isExtension(data) {
+		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
+		ext := extensionNode{path: path, child: &lazyNode{childHash}}
+		copy(ext.pathBounds[:], pathBounds)
+		return smt.hashSumNode(&ext)
+	} else {
+		digest := smt.th.digest(data)
+		digest = append(digest, data[len(data)-sumSize:]...)
+		return digest
+	}
+}
+
+// resolve resolves a lazy node depending on the tree type
+func resolve(smt *SMT, hash []byte, resolver func([]byte) (treeNode, error),
+) (treeNode, error) {
+	if smt.sumTree {
+		return smt.resolveSum(hash, resolver)
+	}
+	return smt.resolve(hash, resolver)
 }

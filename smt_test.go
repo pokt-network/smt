@@ -1,9 +1,9 @@
 package smt
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"hash"
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,7 +16,7 @@ func NewSMTWithStorage(nodes, preimages MapStore, hasher hash.Hash, options ...O
 	}
 }
 
-func TestTreeUpdateBasic(t *testing.T) {
+func TestSMT_TreeUpdateBasic(t *testing.T) {
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	lazy := NewSparseMerkleTree(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
@@ -95,7 +95,7 @@ func TestTreeUpdateBasic(t *testing.T) {
 }
 
 // Test base case tree delete operations with a few keys.
-func TestTreeDeleteBasic(t *testing.T) {
+func TestSMT_TreeDeleteBasic(t *testing.T) {
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	lazy := NewSparseMerkleTree(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
@@ -115,7 +115,7 @@ func TestTreeDeleteBasic(t *testing.T) {
 
 	has, err := smt.Has([]byte("testKey"))
 	require.NoError(t, err)
-	require.False(t, has, "checking existernce of deleted key")
+	require.False(t, has, "checking existence of deleted key")
 
 	err = smt.Update([]byte("testKey"), []byte("testValue"))
 	require.NoError(t, err)
@@ -179,7 +179,7 @@ func TestTreeDeleteBasic(t *testing.T) {
 
 	has, err = smt.Has([]byte("testKey"))
 	require.NoError(t, err)
-	require.False(t, has, "checking existernce of deleted key")
+	require.False(t, has, "checking existence of deleted key")
 	require.Equal(t, rootEmpty, smt.Root())
 
 	err = smt.Update([]byte("testKey"), []byte("testValue"))
@@ -192,7 +192,7 @@ func TestTreeDeleteBasic(t *testing.T) {
 }
 
 // Test tree ops with known paths
-func TestTreeKnownPath(t *testing.T) {
+func TestSMT_TreeKnownPath(t *testing.T) {
 	ph := dummyPathHasher{32}
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
@@ -263,7 +263,7 @@ func TestTreeKnownPath(t *testing.T) {
 }
 
 // Test tree operations when two leafs are immediate neighbors.
-func TestTreeMaxHeightCase(t *testing.T) {
+func TestSMT_TreeMaxHeightCase(t *testing.T) {
 	ph := dummyPathHasher{32}
 	smn, smv := NewSimpleMap(), NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
@@ -274,7 +274,8 @@ func TestTreeMaxHeightCase(t *testing.T) {
 	// The dummy hash function will return the preimage itself as the digest.
 	key1 := make([]byte, ph.PathSize())
 	key2 := make([]byte, ph.PathSize())
-	rand.Read(key1)
+	_, err = rand.Read(key1)
+	require.NoError(t, err)
 	copy(key2, key1)
 	// We make key2's least significant bit different than key1's
 	key1[ph.PathSize()-1] = byte(0)
@@ -299,7 +300,7 @@ func TestTreeMaxHeightCase(t *testing.T) {
 	require.Equal(t, 256, len(proof.SideNodes), "unexpected proof size")
 }
 
-func TestOrphanRemoval(t *testing.T) {
+func TestSMT_OrphanRemoval(t *testing.T) {
 	var smn, smv *SimpleMap
 	var impl *SMT
 	var smt *SMTWithStorage
