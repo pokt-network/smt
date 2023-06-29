@@ -1,7 +1,18 @@
 package smt
 
-// getPathBit gets the bit at an offset from the most significant bit
-func getPathBit(data []byte, position int) int {
+// GetPathBit gets the bit at an offset from the most significant bit
+func GetPathBit(data []byte, position int) int {
+	// get the byte at the position and then left shift one by the offset of the position
+	// from the leftmost bit in the byte. Check if the bitwise AND is the same
+	// Path: []byte{ {0 1 0 1 1 0 1 0}, {0 1 1 0 1 1 0 1}, {1 0 0 1 0 0 1 0} } (length = 24 bits / 3 bytes)
+	// Position: 13 - 13/8=1
+	// Path[1] = {0 1 1 0 1 1 0 1}
+	// uint(13)%8 = 5, 8-1-5=2
+	// 00000001 << 2 = 00000100
+	//   {0 1 1 0 1 1 0 1}
+	// & {0 0 0 0 0 1 0 0}
+	// = {0 0 0 0 0 1 0 0}
+	// > 0 so Path is on the right at position 13
 	if int(data[position/8])&(1<<(8-1-uint(position)%8)) > 0 {
 		return 1
 	}
@@ -18,7 +29,7 @@ func setPathBit(data []byte, position int) {
 func countSetBits(data []byte) int {
 	count := 0
 	for i := 0; i < len(data)*8; i++ {
-		if getPathBit(data, i) == 1 {
+		if GetPathBit(data, i) == 1 {
 			count++
 		}
 	}
@@ -29,7 +40,7 @@ func countSetBits(data []byte) int {
 func countCommonPrefix(data1, data2 []byte, from int) int {
 	count := 0
 	for i := from; i < len(data1)*8; i++ {
-		if getPathBit(data1, i) == getPathBit(data2, i) {
+		if GetPathBit(data1, i) == GetPathBit(data2, i) {
 			count++
 		} else {
 			break
