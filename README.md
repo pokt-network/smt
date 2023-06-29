@@ -10,22 +10,23 @@ Note: **Requires Go 1.18+**
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  - [Inner Nodes](#inner-nodes)
-  - [Extension Nodes](#extension-nodes)
-  - [Leaf Nodes](#leaf-nodes)
-  - [Lazy Nodes](#lazy-nodes)
-  - [Lazy Loading](#lazy-loading)
-  - [Visualisations](#visualisations)
-    - [General Tree Structure](#general-tree-structure)
-    - [Lazy Nodes](#lazy-nodes-1)
+	- [Inner Nodes](#inner-nodes)
+	- [Extension Nodes](#extension-nodes)
+	- [Leaf Nodes](#leaf-nodes)
+	- [Lazy Nodes](#lazy-nodes)
+	- [Lazy Loading](#lazy-loading)
+	- [Visualisations](#visualisations)
+		- [General Tree Structure](#general-tree-structure)
+		- [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
-  - [Visualisation](#visualisation)
+	- [Visualisation](#visualisation)
 - [Values](#values)
+	- [Nil values](#nil-values)
 - [Hashers \& Digests](#hashers--digests)
 - [Proofs](#proofs)
-  - [Verification](#verification)
+	- [Verification](#verification)
 - [Database](#database)
-  - [Data Loss](#data-loss)
+	- [Data Loss](#data-loss)
 - [Sparse Merkle Sum Tree](#sparse-merkle-sum-tree)
 - [Example](#example)
 
@@ -216,6 +217,17 @@ By default the SMT will use the `hasher` passed into `NewSparseMerkleTree` to ha
 However, if this is not desired, the two option functions `WithPathHasher` and `WithValueHasher` can be used to change the hashing function used for the keys and values respectively.
 
 If `nil` is passed into `WithValueHasher` functions, it will act as identity hasher and store the values unaltered in the tree.
+
+### Nil values
+
+A `nil` value is the same as the placeholder value in the SMT and as such inserting a key with a `nil` value has specific behaviours. Although the insertion of a key-value pair with a `nil` value will alter the root hash, a proof will not recognise the key as being in the tree.
+
+Assume `(key, value)` pairs as follows:
+
+- `(key, nil)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will fail
+- `(key, value)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will succeed
 
 ## Hashers & Digests
 

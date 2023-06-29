@@ -8,6 +8,7 @@
     - [General Tree Structure](#general-tree-structure)
     - [Binary Sum Digests](#binary-sum-digests)
 - [Sum](#sum)
+- [Nil Values](#nil-values)
 - [Example](#example)
 
 ## Overview
@@ -201,6 +202,23 @@ graph TB
 ## Sum
 
 The `Sum()` function adds functionality to easily retrieve the tree's current sum as a `uint64`.
+
+## Nil Values
+
+A `nil` value and `0` weight is the same as the placeholder value and default sum in the SMST and as such inserting a key with a `nil` value has specific behaviours. Although the insertion of a key-value-weight grouping with a `nil` value and `0` weight will alter the root hash, a proof will not recognise the key as being in the tree.
+
+Assume `(key, value, weight)` groupings as follows:
+
+- `(key, nil, 0)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will fail
+- `(key, nil, weight)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will succeed
+- `(key, value, 0)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will succeed
+- `(key, value, weight)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will succeed
+- `(key, value, weight)` -> DOES modify the `root` hash
+  - Proving this `key` is in the tree will succeed
 
 ## Example
 
