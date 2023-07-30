@@ -56,6 +56,33 @@ type SparseMerkleSumTree interface {
 	Spec() *TreeSpec
 }
 
+// MultiStore is a collection of SMTs managed by a single SMT, this allows for
+// the creation and validation of any SMT managed by the MultiStore being
+// included in the MultiStore as well using the stores individually
+type MultiStore interface {
+	// --- Store operations ---
+
+	// AddStore adds a tree to the MultiStore
+	AddStore(name string, creator func(string, MultiStore) (Store, MapStore)) error
+	// GetStore returns a tree from the MultiStore
+	GetStore(name string) (Store, error)
+	// RemoveStore removes a tree from the MultiStore
+	RemoveStore(name string) error
+
+	// --- Store operations ---
+
+	// Commit commits all the trees in the MultiStore and the MultiStore itself
+	Commit() error
+	// Root returns the root hash of the MultiStore
+	Root() []byte
+}
+
+// Store is a wrapper around an SMT for use within the MultiStore
+type Store interface {
+	SparseMerkleTree
+	Commit() error
+}
+
 // TreeSpec specifies the hashing functions used by a tree instance to encode leaf paths
 // and stored values, and the corresponding maximum tree depth.
 type TreeSpec struct {
