@@ -10,24 +10,25 @@ Note: **Requires Go 1.18+**
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-	- [Inner Nodes](#inner-nodes)
-	- [Extension Nodes](#extension-nodes)
-	- [Leaf Nodes](#leaf-nodes)
-	- [Lazy Nodes](#lazy-nodes)
-	- [Lazy Loading](#lazy-loading)
-	- [Visualisations](#visualisations)
-		- [General Tree Structure](#general-tree-structure)
-		- [Lazy Nodes](#lazy-nodes-1)
+  - [Inner Nodes](#inner-nodes)
+  - [Extension Nodes](#extension-nodes)
+  - [Leaf Nodes](#leaf-nodes)
+  - [Lazy Nodes](#lazy-nodes)
+  - [Lazy Loading](#lazy-loading)
+  - [Visualisations](#visualisations)
+    - [General Tree Structure](#general-tree-structure)
+    - [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
-	- [Visualisation](#visualisation)
+  - [Visualisation](#visualisation)
 - [Values](#values)
-	- [Nil values](#nil-values)
+  - [Nil values](#nil-values)
 - [Hashers \& Digests](#hashers--digests)
 - [Proofs](#proofs)
-	- [Verification](#verification)
+  - [Verification](#verification)
 - [Database](#database)
-	- [Data Loss](#data-loss)
+  - [Data Loss](#data-loss)
 - [Sparse Merkle Sum Tree](#sparse-merkle-sum-tree)
+- [MultiStore](#multistore)
 - [Example](#example)
 
 ## Overview
@@ -316,6 +317,12 @@ In the event of a system crash or unexpected failure of the program utilising th
 ## Sparse Merkle Sum Tree
 
 This library also implements a Sparse Merkle Sum Tree (SMST), the documentation for which can be found [here](./MerkleSumTree.md).
+
+## MultiStore
+
+The `MultiStore` type is a wrapper around an SMT that allows for the management of multiple SMTs, under a single root hash, while still allowing for their use individually.
+
+See: [MultiStore.md](./MultiStore.md) for more information.
 
 ## Example
 
