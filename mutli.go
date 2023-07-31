@@ -35,6 +35,7 @@ func NewMultiStore(db MapStore, smt *SMT) MultiStore {
 }
 
 // AddStore adds a store to the MultiStore using the store creator function provided
+// this does not update the MutliStore tree to contain the root of the new store
 func (m *multi) AddStore(name string, creator func(name string, ms MultiStore) (Store, MapStore)) error {
 	if _, ok := m.storeMap[name]; ok {
 		return fmt.Errorf("store already exists: %s", name)
@@ -43,6 +44,17 @@ func (m *multi) AddStore(name string, creator func(name string, ms MultiStore) (
 	m.storeMap[name] = store
 	m.dbMap[name] = db
 	return nil
+}
+
+// InsertStore inserts a premade store into the MultiStore and updates the
+// MultiStore tree to contain the root of the inserted store
+func (m *multi) InsertStore(name string, store Store, db MapStore) error {
+	if _, ok := m.storeMap[name]; ok {
+		return fmt.Errorf("store already exists: %s", name)
+	}
+	m.storeMap[name] = store
+	m.dbMap[name] = db
+	return m.tree.Update([]byte(name), store.Root())
 }
 
 // GetStore returns a store from the MultiStore
@@ -72,7 +84,7 @@ func (m *multi) Commit() error {
 			return err
 		}
 	}
-	return m.Commit()
+	return m.tree.Commit()
 }
 
 // Root returns the root hash of the MultiStore

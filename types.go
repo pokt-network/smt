@@ -64,6 +64,8 @@ type MultiStore interface {
 
 	// AddStore adds a tree to the MultiStore
 	AddStore(name string, creator func(string, MultiStore) (Store, MapStore)) error
+	// InsertStore adds a pre-existing store into the MutliStore
+	InsertStore(name string, store Store, db MapStore) error
 	// GetStore returns a tree from the MultiStore
 	GetStore(name string) (Store, error)
 	// RemoveStore removes a tree from the MultiStore
