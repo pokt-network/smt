@@ -92,6 +92,16 @@ func (m *multi) Root() []byte {
 	return m.tree.Root()
 }
 
+// Prove returns a proof for the given key from the MultiStore
+func (m *multi) Prove(key []byte) (*SparseMerkleProof, error) {
+	return m.tree.Prove(key)
+}
+
+// Spec returns the TreeSpec for the MultiStore tree
+func (m *multi) Spec() *TreeSpec {
+	return m.tree.Spec()
+}
+
 type store struct {
 	*SMT
 	name      string
@@ -102,6 +112,9 @@ type store struct {
 // NewStore creates a new instance of an SMT with the arguments provided and
 // returns the Store wrapper around the SMT and the underlying database
 func NewStore(name string, ms MultiStore, db MapStore, hasher hash.Hash, options ...Option) Store {
+	if _, ok := ms.(*multi); !ok {
+		panic("unable to cast MultiStore")
+	}
 	smt := NewSparseMerkleTree(db, hasher, options...)
 	return &store{
 		SMT:       smt,

@@ -71,12 +71,16 @@ type MultiStore interface {
 	// RemoveStore removes a tree from the MultiStore
 	RemoveStore(name string) error
 
-	// --- Store operations ---
+	// --- Tree operations ---
 
 	// Commit commits all the trees in the MultiStore and the MultiStore itself
 	Commit() error
 	// Root returns the root hash of the MultiStore
 	Root() []byte
+	// Prove returns a SparseMerkleProof for the given key from the MultiStore tree
+	Prove(key []byte) (*SparseMerkleProof, error)
+	// Spec returns the TreeSpec for the MultiStore tree
+	Spec() *TreeSpec
 }
 
 // Store is a wrapper around an SMT for use within the MultiStore

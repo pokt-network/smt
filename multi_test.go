@@ -11,11 +11,9 @@ import (
 func TestMultiStore_AddStore(t *testing.T) {
 	multi := setupMultiStore(t)
 
-	err := multi.AddStore("test", StoreCreator)
-	require.NoError(t, err)
+	require.NoError(t, multi.AddStore("test", StoreCreator))
 
-	err = multi.AddStore("test", StoreCreator)
-	require.EqualError(t, err, "store already exists: test")
+	require.EqualError(t, multi.AddStore("test", StoreCreator), "store already exists: test")
 }
 
 func TestMultiStore_InsertStore(t *testing.T) {
@@ -25,18 +23,15 @@ func TestMultiStore_InsertStore(t *testing.T) {
 	require.NotNil(t, store)
 	require.NotNil(t, db)
 
-	err := multi.InsertStore("test", store, db)
-	require.NoError(t, err)
+	require.NoError(t, multi.InsertStore("test", store, db))
 
-	err = multi.InsertStore("test", store, db)
-	require.EqualError(t, err, "store already exists: test")
+	require.EqualError(t, multi.InsertStore("test", store, db), "store already exists: test")
 }
 
 func TestMultiStore_GetStore(t *testing.T) {
 	multi := setupMultiStore(t)
 
-	err := multi.AddStore("test", StoreCreator)
-	require.NoError(t, err)
+	require.NoError(t, multi.AddStore("test", StoreCreator))
 
 	store, err := multi.GetStore("test")
 	require.NoError(t, err)
@@ -50,14 +45,11 @@ func TestMultiStore_GetStore(t *testing.T) {
 func TestMultiStore_RemoveStore(t *testing.T) {
 	multi := setupMultiStore(t)
 
-	err := multi.AddStore("test", StoreCreator)
-	require.NoError(t, err)
+	require.NoError(t, multi.AddStore("test", StoreCreator))
 
-	err = multi.RemoveStore("test")
-	require.NoError(t, err)
+	require.NoError(t, multi.RemoveStore("test"))
 
-	err = multi.RemoveStore("test")
-	require.EqualError(t, err, "store not found: test")
+	require.EqualError(t, multi.RemoveStore("test"), "store not found: test")
 }
 
 func TestMultiStore_StoreOperations(t *testing.T) {
@@ -69,24 +61,21 @@ func TestMultiStore_StoreOperations(t *testing.T) {
 	multiRoot1 := multi.Root()
 	require.Equal(t, hex.EncodeToString(multiRoot1), "0000000000000000000000000000000000000000000000000000000000000000")
 
-	err := store.Update([]byte("foo"), []byte("bar"))
-	require.NoError(t, err)
+	require.NoError(t, store.Update([]byte("foo"), []byte("bar")))
 
 	// check store root updates
 	root := store.Root()
 	require.Equal(t, hex.EncodeToString(root), "ace64ee83ecf596655deac72c646a30ae7bd71635992cd4c1a5a10350fcc1c52")
 
 	// check insert updates multi tree root
-	err = multi.InsertStore("test", store, db)
-	require.NoError(t, err)
+	require.NoError(t, multi.InsertStore("test", store, db))
 	multiRoot2 := multi.Root()
 	require.Equal(t, hex.EncodeToString(multiRoot2), "726e2a2b5497e9472b6e6ff5cb5cec0fa145359a130e0e969adf8ada8173c1e4")
 
-	store, err = multi.GetStore("test")
+	store, err := multi.GetStore("test")
 	require.NoError(t, err)
 
-	err = store.Update([]byte("foo"), []byte("bar2"))
-	require.NoError(t, err)
+	require.NoError(t, store.Update([]byte("foo"), []byte("bar2")))
 
 	// check store root updates
 	root2 := store.Root()
@@ -97,8 +86,7 @@ func TestMultiStore_StoreOperations(t *testing.T) {
 	require.Equal(t, multiRoot3, multiRoot2)
 
 	// check multi tree root updates after store commits
-	err = store.Commit()
-	require.NoError(t, err)
+	require.NoError(t, store.Commit())
 	multiRoot4 := multi.Root()
 	require.Equal(t, hex.EncodeToString(multiRoot4), "0175c22dd60ad4db9b1e0bbfd0f7dd8235e4c66b74e04c5282dfbcc895f9085a")
 }
@@ -106,10 +94,8 @@ func TestMultiStore_StoreOperations(t *testing.T) {
 func TestMultiStore_Commit(t *testing.T) {
 	multi := setupMultiStore(t)
 
-	err := multi.AddStore("test", StoreCreator)
-	require.NoError(t, err)
-	err = multi.AddStore("test2", StoreCreator)
-	require.NoError(t, err)
+	require.NoError(t, multi.AddStore("test", StoreCreator))
+	require.NoError(t, multi.AddStore("test2", StoreCreator))
 
 	store, err := multi.GetStore("test")
 	require.NoError(t, err)
@@ -117,10 +103,8 @@ func TestMultiStore_Commit(t *testing.T) {
 	require.NoError(t, err)
 
 	// update the stores
-	err = store.Update([]byte("foo"), []byte("bar"))
-	require.NoError(t, err)
-	err = store2.Update([]byte("foo2"), []byte("bar2"))
-	require.NoError(t, err)
+	require.NoError(t, store.Update([]byte("foo"), []byte("bar")))
+	require.NoError(t, store2.Update([]byte("foo2"), []byte("bar2")))
 
 	// check store roots update
 	root1 := store.Root()
@@ -133,10 +117,37 @@ func TestMultiStore_Commit(t *testing.T) {
 	require.Equal(t, hex.EncodeToString(multiRoot1), "0000000000000000000000000000000000000000000000000000000000000000")
 
 	// check multi tree root updates after commit
-	err = multi.Commit()
-	require.NoError(t, err)
+	require.NoError(t, multi.Commit())
 	multiRoot2 := multi.Root()
 	require.Equal(t, hex.EncodeToString(multiRoot2), "3b93279b1113300f2d2009a3287b35845fce522c8d3f3f3a81d97388efa54db5")
+}
+
+func TestMultiStore_Prove(t *testing.T) {
+	multi := setupMultiStore(t)
+
+	require.NoError(t, multi.AddStore("test", StoreCreator))
+
+	store, err := multi.GetStore("test")
+	require.NoError(t, err)
+
+	// update the store
+	require.NoError(t, store.Update([]byte("foo"), []byte("bar")))
+	root1 := store.Root()
+	require.Equal(t, hex.EncodeToString(root1), "ace64ee83ecf596655deac72c646a30ae7bd71635992cd4c1a5a10350fcc1c52")
+	require.NoError(t, store.Commit())
+
+	// generate proof
+	proof, err := multi.Prove([]byte("test"))
+	require.NoError(t, err)
+	require.NotNil(t, proof)
+
+	// verify proof
+	valid := VerifyProof(proof, multi.Root(), []byte("test"), root1, multi.Spec())
+	require.True(t, valid)
+	invalid := VerifyProof(proof, multi.Root(), []byte("test"), []byte("foo"), multi.Spec())
+	require.False(t, invalid)
+	invalid = VerifyProof(proof, multi.Root(), []byte("test"), nil, multi.Spec())
+	require.False(t, invalid)
 }
 
 func setupMultiStore(t *testing.T) MultiStore {
