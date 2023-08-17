@@ -143,3 +143,60 @@ func TestSMT_ProofsSanityCheck(t *testing.T) {
 	_, err = CompactProof(proof, base)
 	require.Error(t, err)
 }
+
+func TestSMT_ProveClosest(t *testing.T) {
+	var smn *SimpleMap
+	var smt *SMT
+	var proof *SparseMerkleProof
+	var result bool
+	var root, closestKey, closestValueHash []byte
+	var err error
+
+	smn = NewSimpleMap()
+	smt = NewSparseMerkleTree(smn, sha256.New())
+
+	require.NoError(t, smt.Update([]byte("foo"), []byte("bar")))
+	require.NoError(t, smt.Update([]byte("baz"), []byte("bin")))
+	require.NoError(t, smt.Update([]byte("testKey"), []byte("testValue")))
+	require.NoError(t, smt.Update([]byte("testKey2"), []byte("testValue")))
+	require.NoError(t, smt.Update([]byte("testKey3"), []byte("testValue")))
+	require.NoError(t, smt.Update([]byte("testKey4"), []byte("testValue")))
+	require.NoError(t, smt.Update([]byte("jackfruit"), []byte("testValue1")))
+	require.NoError(t, smt.Update([]byte("xwordA188wordB110"), []byte("testValue2"))) // shares 2 bytes with jackfruit
+	require.NoError(t, smt.Update([]byte("3xwordA250wordB7"), []byte("testValue3")))  // shares 3 bytes with jackfruit
+
+	root = smt.Root()
+
+	// path = sha256.Sum256([]byte("jackfruit")) change 31st byte
+	path := []byte{41, 6, 1, 10, 203, 50, 121, 247, 169, 26, 77, 72, 87, 57, 82, 212, 73, 144, 141, 22, 59, 188, 178, 245, 109, 126, 84, 65, 227, 237, 79, 24}
+	closestKey, closestValueHash, proof, err = smt.ProveClosest(path)
+	require.NoError(t, err)
+	require.NotEqual(t, proof, &SparseMerkleProof{})
+
+	result = VerifyProof(proof, root, closestKey, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	require.True(t, result)
+	closestPath := sha256.Sum256([]byte("jackfruit"))
+	require.Equal(t, closestPath[:], closestKey)
+
+	// path = sha256.Sum256([]byte("xwordA188wordB110")) change 31st byte
+	path = []byte{41, 6, 225, 86, 245, 213, 11, 141, 147, 82, 197, 13, 172, 115, 91, 244, 178, 217, 50, 38, 13, 171, 111, 56, 92, 209, 246, 148, 130, 113, 41, 171}
+	closestKey, closestValueHash, proof, err = smt.ProveClosest(path)
+	require.NoError(t, err)
+	require.NotEqual(t, proof, &SparseMerkleProof{})
+
+	result = VerifyProof(proof, root, closestKey, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	require.True(t, result)
+	closestPath = sha256.Sum256([]byte("xwordA188wordB110"))
+	require.Equal(t, closestPath[:], closestKey)
+
+	// path = sha256.Sum256([]byte("3xwordA250wordB7")) change 31st byte
+	path = []byte{41, 6, 1, 143, 12, 89, 247, 69, 112, 85, 218, 99, 54, 231, 83, 27, 84, 188, 130, 159, 60, 1, 56, 183, 107, 147, 173, 155, 104, 55, 61, 190}
+	closestKey, closestValueHash, proof, err = smt.ProveClosest(path)
+	require.NoError(t, err)
+	require.NotEqual(t, proof, &SparseMerkleProof{})
+
+	result = VerifyProof(proof, root, closestKey, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	require.True(t, result)
+	closestPath = sha256.Sum256([]byte("3xwordA250wordB7"))
+	require.Equal(t, closestPath[:], closestKey)
+}

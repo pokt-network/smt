@@ -377,6 +377,106 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	return proof, nil
 }
 
+// ProveClosest generates a SparseMerkleProof of inclusion for the key
+// with the most common bits as the path provided
+func (smt *SMT) ProveClosest(path []byte) (
+	closestPath, closestValueHash []byte, // the closest leaf info for the key provided
+	proof *SparseMerkleProof, // proof of the key-value pair found
+	err error, // the error value encountered
+) {
+	var siblings []treeNode
+	var sib treeNode
+	var parent treeNode
+	var parentDepth int
+
+	node := smt.tree
+	depth := 0
+	for depth < smt.depth() {
+		node, err = smt.resolveLazy(node)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if node == nil && depth == 0 {
+			break // DISCUSS_IN_THIS_PR: I dont think this is even possible
+		}
+		parentDepth = depth
+		parent = node
+		if node == nil {
+			parent, err = smt.resolveLazy(parent)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			inner, ok := parent.(*innerNode)
+			if !ok {
+				panic("parent not inner node")
+			}
+			if len(siblings) > 0 {
+				siblings = siblings[:len(siblings)-1]
+			}
+			depth = parentDepth
+			if GetPathBit(path, depth) == left {
+				node = inner.rightChild
+			} else {
+				node = inner.leftChild
+			}
+		}
+		if _, ok := node.(*leafNode); ok {
+			break
+		}
+		if ext, ok := node.(*extensionNode); ok {
+			length, match := ext.match(path, depth)
+			if match {
+				for i := 0; i < length; i++ {
+					siblings = append(siblings, nil)
+				}
+				depth += length
+				node = ext.child
+				node, err = smt.resolveLazy(node)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+			} else {
+				node = ext.expand()
+			}
+		}
+		inner := node.(*innerNode)
+		if GetPathBit(path, depth) == left {
+			node, sib = inner.leftChild, inner.rightChild
+		} else {
+			node, sib = inner.rightChild, inner.leftChild
+		}
+		siblings = append(siblings, sib)
+
+		depth += 1
+	}
+
+	// Retrieve the closest path and value hash if found
+	if node != nil {
+		leaf := node.(*leafNode)
+		closestPath, closestValueHash = leaf.path, leaf.valueHash
+	}
+	// Hash siblings from bottom up.
+	var sideNodes [][]byte
+	for i := range siblings {
+		var sideNode []byte
+		sibling := siblings[len(siblings)-i-1]
+		sideNode = hashNode(smt.Spec(), sibling)
+		sideNodes = append(sideNodes, sideNode)
+	}
+	proof = &SparseMerkleProof{
+		SideNodes: sideNodes,
+	}
+	if sib != nil {
+		sib, err = smt.resolveLazy(sib)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		proof.SiblingData = serialize(smt.Spec(), sib)
+	}
+
+	return closestPath, closestValueHash, proof, nil
+}
+
 //nolint:unused
 func (smt *SMT) recursiveLoad(hash []byte) (treeNode, error) {
 	return smt.resolve(hash, smt.recursiveLoad)

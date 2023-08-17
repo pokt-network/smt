@@ -30,6 +30,9 @@ type SparseMerkleTree interface {
 	Root() []byte
 	// Prove computes a Merkle proof of membership or non-membership of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
+	// ProveClosest computes a Merkle proof of inclusion for a key in the tree which is
+	// closest to the path provided
+	ProveClosest([]byte) (closestPath, closestValueHash []byte, proof *SparseMerkleProof, err error)
 	// Commit saves the tree's state to its persistent storage.
 	Commit() error
 	// Spec returns the TreeSpec for the tree
@@ -50,6 +53,9 @@ type SparseMerkleSumTree interface {
 	Sum() uint64
 	// Prove computes a Merkle proof of membership or non-membership of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
+	// ProveClosest computes a Merkle proof of inclusion for a key in the tree which is
+	// closest to the path provided
+	ProveClosest([]byte) (closestPath, closestValueHash []byte, closestSum uint64, proof *SparseMerkleProof, err error)
 	// Commit saves the tree's state to its persistent storage.
 	Commit() error
 	// Spec returns the TreeSpec for the tree
