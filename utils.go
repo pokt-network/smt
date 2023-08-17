@@ -1,5 +1,16 @@
 package smt
 
+type nilPathHasher struct {
+	hashSize int
+}
+
+func (n *nilPathHasher) Path(key []byte) []byte { return key[:n.hashSize] }
+func (n *nilPathHasher) PathSize() int          { return n.hashSize }
+
+func newNilPathHasher(hashSize int) PathHasher {
+	return &nilPathHasher{hashSize: hashSize}
+}
+
 // GetPathBit gets the bit at an offset from the most significant bit
 func GetPathBit(data []byte, position int) int {
 	// get the byte at the position and then left shift one by the offset of the position
