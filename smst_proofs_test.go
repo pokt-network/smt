@@ -175,20 +175,22 @@ func TestSMST_ProveClosest(t *testing.T) {
 	smn = NewSimpleMap()
 	smst = NewSparseMerkleSumTree(smn, sha256.New())
 
+	// insert random values
 	require.NoError(t, smst.Update([]byte("foo"), []byte("bar"), 5))
 	require.NoError(t, smst.Update([]byte("baz"), []byte("bin"), 5))
 	require.NoError(t, smst.Update([]byte("testKey"), []byte("testValue"), 5))
 	require.NoError(t, smst.Update([]byte("testKey2"), []byte("testValue"), 5))
 	require.NoError(t, smst.Update([]byte("testKey3"), []byte("testValue"), 5))
 	require.NoError(t, smst.Update([]byte("testKey4"), []byte("testValue"), 5))
-	require.NoError(t, smst.Update([]byte("jackfruit"), []byte("testValue1"), 5))
-	require.NoError(t, smst.Update([]byte("xwordA188wordB110"), []byte("testValue2"), 5)) // shares 2 bytes with jackfruit
-	require.NoError(t, smst.Update([]byte("3xwordA250wordB7"), []byte("testValue3"), 5))  // shares 3 bytes with jackfruit
+	// insert testing values that are similar
+	require.NoError(t, smst.Update([]byte("jackfruit"), []byte("testValue1"), 7))
+	require.NoError(t, smst.Update([]byte("xwordA188wordB110"), []byte("testValue2"), 9)) // shares 2 bytes with jackfruit
+	require.NoError(t, smst.Update([]byte("3xwordA250wordB7"), []byte("testValue3"), 11)) // shares 3 bytes with jackfruit
 
 	root = smst.Root()
 
 	// path = sha256.Sum256([]byte("jackfruit")) change 31st byte
-	path := []byte{41, 6, 1, 10, 203, 50, 121, 247, 169, 26, 77, 72, 87, 57, 82, 212, 73, 144, 141, 22, 59, 188, 178, 245, 109, 126, 84, 65, 227, 237, 79, 24, 0, 0, 0, 0, 0, 0, 0, 5}
+	path := []byte{41, 6, 1, 10, 203, 50, 121, 247, 169, 26, 77, 72, 87, 57, 82, 212, 73, 144, 141, 22, 59, 188, 178, 245, 109, 126, 84, 65, 227, 237, 79, 24}
 	closestKey, closestValueHash, closestSum, proof, err = smst.ProveClosest(path)
 	require.NoError(t, err)
 	require.NotEqual(t, proof, &SparseMerkleProof{})
@@ -197,9 +199,10 @@ func TestSMST_ProveClosest(t *testing.T) {
 	require.True(t, result)
 	closestPath := sha256.Sum256([]byte("jackfruit"))
 	require.Equal(t, closestPath[:], closestKey)
+	require.Equal(t, closestSum, uint64(7))
 
 	// path = sha256.Sum256([]byte("xwordA188wordB110")) change 31st byte
-	path = []byte{41, 6, 225, 86, 245, 213, 11, 141, 147, 82, 197, 13, 172, 115, 91, 244, 178, 217, 50, 38, 13, 171, 111, 56, 92, 209, 246, 148, 130, 113, 41, 171, 0, 0, 0, 0, 0, 0, 0, 5}
+	path = []byte{41, 6, 225, 86, 245, 213, 11, 141, 147, 82, 197, 13, 172, 115, 91, 244, 178, 217, 50, 38, 13, 171, 111, 56, 92, 209, 246, 148, 130, 113, 41, 171}
 	closestKey, closestValueHash, closestSum, proof, err = smst.ProveClosest(path)
 	require.NoError(t, err)
 	require.NotEqual(t, proof, &SparseMerkleProof{})
@@ -208,9 +211,10 @@ func TestSMST_ProveClosest(t *testing.T) {
 	require.True(t, result)
 	closestPath = sha256.Sum256([]byte("xwordA188wordB110"))
 	require.Equal(t, closestPath[:], closestKey)
+	require.Equal(t, closestSum, uint64(9))
 
 	// path = sha256.Sum256([]byte("3xwordA250wordB7")) change 31st byte
-	path = []byte{41, 6, 1, 143, 12, 89, 247, 69, 112, 85, 218, 99, 54, 231, 83, 27, 84, 188, 130, 159, 60, 1, 56, 183, 107, 147, 173, 155, 104, 55, 61, 190, 0, 0, 0, 0, 0, 0, 0, 5}
+	path = []byte{41, 6, 1, 143, 12, 89, 247, 69, 112, 85, 218, 99, 54, 231, 83, 27, 84, 188, 130, 159, 60, 1, 56, 183, 107, 147, 173, 155, 104, 55, 61, 190}
 	closestKey, closestValueHash, closestSum, proof, err = smst.ProveClosest(path)
 	require.NoError(t, err)
 	require.NotEqual(t, proof, &SparseMerkleProof{})
@@ -219,4 +223,5 @@ func TestSMST_ProveClosest(t *testing.T) {
 	require.True(t, result)
 	closestPath = sha256.Sum256([]byte("3xwordA250wordB7"))
 	require.Equal(t, closestPath[:], closestKey)
+	require.Equal(t, closestSum, uint64(11))
 }
