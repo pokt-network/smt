@@ -25,7 +25,8 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, input []byte) {
-		smn := NewSimpleMap()
+		smn, err := NewKVStore("")
+		require.NoError(t, err)
 		tree := NewSparseMerkleTree(smn, sha256.New())
 
 		r := bytes.NewReader(input)
@@ -51,7 +52,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			return keys[int(b)%len(keys)]
 		}
 
-                // `i` is the loop counter but also used as the input value to `Update` operations
+		// `i` is the loop counter but also used as the input value to `Update` operations
 		for i := 0; r.Len() != 0; i++ {
 			originalRoot := tree.Root()
 			b, err := r.ReadByte()
@@ -97,6 +98,8 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			newRoot := tree.Root()
 			require.Greater(t, len(newRoot), 0, "new root is empty while err is nil")
 		}
+
+		require.NoError(t, smn.Stop())
 	})
 }
 

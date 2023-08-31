@@ -51,7 +51,7 @@ type lazyNode struct {
 
 type SMT struct {
 	TreeSpec
-	nodes MapStore
+	nodes KVStore
 	// Last persisted root hash
 	savedRoot []byte
 	// Current state of tree
@@ -64,7 +64,7 @@ type SMT struct {
 type orphanNodes = [][]byte
 
 // NewSparseMerkleTree returns a new pointer to an SMT struct, and applys any options provided
-func NewSparseMerkleTree(nodes MapStore, hasher hash.Hash, options ...Option) *SMT {
+func NewSparseMerkleTree(nodes KVStore, hasher hash.Hash, options ...Option) *SMT {
 	smt := SMT{
 		TreeSpec: newTreeSpec(hasher, false),
 		nodes:    nodes,
@@ -76,7 +76,7 @@ func NewSparseMerkleTree(nodes MapStore, hasher hash.Hash, options ...Option) *S
 }
 
 // ImportSparseMerkleTree returns a pointer to an SMT struct with the provided root hash
-func ImportSparseMerkleTree(nodes MapStore, hasher hash.Hash, root []byte, options ...Option) *SMT {
+func ImportSparseMerkleTree(nodes KVStore, hasher hash.Hash, root []byte, options ...Option) *SMT {
 	smt := NewSparseMerkleTree(nodes, hasher, options...)
 	smt.tree = &lazyNode{root}
 	smt.savedRoot = root

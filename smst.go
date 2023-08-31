@@ -15,7 +15,7 @@ type SMST struct {
 }
 
 // NewSparseMerkleSumTree returns a pointer to an SMST struct
-func NewSparseMerkleSumTree(nodes MapStore, hasher hash.Hash, options ...Option) *SMST {
+func NewSparseMerkleSumTree(nodes KVStore, hasher hash.Hash, options ...Option) *SMST {
 	smt := &SMT{
 		TreeSpec: newTreeSpec(hasher, true),
 		nodes:    nodes,
@@ -36,7 +36,7 @@ func NewSparseMerkleSumTree(nodes MapStore, hasher hash.Hash, options ...Option)
 }
 
 // ImportSparseMerkleSumTree returns a pointer to an SMST struct with the root hash provided
-func ImportSparseMerkleSumTree(nodes MapStore, hasher hash.Hash, root []byte, options ...Option) *SMST {
+func ImportSparseMerkleSumTree(nodes KVStore, hasher hash.Hash, root []byte, options ...Option) *SMST {
 	smst := NewSparseMerkleSumTree(nodes, hasher, options...)
 	smst.tree = &lazyNode{root}
 	smst.savedRoot = root

@@ -9,14 +9,17 @@ import (
 
 // Test base case Merkle proof operations.
 func TestSMT_ProofsBasic(t *testing.T) {
-	var smn, smv *SimpleMap
+	var smn, smv KVStore
 	var smt *SMTWithStorage
 	var proof *SparseMerkleProof
 	var result bool
 	var root []byte
 	var err error
 
-	smn, smv = NewSimpleMap(), NewSimpleMap()
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
+	smv, err = NewKVStore("")
+	require.NoError(t, err)
 	smt = NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()
 
@@ -84,15 +87,21 @@ func TestSMT_ProofsBasic(t *testing.T) {
 	require.False(t, result)
 	result = VerifyProof(randomiseProof(proof), root, []byte("testKey3"), defaultValue, base)
 	require.False(t, result)
+
+	require.NoError(t, smn.Stop())
+	require.NoError(t, smv.Stop())
 }
 
 // Test sanity check cases for non-compact proofs.
 func TestSMT_ProofsSanityCheck(t *testing.T) {
-	smn, smv := NewSimpleMap(), NewSimpleMap()
+	smn, err := NewKVStore("")
+	require.NoError(t, err)
+	smv, err := NewKVStore("")
+	require.NoError(t, err)
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()
 
-	err := smt.Update([]byte("testKey1"), []byte("testValue1"))
+	err = smt.Update([]byte("testKey1"), []byte("testValue1"))
 	require.NoError(t, err)
 	err = smt.Update([]byte("testKey2"), []byte("testValue2"))
 	require.NoError(t, err)
@@ -142,4 +151,7 @@ func TestSMT_ProofsSanityCheck(t *testing.T) {
 	require.False(t, result)
 	_, err = CompactProof(proof, base)
 	require.Error(t, err)
+
+	require.NoError(t, smn.Stop())
+	require.NoError(t, smv.Stop())
 }

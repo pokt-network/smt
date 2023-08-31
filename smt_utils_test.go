@@ -3,16 +3,18 @@ package smt
 import (
 	"bytes"
 	"errors"
+
+	badger "github.com/dgraph-io/badger/v4"
 )
 
 // SMTWithStorage wraps an SMT with a mapping of value hashes to values (preimages), for use in tests.
 // Note: this doesn't delete from preimages (inputs to hashing functions), since there could be duplicate stored values.
 type SMTWithStorage struct {
 	*SMT
-	preimages MapStore
+	preimages KVStore
 }
 
-// Update updates a key with a new value in the tree and adds the value to the preimages MapStore
+// Update updates a key with a new value in the tree and adds the value to the preimages KVStore
 func (smt *SMTWithStorage) Update(key, value []byte) error {
 	if err := smt.SMT.Update(key, value); err != nil {
 		return err
@@ -35,10 +37,12 @@ func (smt *SMTWithStorage) GetValue(key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if valueHash == nil {
+		return nil, nil
+	}
 	value, err := smt.preimages.Get(valueHash)
 	if err != nil {
-		var invalidKeyError *InvalidKeyError
-		if errors.As(err, &invalidKeyError) {
+		if errors.Is(err, badger.ErrKeyNotFound) {
 			// If key isn't found, return default value
 			value = defaultValue
 		} else {

@@ -10,14 +10,17 @@ import (
 
 // Test base case Merkle proof operations.
 func TestSMST_ProofsBasic(t *testing.T) {
-	var smn, smv *SimpleMap
+	var smn, smv KVStore
 	var smst *SMSTWithStorage
 	var proof *SparseMerkleProof
 	var result bool
 	var root []byte
 	var err error
 
-	smn, smv = NewSimpleMap(), NewSimpleMap()
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
+	smv, err = NewKVStore("")
+	require.NoError(t, err)
 	smst = NewSMSTWithStorage(smn, smv, sha256.New())
 	base := smst.Spec()
 
@@ -103,15 +106,21 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	require.False(t, result)
 	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey3"), defaultValue, 0, base) // invalid proof
 	require.False(t, result)
+
+	require.NoError(t, smn.Stop())
+	require.NoError(t, smv.Stop())
 }
 
 // Test sanity check cases for non-compact proofs.
 func TestSMST_ProofsSanityCheck(t *testing.T) {
-	smn, smv := NewSimpleMap(), NewSimpleMap()
+	smn, err := NewKVStore("")
+	require.NoError(t, err)
+	smv, err := NewKVStore("")
+	require.NoError(t, err)
 	smst := NewSMSTWithStorage(smn, smv, sha256.New())
 	base := smst.Spec()
 
-	err := smst.Update([]byte("testKey1"), []byte("testValue1"), 1)
+	err = smst.Update([]byte("testKey1"), []byte("testValue1"), 1)
 	require.NoError(t, err)
 	err = smst.Update([]byte("testKey2"), []byte("testValue2"), 2)
 	require.NoError(t, err)
@@ -161,4 +170,7 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 	require.False(t, result)
 	_, err = CompactProof(proof, base)
 	require.Error(t, err)
+
+	require.NoError(t, smn.Stop())
+	require.NoError(t, smv.Stop())
 }

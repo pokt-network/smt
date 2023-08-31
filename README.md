@@ -295,19 +295,11 @@ The verification step simply uses the proof data to recompute the root hash with
 
 ## Database
 
-This library defines the `MapStore` interface, in [mapstore.go](./mapstore.go)
-
-```go
-type MapStore interface {
-	Get(key []byte) ([]byte, error)
-	Set(key []byte, value []byte) error
-	Delete(key []byte) error
-}
-```
-
-This interface abstracts the `SimpleMap` key-value store and can be used by the SMT to store the nodes of the tree. Any key-value store that implements the `MapStore` interface can be used with this library.
+This library defines the `KVStore` interface which by default is implemented using [BadgerDB](https://github.com/dgraph-io/badger), however any databse that implements this interface can be used as a drop in replacement. The `KVStore` allows for both in memory and persisted databases to be used to store the nodes for the SMT.
 
 When changes are commited to the underlying database using `Commit()` the digests of the leaf nodes are stored at their respective paths. If retrieved manually from the database the returned value will be the digest of the leaf node, **not** the leaf node's value, even when `WithValueHasher(nil)` is used. The node value can be parsed from this value, as the tree `Get` function does by removing the prefix and path bytes from the returned value.
+
+See [kvstore.go](./kvstore.go) for the details of the implementation.
 
 ### Data Loss
 
@@ -330,9 +322,9 @@ import (
 )
 
 func main() {
-	// Initialise a new key-value store to store the nodes of the tree
+	// Initialise a new in-memory key-value store to store the nodes of the tree
 	// (Note: the tree only stores hashed values, not raw value data)
-	nodeStore := smt.NewSimpleMap()
+	nodeStore := smt.NewKVStore()
 
 	// Initialise the tree
 	tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
