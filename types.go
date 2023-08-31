@@ -56,6 +56,21 @@ type SparseMerkleSumTree interface {
 	Spec() *TreeSpec
 }
 
+// VersionedSMT represents an SMT that supports versioning, storing
+// previous versions as instances of a ImmutableSparseMerkleTree
+type VersionedSMT interface {
+	SparseMerkleTree
+
+	// --- Versioning ---
+	SetInitialVersion(uint64) error
+	Version() uint64
+	AvailableVersions() []uint64
+	SaveVersion() error
+	VersionExists(uint64) bool
+	GetVersioned(key []byte, version uint64) ([]byte, error)
+	GetImmutable(uint64) (*ImmutableTree, error)
+}
+
 // TreeSpec specifies the hashing functions used by a tree instance to encode leaf paths
 // and stored values, and the corresponding maximum tree depth.
 type TreeSpec struct {
@@ -71,6 +86,14 @@ func newTreeSpec(hasher hash.Hash, sumTree bool) TreeSpec {
 	spec.vh = &valueHasher{spec.th}
 	spec.sumTree = sumTree
 	return spec
+}
+
+func (spec *TreeSpec) clone() *TreeSpec {
+	t := new(TreeSpec)
+	t.th = spec.th
+	t.ph = spec.ph
+	t.vh = spec.vh
+	return t
 }
 
 func (spec *TreeSpec) Spec() *TreeSpec { return spec }
