@@ -4,10 +4,15 @@ import (
 	"crypto/sha256"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkSparseMerkleTree_Update(b *testing.B) {
-	smn, smv := NewSimpleMap(), NewSimpleMap()
+	smn, err := NewKVStore("")
+	require.NoError(b, err)
+	smv, err := NewKVStore("")
+	require.NoError(b, err)
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 
 	b.ResetTimer()
@@ -16,10 +21,16 @@ func BenchmarkSparseMerkleTree_Update(b *testing.B) {
 		s := strconv.Itoa(i)
 		_ = smt.Update([]byte(s), []byte(s))
 	}
+
+	require.NoError(b, smn.Stop())
+	require.NoError(b, smv.Stop())
 }
 
 func BenchmarkSparseMerkleTree_Delete(b *testing.B) {
-	smn, smv := NewSimpleMap(), NewSimpleMap()
+	smn, err := NewKVStore("")
+	require.NoError(b, err)
+	smv, err := NewKVStore("")
+	require.NoError(b, err)
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 
 	for i := 0; i < 100000; i++ {
@@ -33,4 +44,7 @@ func BenchmarkSparseMerkleTree_Delete(b *testing.B) {
 		s := strconv.Itoa(i)
 		_ = smt.Delete([]byte(s))
 	}
+
+	require.NoError(b, smn.Stop())
+	require.NoError(b, smv.Stop())
 }

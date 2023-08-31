@@ -233,9 +233,9 @@ import (
 )
 
 func main() {
-	// Initialise a new key-value store to store the nodes of the tree
+	// Initialise a new in-memory key-value store to store the nodes of the tree
 	// (Note: the tree only stores hashed values, not raw value data)
-	nodeStore := smt.NewSimpleMap()
+	nodeStore := smt.NewKVStore("")
 
 	// Initialise the tree
 	tree := smt.NewSparseMerkleSumTree(nodeStore, sha256.New())
