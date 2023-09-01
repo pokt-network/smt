@@ -9,7 +9,7 @@ on:
 
 env:
   # Even though we can test against multiple versions, this one is considered a target version.
-  TARGET_GOLANG_VERSION: "1.18"
+  TARGET_GOLANG_VERSION: "1.19"
 
 jobs:
   tests:
@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         go: ["1.19"]
-    name: Go ${{ matrix.go }} test
+    name: Go Tests
     steps:
       - uses: actions/checkout@v3
       - name: Setup go
