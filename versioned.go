@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"os"
 	"path/filepath"
 
 	"golang.org/x/exp/slices"
@@ -76,7 +77,7 @@ func NewVersionedTree(
 		db:                  nodes,
 		store_path:          store_path,
 		stored_versions:     store_db,
-		available_versions:  make([]uint64, 0, max_stored_versions),
+		available_versions:  make([]uint64, 0),
 		max_stored_versions: max_stored_versions,
 	}, nil
 }
@@ -84,6 +85,10 @@ func NewVersionedTree(
 // ImportVersionedTree imports a versioned tree from the KVStore provided, and
 // determines the available versions stored from the store_path provided. It will
 // also load the previous stored ImmutableTree if it exists.
+//
+// If there are more stored versions than max_stored_versions, then it will
+// remove the oldest versions until the number of stored versions is equal to
+// max_stored_versions
 func ImportVersionedTree(
 	nodes KVStore,
 	hasher hash.Hash,
@@ -109,7 +114,13 @@ func ImportVersionedTree(
 		return nil, fmt.Errorf("failed to get available versions: %v", err)
 	}
 	if max_stored_versions > 0 && uint64(len(available_versions)) > max_stored_versions {
-		return nil, fmt.Errorf("too many versions found: %d > %d", len(available_versions), max_stored_versions)
+		diff := uint64(len(available_versions)) - max_stored_versions
+		for i := 0; i < int(diff); i++ {
+			if err := os.RemoveAll(filepath.Join(store_path, fmt.Sprintf("%d", available_versions[i]))); err != nil {
+				return nil, fmt.Errorf("failed to remove version %d: %v", available_versions[i], err)
+			}
+		}
+		available_versions = available_versions[diff:]
 	}
 	vt := &VersionedTree{
 		SMT:                 tree,
@@ -197,7 +208,7 @@ func (v *VersionedTree) SaveVersion() error {
 		v.th.hasher,
 		v.version,
 		v.Root(),
-		specFromHashers(v.th.hasher, v.ph.Hasher(), v.vh.Hasher(), false),
+		v.Spec(),
 	)
 	// store current version
 	sv := &storedTree{
@@ -206,7 +217,9 @@ func (v *VersionedTree) SaveVersion() error {
 		Version: v.version,
 		Th:      v.th.hasher,
 		Ph:      v.ph.Hasher(),
-		Vh:      v.vh.Hasher(),
+	}
+	if v.vh != nil {
+		sv.Vh = v.vh.Hasher()
 	}
 	encoded, err := encodeStoredTree(sv)
 	if err != nil {
@@ -214,6 +227,7 @@ func (v *VersionedTree) SaveVersion() error {
 	}
 	versionBz := uint64ToBytes(v.version)
 	v.stored_versions.Set(versionBz, encoded)
+	v.available_versions = append(v.available_versions, v.version)
 	// increment version
 	v.version += 1
 	return nil
@@ -230,6 +244,9 @@ func (v *VersionedTree) VersionExists(version uint64) bool {
 // GetVersioned returns the value for a given key from the desired version
 // of the VersionedTree
 func (v *VersionedTree) GetVersioned(key []byte, version uint64) ([]byte, error) {
+	if version == v.Version() {
+		return v.Get(key)
+	}
 	if !v.VersionExists(version) {
 		return nil, fmt.Errorf("version %d does not exist", version)
 	}
@@ -237,6 +254,7 @@ func (v *VersionedTree) GetVersioned(key []byte, version uint64) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
+	defer imt.Stop()
 	return imt.Get(key)
 }
 
@@ -269,7 +287,7 @@ func (v *VersionedTree) GetImmutable(version uint64) (*ImmutableTree, error) {
 		v.th.Hasher(),
 		st.Version,
 		st.Root,
-		specFromHashers(st.Th, st.Ph, st.Vh, false),
+		v.Spec(),
 	), nil
 }
 
