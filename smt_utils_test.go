@@ -3,6 +3,7 @@ package smt
 import (
 	"bytes"
 	"errors"
+	"hash"
 
 	badger "github.com/dgraph-io/badger/v4"
 )
@@ -82,3 +83,5 @@ func (h dummyPathHasher) Path(key []byte) []byte {
 }
 
 func (h dummyPathHasher) PathSize() int { return h.size }
+
+func (h dummyPathHasher) Hasher() hash.Hash { return nil }

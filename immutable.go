@@ -68,3 +68,7 @@ func (i *ImmutableTree) GetImmutable(version uint64) (*ImmutableTree, error) {
 	}
 	return i, nil
 }
+
+func (i *ImmutableTree) Stop() error {
+	return i.db.Stop()
+}

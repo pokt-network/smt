@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ type KVStore interface {
 	// Data methods
 	Backup(writer io.Writer, incremental bool) error
 	Restore(io.Reader) error
+	Clone(string) (KVStore, error)
 
 	// Accessors
 	// TODO: Add a proper iterator interface
@@ -188,6 +190,23 @@ func (store *badgerKVStore) Len() int {
 		panic(fmt.Sprintf("error getting key count: %v", err))
 	}
 	return count
+}
+
+// Clone backups and then restores the current state of the store
+// into a new store at the given path, or returns an error
+func (store *badgerKVStore) Clone(path string) (KVStore, error) {
+	buf := bytes.NewBuffer(nil)
+	if err := store.Backup(buf, false); err != nil {
+		return nil, fmt.Errorf("error backing up store: %v", err)
+	}
+	clone, err := NewKVStore(path)
+	if err != nil {
+		return nil, fmt.Errorf("error creating clone: %v", err)
+	}
+	if err := clone.Restore(buf); err != nil {
+		return nil, fmt.Errorf("error restoring from backup: %v", err)
+	}
+	return clone, nil
 }
 
 // PrefixEndBytes returns the end byteslice for a noninclusive range

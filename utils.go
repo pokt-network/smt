@@ -1,5 +1,11 @@
 package smt
 
+import (
+	"encoding/binary"
+	"os"
+	"strconv"
+)
+
 // GetPathBit gets the bit at an offset from the most significant bit
 func GetPathBit(data []byte, position int) int {
 	// get the byte at the position and then left shift one by the offset of the position
@@ -140,4 +146,41 @@ func resolve(smt *SMT, hash []byte, resolver func([]byte) (treeNode, error),
 		return smt.resolveSum(hash, resolver)
 	}
 	return smt.resolve(hash, resolver)
+}
+
+// uint64ToBytes converts a uint64 to a big endian byte slice
+func uint64ToBytes(value uint64) []byte {
+	var buf [8]byte
+	binary.BigEndian.PutUint64(buf[:], value)
+	return buf[:]
+}
+
+// getNumericDirs returns a list of the numeric directories in a given path
+func getNumericDirs(path string) ([]uint64, error) {
+	var result []uint64
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			value, err := strconv.ParseUint(entry.Name(), 10, 64)
+			if err == nil {
+				result = append(result, value)
+			}
+		}
+	}
+	return result, nil
+}
+
+// dirExists checks if a directory exists
+func dirExists(path string) bool {
+	stat, err := os.Stat(path)
+	if err == nil {
+		if !stat.IsDir() {
+			return false
+		}
+		return true
+	}
+	return false
 }

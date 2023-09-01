@@ -69,6 +69,9 @@ type VersionedSMT interface {
 	VersionExists(uint64) bool
 	GetVersioned(key []byte, version uint64) ([]byte, error)
 	GetImmutable(uint64) (*ImmutableTree, error)
+
+	// --- Database ---
+	Stop() error
 }
 
 // TreeSpec specifies the hashing functions used by a tree instance to encode leaf paths
@@ -88,12 +91,11 @@ func newTreeSpec(hasher hash.Hash, sumTree bool) TreeSpec {
 	return spec
 }
 
-func (spec *TreeSpec) clone() *TreeSpec {
-	t := new(TreeSpec)
-	t.th = spec.th
-	t.ph = spec.ph
-	t.vh = spec.vh
-	return t
+func specFromHashers(th, ph, vh hash.Hash, sumTree bool) *TreeSpec {
+	treeHasher := *newTreeHasher(th)
+	pathHasher := &pathHasher{*newTreeHasher(ph)}
+	valueHasher := &valueHasher{*newTreeHasher(vh)}
+	return &TreeSpec{th: treeHasher, ph: pathHasher, vh: valueHasher, sumTree: sumTree}
 }
 
 func (spec *TreeSpec) Spec() *TreeSpec { return spec }

@@ -23,24 +23,36 @@ type PathHasher interface {
 	Path([]byte) []byte
 	// PathSize returns the length (in bytes) of digests produced by this hasher.
 	PathSize() int
+	// Hasher returns the hasher being used
+	Hasher() hash.Hash
 }
 
 // ValueHasher defines how value data is hashed to produce leaf data.
 type ValueHasher interface {
 	// HashValue hashes value data to produce the digest stored in leaf node.
 	HashValue([]byte) []byte
+	// Hasher returns the hasher being used
+	Hasher() hash.Hash
 }
 
 type treeHasher struct {
 	hasher    hash.Hash
 	zeroValue []byte
 }
+
+func (t *treeHasher) Hasher() hash.Hash { return t.hasher }
+
 type pathHasher struct {
 	treeHasher
 }
+
+func (p *pathHasher) Hasher() hash.Hash { return p.treeHasher.Hasher() }
+
 type valueHasher struct {
 	treeHasher
 }
+
+func (v *valueHasher) Hasher() hash.Hash { return v.treeHasher.Hasher() }
 
 func newTreeHasher(hasher hash.Hash) *treeHasher {
 	th := treeHasher{hasher: hasher}
