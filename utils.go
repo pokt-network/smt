@@ -176,11 +176,8 @@ func getNumericDirs(path string) ([]uint64, error) {
 // dirExists checks if a directory exists
 func dirExists(path string) bool {
 	stat, err := os.Stat(path)
-	if err == nil {
-		if !stat.IsDir() {
-			return false
-		}
-		return true
+	if err != nil {
+		return false
 	}
-	return false
+	return stat.IsDir()
 }

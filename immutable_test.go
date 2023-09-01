@@ -24,7 +24,7 @@ func TestImmutableTree_CannotUpdate(t *testing.T) {
 		}
 	}()
 
-	ismt.Update([]byte("key"), []byte("value2"))
+	_ = ismt.Update([]byte("key"), []byte("value2"))
 }
 
 func TestImmutableTree_CannotDelete(t *testing.T) {
@@ -44,7 +44,7 @@ func TestImmutableTree_CannotDelete(t *testing.T) {
 		}
 	}()
 
-	ismt.Delete([]byte("key"))
+	_ = ismt.Delete([]byte("key"))
 }
 
 func TestImmutableTree_CannotCommit(t *testing.T) {
@@ -64,7 +64,7 @@ func TestImmutableTree_CannotCommit(t *testing.T) {
 		}
 	}()
 
-	ismt.Commit()
+	_ = ismt.Commit()
 }
 
 func TestImmutableTree_CannotSetInitialVersion(t *testing.T) {
@@ -84,7 +84,7 @@ func TestImmutableTree_CannotSetInitialVersion(t *testing.T) {
 		}
 	}()
 
-	ismt.SetInitialVersion(2)
+	_ = ismt.SetInitialVersion(2)
 }
 
 func TestImmutableTree_CannotSaveVersion(t *testing.T) {
@@ -104,7 +104,7 @@ func TestImmutableTree_CannotSaveVersion(t *testing.T) {
 		}
 	}()
 
-	ismt.SaveVersion()
+	_ = ismt.SaveVersion()
 }
 
 func TestImmutableTree_GetVersion(t *testing.T) {

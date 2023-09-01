@@ -196,7 +196,9 @@ func (v *VersionedTree) SaveVersion() error {
 	}
 	// save and keep open as previous saved
 	if v.previous_stored != nil {
-		v.previous_stored.db.Stop()
+		if err := v.previous_stored.db.Stop(); err != nil {
+			return fmt.Errorf("unable to close previous store db: %v", err)
+		}
 	}
 	store_path := filepath.Join(v.store_path, fmt.Sprintf("%d", v.version))
 	clonedNodes, err := v.db.Clone(store_path)
@@ -226,7 +228,9 @@ func (v *VersionedTree) SaveVersion() error {
 		return fmt.Errorf("failed to encode stored tree: %v", err)
 	}
 	versionBz := uint64ToBytes(v.version)
-	v.stored_versions.Set(versionBz, encoded)
+	if err := v.stored_versions.Set(versionBz, encoded); err != nil {
+		return fmt.Errorf("unable to store saved version: %v", err)
+	}
 	v.available_versions = append(v.available_versions, v.version)
 	// increment version
 	v.version += 1
@@ -254,7 +258,7 @@ func (v *VersionedTree) GetVersioned(key []byte, version uint64) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	defer imt.Stop()
+	defer imt.Stop() //nolint:errcheck // ignore error just close
 	return imt.Get(key)
 }
 
@@ -295,15 +299,15 @@ func (v *VersionedTree) GetImmutable(version uint64) (*ImmutableTree, error) {
 func (v *VersionedTree) Stop() error {
 	multierr := error(nil)
 	if err := v.db.Stop(); err != nil {
-		errors.Join(multierr, fmt.Errorf("failed to stop node store: %w", err))
+		multierr = errors.Join(multierr, fmt.Errorf("failed to stop node store: %w", err))
 	}
 	if v.previous_stored != nil {
 		if err := v.previous_stored.Stop(); err != nil {
-			errors.Join(multierr, fmt.Errorf("failed to stop previous stored store: %w", err))
+			multierr = errors.Join(multierr, fmt.Errorf("failed to stop previous stored store: %w", err))
 		}
 	}
 	if err := v.stored_versions.Stop(); err != nil {
-		errors.Join(multierr, fmt.Errorf("failed to stop stored versions store: %w", err))
+		multierr = errors.Join(multierr, fmt.Errorf("failed to stop stored versions store: %w", err))
 	}
 	return multierr
 }
