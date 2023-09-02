@@ -6,6 +6,7 @@ import (
 	"hash"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"golang.org/x/exp/slices"
 )
@@ -114,10 +115,20 @@ func ImportVersionedTree(
 		return nil, fmt.Errorf("failed to get available versions: %v", err)
 	}
 	if max_stored_versions > 0 && uint64(len(available_versions)) > max_stored_versions {
+		var wg sync.WaitGroup
 		diff := uint64(len(available_versions)) - max_stored_versions
 		for i := 0; i < int(diff); i++ {
-			if err := os.RemoveAll(filepath.Join(store_path, fmt.Sprintf("%d", available_versions[i]))); err != nil {
-				return nil, fmt.Errorf("failed to remove version %d: %v", available_versions[i], err)
+			multierr := error(nil)
+			wg.Add(1)
+			go func(i uint64) {
+				defer wg.Done()
+				if err := os.RemoveAll(filepath.Join(store_path, fmt.Sprintf("%d", i))); err != nil {
+					multierr = errors.Join(multierr, fmt.Errorf("failed to remove version %d: %v", i, err))
+				}
+			}(available_versions[i])
+			wg.Wait()
+			if multierr != nil {
+				return nil, multierr
 			}
 		}
 		available_versions = available_versions[diff:]
