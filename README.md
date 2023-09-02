@@ -10,23 +10,23 @@ Note: **Requires Go 1.18+**
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-	- [Inner Nodes](#inner-nodes)
-	- [Extension Nodes](#extension-nodes)
-	- [Leaf Nodes](#leaf-nodes)
-	- [Lazy Nodes](#lazy-nodes)
-	- [Lazy Loading](#lazy-loading)
-	- [Visualisations](#visualisations)
-		- [General Tree Structure](#general-tree-structure)
-		- [Lazy Nodes](#lazy-nodes-1)
+  - [Inner Nodes](#inner-nodes)
+  - [Extension Nodes](#extension-nodes)
+  - [Leaf Nodes](#leaf-nodes)
+  - [Lazy Nodes](#lazy-nodes)
+  - [Lazy Loading](#lazy-loading)
+  - [Visualisations](#visualisations)
+    - [General Tree Structure](#general-tree-structure)
+    - [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
-	- [Visualisation](#visualisation)
+  - [Visualisation](#visualisation)
 - [Values](#values)
-	- [Nil values](#nil-values)
+  - [Nil values](#nil-values)
 - [Hashers \& Digests](#hashers--digests)
 - [Proofs](#proofs)
-	- [Verification](#verification)
+  - [Verification](#verification)
 - [Database](#database)
-	- [Data Loss](#data-loss)
+  - [Data Loss](#data-loss)
 - [Sparse Merkle Sum Tree](#sparse-merkle-sum-tree)
 - [Example](#example)
 
@@ -299,7 +299,7 @@ This library defines the `KVStore` interface which by default is implemented usi
 
 When changes are commited to the underlying database using `Commit()` the digests of the leaf nodes are stored at their respective paths. If retrieved manually from the database the returned value will be the digest of the leaf node, **not** the leaf node's value, even when `WithValueHasher(nil)` is used. The node value can be parsed from this value, as the tree `Get` function does by removing the prefix and path bytes from the returned value.
 
-See [kvstore.go](./kvstore.go) for the details of the implementation.
+See [KVStore.md](./KVStore.md) for the details of the implementation.
 
 ### Data Loss
 
