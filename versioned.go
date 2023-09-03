@@ -196,12 +196,27 @@ func (v *VersionedTree) SaveVersion() error {
 	if err := v.Commit(); err != nil {
 		return fmt.Errorf("failed to commit tree: %w", err)
 	}
+	// remove oldest version if max_stored_versions is set
 	if v.max_stored_versions > 0 &&
 		uint64(len(v.available_versions)) >= v.max_stored_versions {
-		// remove oldest version
 		versionBz := uint64ToBytes(v.available_versions[0])
+		st, err := v.stored_versions.Get(versionBz)
+		if err != nil {
+			return fmt.Errorf("failed to get version %d: %w", v.available_versions[0], err)
+		}
+		decoded, err := decodeStoredTree(st)
+		if err != nil {
+			return fmt.Errorf("failed to decode stored tree: %w", err)
+		}
+		multierr := error(nil)
 		if err := v.stored_versions.Delete(versionBz); err != nil {
-			return fmt.Errorf("failed to delete version %d", v.available_versions[0])
+			multierr = errors.Join(fmt.Errorf("failed to delete version %d", v.available_versions[0]))
+		}
+		if err := os.RemoveAll(decoded.Db_path); err != nil {
+			multierr = errors.Join(multierr, fmt.Errorf("failed to delete version db (%d): %v", v.available_versions[0], err))
+		}
+		if multierr != nil {
+			return multierr
 		}
 		v.available_versions = v.available_versions[1:]
 	}
@@ -261,6 +276,9 @@ func (v *VersionedTree) VersionExists(version uint64) bool {
 func (v *VersionedTree) GetVersioned(key []byte, version uint64) ([]byte, error) {
 	if version == v.Version() {
 		return v.Get(key)
+	}
+	if v.previous_stored != nil && v.previous_stored.Version() == version {
+		return v.previous_stored.Get(key)
 	}
 	if !v.VersionExists(version) {
 		return nil, fmt.Errorf("version %d does not exist", version)
