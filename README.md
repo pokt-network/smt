@@ -324,13 +324,19 @@ import (
 func main() {
 	// Initialise a new in-memory key-value store to store the nodes of the tree
 	// (Note: the tree only stores hashed values, not raw value data)
-	nodeStore := smt.NewKVStore()
+	nodeStore := smt.NewKVStore("")
+
+    // Ensure the database connection closes
+    defer nodeStore.Stop()
 
 	// Initialise the tree
 	tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
 
 	// Update the key "foo" with the value "bar"
 	_ = tree.Update([]byte("foo"), []byte("bar"))
+
+    // Commit the changes to the node store
+    _ = tree.Commit()
 
 	// Generate a Merkle proof for "foo"
 	proof, _ := tree.Prove([]byte("foo"))

@@ -237,6 +237,9 @@ func main() {
 	// (Note: the tree only stores hashed values, not raw value data)
 	nodeStore := smt.NewKVStore("")
 
+    // Ensure the database connection closes
+    defer nodeStore.Stop()
+
 	// Initialise the tree
 	tree := smt.NewSparseMerkleSumTree(nodeStore, sha256.New())
 
@@ -244,6 +247,9 @@ func main() {
 	_ = tree.Update([]byte("foo"), []byte("oof"), 10)
 	_ = tree.Update([]byte("baz"), []byte("zab"), 7)
 	_ = tree.Update([]byte("bin"), []byte("nib"), 3)
+
+    // Commit the changes to the nodeStore
+    _ = tree.Commit()
 
 	sum := tree.Sum()
 	fmt.Println(sum == 20) // true
