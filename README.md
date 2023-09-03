@@ -6,7 +6,7 @@
 [![Tests](https://github.com/pokt-network/smt/actions/workflows/test.yml/badge.svg)](https://github.com/pokt-network/smt/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/pokt-network/smt/branch/main/graph/badge.svg)](https://codecov.io/gh/pokt-network/smt)
 
-Note: **Requires Go 1.19+**
+Note: **Requires Go 1.20+**
 
 - [Overview](#overview)
 - [Implementation](#implementation)
@@ -28,6 +28,7 @@ Note: **Requires Go 1.19+**
 - [Database](#database)
   - [Data Loss](#data-loss)
 - [Sparse Merkle Sum Tree](#sparse-merkle-sum-tree)
+- [Versioned and Immutable Trees](#versioned-and-immutable-trees)
 - [Example](#example)
 
 ## Overview
@@ -308,6 +309,10 @@ In the event of a system crash or unexpected failure of the program utilising th
 ## Sparse Merkle Sum Tree
 
 This library also implements a Sparse Merkle Sum Tree (SMST), the documentation for which can be found [here](./MerkleSumTree.md).
+
+## Versioned and Immutable Trees
+
+This library provides a versioned tree that allows for multiple versions of the same SMT to be stored and used for historical queries. The documentation for which can be found [here](./VersionedTree.md).
 
 ## Example
 
