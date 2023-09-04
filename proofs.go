@@ -3,6 +3,7 @@ package smt
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"math"
 )
@@ -13,16 +14,34 @@ var ErrBadProof = errors.New("bad proof")
 // SparseMerkleProof is a Merkle proof for an element in a SparseMerkleTree.
 type SparseMerkleProof struct {
 	// SideNodes is an array of the sibling nodes leading up to the leaf of the proof.
-	SideNodes [][]byte
+	SideNodes [][]byte `json:"side_nodes"`
 
 	// NonMembershipLeafData is the data of the unrelated leaf at the position
 	// of the key being proven, in the case of a non-membership proof. For
 	// membership proofs, is nil.
-	NonMembershipLeafData []byte
+	NonMembershipLeafData []byte `json:"non_membership_leaf_data"`
 
 	// SiblingData is the data of the sibling node to the leaf being proven,
 	// required for updatable proofs. For unupdatable proofs, is nil.
-	SiblingData []byte
+	SiblingData []byte `json:"sibling_data"`
+}
+
+// MarshalJSON implements the json.Marshaler interface for SparseMerkleProof
+func (proof *SparseMerkleProof) MarshalJSON() ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	enc := json.NewEncoder(buf)
+	err := enc.Encode(proof)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface for SparseMerkleProof.
+func (proof *SparseMerkleProof) UnmarshalJSON(bz []byte) error {
+	buf := bytes.NewBuffer(bz)
+	dec := json.NewDecoder(buf)
+	return dec.Decode(proof)
 }
 
 func (proof *SparseMerkleProof) sanityCheck(spec *TreeSpec) bool {
@@ -57,25 +76,43 @@ func (proof *SparseMerkleProof) sanityCheck(spec *TreeSpec) bool {
 // SparseCompactMerkleProof is a compact Merkle proof for an element in a SparseMerkleTree.
 type SparseCompactMerkleProof struct {
 	// SideNodes is an array of the sibling nodes leading up to the leaf of the proof.
-	SideNodes [][]byte
+	SideNodes [][]byte `json:"side_nodes"`
 
 	// NonMembershipLeafData is the data of the unrelated leaf at the position
 	// of the key being proven, in the case of a non-membership proof. For
 	// membership proofs, is nil.
-	NonMembershipLeafData []byte
+	NonMembershipLeafData []byte `json:"non_membership_leaf_data"`
 
 	// BitMask, in the case of a compact proof, is a bit mask of the sidenodes
 	// of the proof where an on-bit indicates that the sidenode at the bit's
 	// index is a placeholder. This is only set if the proof is compact.
-	BitMask []byte
+	BitMask []byte `json:"bit_mask"`
 
 	// NumSideNodes, in the case of a compact proof, indicates the number of
 	// sidenodes in the proof when decompacted. This is only set if the proof is compact.
-	NumSideNodes int
+	NumSideNodes int `json:"num_side_nodes"`
 
 	// SiblingData is the data of the sibling node to the leaf being proven,
 	// required for updatable proofs. For unupdatable proofs, is nil.
-	SiblingData []byte
+	SiblingData []byte `json:"sibling_data"`
+}
+
+// MarshalJSON implements the json.Marshaler interface for SparseCompactMerkleProof
+func (proof *SparseCompactMerkleProof) MarshalJSON() ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	enc := json.NewEncoder(buf)
+	err := enc.Encode(proof)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface for SparseCompactMerkleProof
+func (proof *SparseCompactMerkleProof) UnmarshalJSON(bz []byte) error {
+	buf := bytes.NewBuffer(bz)
+	dec := json.NewDecoder(buf)
+	return dec.Decode(proof)
 }
 
 func (proof *SparseCompactMerkleProof) sanityCheck(spec *TreeSpec) bool {
