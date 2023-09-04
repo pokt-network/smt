@@ -26,8 +26,8 @@ type SparseMerkleProof struct {
 	SiblingData []byte `json:"sibling_data"`
 }
 
-// MarshalJSON implements the json.Marshaler interface for SparseMerkleProof
-func (proof *SparseMerkleProof) MarshalJSON() ([]byte, error) {
+// Marshal serialises the SparseMerkleProof to bytes
+func (proof *SparseMerkleProof) Marshal() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(buf)
 	err := enc.Encode(proof)
@@ -37,8 +37,8 @@ func (proof *SparseMerkleProof) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// UnmarshalJSON implements the json.Unmarshaler interface for SparseMerkleProof.
-func (proof *SparseMerkleProof) UnmarshalJSON(bz []byte) error {
+// Unmarshal deserialises the SparseMerkleProof from bytes
+func (proof *SparseMerkleProof) Unmarshal(bz []byte) error {
 	buf := bytes.NewBuffer(bz)
 	dec := json.NewDecoder(buf)
 	return dec.Decode(proof)
@@ -97,8 +97,8 @@ type SparseCompactMerkleProof struct {
 	SiblingData []byte `json:"sibling_data"`
 }
 
-// MarshalJSON implements the json.Marshaler interface for SparseCompactMerkleProof
-func (proof *SparseCompactMerkleProof) MarshalJSON() ([]byte, error) {
+// Marshal serialises the SparseCompactMerkleProof to bytes
+func (proof *SparseCompactMerkleProof) Marshal() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(buf)
 	err := enc.Encode(proof)
@@ -108,8 +108,8 @@ func (proof *SparseCompactMerkleProof) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// UnmarshalJSON implements the json.Unmarshaler interface for SparseCompactMerkleProof
-func (proof *SparseCompactMerkleProof) UnmarshalJSON(bz []byte) error {
+// Unmarshal deserialises the SparseCompactMerkleProof from bytes
+func (proof *SparseCompactMerkleProof) Unmarshal(bz []byte) error {
 	buf := bytes.NewBuffer(bz)
 	dec := json.NewDecoder(buf)
 	return dec.Decode(proof)
