@@ -154,7 +154,7 @@ func setupTree(t *testing.T) *SMT {
 	db, err := NewKVStore("")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		db.Stop()
+		require.NoError(t, db.Stop())
 	})
 
 	tree := NewSparseMerkleTree(db, sha256.New())

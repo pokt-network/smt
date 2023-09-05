@@ -30,8 +30,7 @@ type SparseMerkleProof struct {
 func (proof *SparseMerkleProof) Marshal() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(buf)
-	err := enc.Encode(proof)
-	if err != nil {
+	if err := enc.Encode(proof); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -101,8 +100,7 @@ type SparseCompactMerkleProof struct {
 func (proof *SparseCompactMerkleProof) Marshal() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(buf)
-	err := enc.Encode(proof)
-	if err != nil {
+	if err := enc.Encode(proof); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
