@@ -3,10 +3,15 @@ package smt
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
+	"encoding/gob"
 	"errors"
 	"math"
 )
+
+func init() {
+	gob.Register(SparseMerkleProof{})
+	gob.Register(SparseCompactMerkleProof{})
+}
 
 // ErrBadProof is returned when an invalid Merkle proof is supplied.
 var ErrBadProof = errors.New("bad proof")
@@ -14,22 +19,22 @@ var ErrBadProof = errors.New("bad proof")
 // SparseMerkleProof is a Merkle proof for an element in a SparseMerkleTree.
 type SparseMerkleProof struct {
 	// SideNodes is an array of the sibling nodes leading up to the leaf of the proof.
-	SideNodes [][]byte `json:"side_nodes"`
+	SideNodes [][]byte
 
 	// NonMembershipLeafData is the data of the unrelated leaf at the position
 	// of the key being proven, in the case of a non-membership proof. For
 	// membership proofs, is nil.
-	NonMembershipLeafData []byte `json:"non_membership_leaf_data"`
+	NonMembershipLeafData []byte
 
 	// SiblingData is the data of the sibling node to the leaf being proven,
 	// required for updatable proofs. For unupdatable proofs, is nil.
-	SiblingData []byte `json:"sibling_data"`
+	SiblingData []byte
 }
 
 // Marshal serialises the SparseMerkleProof to bytes
 func (proof *SparseMerkleProof) Marshal() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
-	enc := json.NewEncoder(buf)
+	enc := gob.NewEncoder(buf)
 	if err := enc.Encode(proof); err != nil {
 		return nil, err
 	}
@@ -39,7 +44,7 @@ func (proof *SparseMerkleProof) Marshal() ([]byte, error) {
 // Unmarshal deserialises the SparseMerkleProof from bytes
 func (proof *SparseMerkleProof) Unmarshal(bz []byte) error {
 	buf := bytes.NewBuffer(bz)
-	dec := json.NewDecoder(buf)
+	dec := gob.NewDecoder(buf)
 	return dec.Decode(proof)
 }
 
@@ -75,31 +80,31 @@ func (proof *SparseMerkleProof) sanityCheck(spec *TreeSpec) bool {
 // SparseCompactMerkleProof is a compact Merkle proof for an element in a SparseMerkleTree.
 type SparseCompactMerkleProof struct {
 	// SideNodes is an array of the sibling nodes leading up to the leaf of the proof.
-	SideNodes [][]byte `json:"side_nodes"`
+	SideNodes [][]byte
 
 	// NonMembershipLeafData is the data of the unrelated leaf at the position
 	// of the key being proven, in the case of a non-membership proof. For
 	// membership proofs, is nil.
-	NonMembershipLeafData []byte `json:"non_membership_leaf_data"`
+	NonMembershipLeafData []byte
 
 	// BitMask, in the case of a compact proof, is a bit mask of the sidenodes
 	// of the proof where an on-bit indicates that the sidenode at the bit's
 	// index is a placeholder. This is only set if the proof is compact.
-	BitMask []byte `json:"bit_mask"`
+	BitMask []byte
 
 	// NumSideNodes, in the case of a compact proof, indicates the number of
 	// sidenodes in the proof when decompacted. This is only set if the proof is compact.
-	NumSideNodes int `json:"num_side_nodes"`
+	NumSideNodes int
 
 	// SiblingData is the data of the sibling node to the leaf being proven,
 	// required for updatable proofs. For unupdatable proofs, is nil.
-	SiblingData []byte `json:"sibling_data"`
+	SiblingData []byte
 }
 
 // Marshal serialises the SparseCompactMerkleProof to bytes
 func (proof *SparseCompactMerkleProof) Marshal() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
-	enc := json.NewEncoder(buf)
+	enc := gob.NewEncoder(buf)
 	if err := enc.Encode(proof); err != nil {
 		return nil, err
 	}
@@ -109,7 +114,7 @@ func (proof *SparseCompactMerkleProof) Marshal() ([]byte, error) {
 // Unmarshal deserialises the SparseCompactMerkleProof from bytes
 func (proof *SparseCompactMerkleProof) Unmarshal(bz []byte) error {
 	buf := bytes.NewBuffer(bz)
-	dec := json.NewDecoder(buf)
+	dec := gob.NewDecoder(buf)
 	return dec.Decode(proof)
 }
 
