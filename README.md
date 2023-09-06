@@ -322,32 +322,32 @@ import (
 )
 
 func main() {
-	// Initialise a new in-memory key-value store to store the nodes of the tree
-	// (Note: the tree only stores hashed values, not raw value data)
-	nodeStore := smt.NewKVStore("")
+    // Initialise a new in-memory key-value store to store the nodes of the tree
+    // (Note: the tree only stores hashed values, not raw value data)
+    nodeStore := smt.NewKVStore("")
 
     // Ensure the database connection closes
     defer nodeStore.Stop()
 
-	// Initialise the tree
-	tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
+    // Initialise the tree
+    tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
 
-	// Update the key "foo" with the value "bar"
-	_ = tree.Update([]byte("foo"), []byte("bar"))
+    // Update the key "foo" with the value "bar"
+    _ = tree.Update([]byte("foo"), []byte("bar"))
 
     // Commit the changes to the node store
     _ = tree.Commit()
 
 	// Generate a Merkle proof for "foo"
-	proof, _ := tree.Prove([]byte("foo"))
-	root := tree.Root() // We also need the current tree root for the proof
+    proof, _ := tree.Prove([]byte("foo"))
+    root := tree.Root() // We also need the current tree root for the proof
 
-	// Verify the Merkle proof for "foo"="bar"
-	if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), tree.Spec()) {
-		fmt.Println("Proof verification succeeded.")
-	} else {
-		fmt.Println("Proof verification failed.")
-	}
+    // Verify the Merkle proof for "foo"="bar"
+    if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), tree.Spec()) {
+        fmt.Println("Proof verification succeeded.")
+    } else {
+        fmt.Println("Proof verification failed.")
+    }
 }
 ```
 
