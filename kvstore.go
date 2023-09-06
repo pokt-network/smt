@@ -24,8 +24,6 @@ type KVStore interface {
 	Restore(io.Reader) error
 
 	// Accessors
-	// TODO: Add a proper iterator interface
-	// TODO: Add pagination for `GetAll`
 	GetAll(prefixKey []byte, descending bool) (keys, values [][]byte, err error)
 	Exists(key []byte) (bool, error)
 	ClearAll() error
