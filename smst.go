@@ -84,6 +84,24 @@ func (smst *SMST) Prove(key []byte) (*SparseMerkleProof, error) {
 	return smst.SMT.Prove(key)
 }
 
+// ProveClosest generates a SparseMerkleProof of inclusion for the key
+// with the most common bits as the path provided
+func (smst *SMST) ProveClosest(path []byte) (
+	closestKey, closestValueHash []byte,
+	closestSum uint64,
+	proof *SparseMerkleProof,
+	err error,
+) {
+	closestKey, valueHash, proof, err := smst.SMT.ProveClosest(path)
+	if err != nil {
+		return nil, nil, 0, nil, err
+	}
+	closestValueHash = valueHash[:len(valueHash)-sumSize]
+	sumBz := valueHash[len(valueHash)-sumSize:]
+	closestSum = binary.BigEndian.Uint64(sumBz)
+	return closestKey, closestValueHash, closestSum, proof, nil
+}
+
 // Commit persists all dirty nodes in the tree, deletes all orphaned
 // nodes from the database and then computes and saves the root hash
 func (smst *SMST) Commit() error {
