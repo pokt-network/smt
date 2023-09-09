@@ -21,31 +21,9 @@ The `KVStore` interface is a key-value store that is used by the `SMT` and `SMST
 
 The `KVStore` is implemented in [`kvstore.go`](./kvstore.go) and is a wrapper around the [BadgerDB](https://github.com/dgraph-io/badger) key-value database.
 
-The interface defines simple key-value store accessor methods as well as other methods desired from a key-value database in general.
+The interface defines simple key-value store accessor methods as well as other methods desired from a key-value database in general, this can be found in [`kvstore.go`](./kvstore.go).
 
-```go
-type KVStore interface {
-	// Store methods
-	Get(key []byte) ([]byte, error)
-	Set(key, value []byte) error
-	Delete(key []byte) error
-
-	// Lifecycle methods
-	Stop() error
-
-	// Data methods
-	Backup(writer io.Writer, incremental bool) error
-	Restore(io.Reader) error
-
-	// Accessors
-	GetAll(prefixKey []byte, descending bool) (keys, values [][]byte, err error)
-	Exists(key []byte) (bool, error)
-	ClearAll() error
-	Len() int
-}
-```
-
-_NOTE: The `KVStore` interface can be implemented by another key-value store that satisfies the interface and used as the database for the `SM(S)T`_
+_NOTE: The `KVStore` interface can be implemented by any key-value store that satisfies the interface and used as the underlying database store for the `SM(S)T`_
 
 ### In-Memory and Persistent
 
