@@ -3,15 +3,9 @@ package smt
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 	"errors"
 	"math"
 )
-
-func init() {
-	gob.Register(SparseMerkleProof{})
-	gob.Register(SparseCompactMerkleProof{})
-}
 
 // ErrBadProof is returned when an invalid Merkle proof is supplied.
 var ErrBadProof = errors.New("bad proof")
@@ -29,23 +23,6 @@ type SparseMerkleProof struct {
 	// SiblingData is the data of the sibling node to the leaf being proven,
 	// required for updatable proofs. For unupdatable proofs, is nil.
 	SiblingData []byte
-}
-
-// Marshal serialises the SparseMerkleProof to bytes
-func (proof *SparseMerkleProof) Marshal() ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(proof); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-// Unmarshal deserialises the SparseMerkleProof from bytes
-func (proof *SparseMerkleProof) Unmarshal(bz []byte) error {
-	buf := bytes.NewBuffer(bz)
-	dec := gob.NewDecoder(buf)
-	return dec.Decode(proof)
 }
 
 func (proof *SparseMerkleProof) sanityCheck(spec *TreeSpec) bool {
@@ -99,23 +76,6 @@ type SparseCompactMerkleProof struct {
 	// SiblingData is the data of the sibling node to the leaf being proven,
 	// required for updatable proofs. For unupdatable proofs, is nil.
 	SiblingData []byte
-}
-
-// Marshal serialises the SparseCompactMerkleProof to bytes
-func (proof *SparseCompactMerkleProof) Marshal() ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(proof); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-// Unmarshal deserialises the SparseCompactMerkleProof from bytes
-func (proof *SparseCompactMerkleProof) Unmarshal(bz []byte) error {
-	buf := bytes.NewBuffer(bz)
-	dec := gob.NewDecoder(buf)
-	return dec.Decode(proof)
 }
 
 func (proof *SparseCompactMerkleProof) sanityCheck(spec *TreeSpec) bool {
