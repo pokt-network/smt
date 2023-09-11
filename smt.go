@@ -377,8 +377,17 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	return proof, nil
 }
 
-// ProveClosest generates a SparseMerkleProof of inclusion for the key
-// with the most common bits as the path provided
+// ProveClosest generates a SparseMerkleProof of inclusion for the first
+// key with the most common bits as the path provided.
+//
+// This method will follow the path provided until it hits a leaf node and then
+// exit. If the leaf is along the path it will produce an inclusion proof for
+// the key (and return the key-value internal pair) as they share a common
+// prefix. If however, during the tree traversal according to the path, a nil
+// node is encountered, the traversal backsteps and flips the path bit for that
+// depth (ie tries left if it tried right and vice versa). This guarentees that
+// a proof of inclusion is found that has the most common bits with the path
+// provided, biased to the longest common prefix
 func (smt *SMT) ProveClosest(path []byte) (
 	closestPath, closestValueHash []byte, // the closest leaf info for the key provided
 	proof *SparseMerkleProof, // proof of the key-value pair found
@@ -391,16 +400,17 @@ func (smt *SMT) ProveClosest(path []byte) (
 
 	node := smt.tree
 	depth := 0
+	// continuously traverse the tree until we hit a leaf node
 	for depth < smt.depth() {
 		node, err = smt.resolveLazy(node)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		if node == nil && depth == 0 {
-			break // DISCUSS_IN_THIS_PR: I dont think this is even possible
-		}
+		// save current node information as "parent" info
 		parentDepth = depth
 		parent = node
+		// if we hit a nil node we must backstep and try the other child of the
+		// parent node (left -> right, right -> left)
 		if node == nil {
 			parent, err = smt.resolveLazy(parent)
 			if err != nil {
@@ -410,16 +420,19 @@ func (smt *SMT) ProveClosest(path []byte) (
 			if !ok {
 				panic("parent not inner node")
 			}
+			// trim the last sibling node added as it is no longer relavent
 			if len(siblings) > 0 {
 				siblings = siblings[:len(siblings)-1]
 			}
 			depth = parentDepth
+			// flip the path bit at the parent depth and select the other child
 			if GetPathBit(path, depth) == left {
 				node = inner.rightChild
 			} else {
 				node = inner.leftChild
 			}
 		}
+		// end traversal when we hit a leaf node
 		if _, ok := node.(*leafNode); ok {
 			break
 		}
@@ -451,10 +464,11 @@ func (smt *SMT) ProveClosest(path []byte) (
 	}
 
 	// Retrieve the closest path and value hash if found
-	if node != nil {
-		leaf := node.(*leafNode)
-		closestPath, closestValueHash = leaf.path, leaf.valueHash
+	if node == nil {
+		panic("no leaf node found")
 	}
+	leaf := node.(*leafNode)
+	closestPath, closestValueHash = leaf.path, leaf.valueHash
 	// Hash siblings from bottom up.
 	var sideNodes [][]byte
 	for i := range siblings {
