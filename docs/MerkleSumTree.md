@@ -27,9 +27,9 @@ _Note_: The Plasma Core Merkle Sum tree uses a 16 byte hex string to encode the 
 
 The majority of the code relating to the SMST can be found in:
 
-- [smst.go](./smst.go) - main SMT wrapper functionality
-- [hasher.go](./hasher.go) - SMST encoding functions
-- [types.go](./types.go) - SMST interfaces and node serialistion/hashing functions
+- [smst.go](../smst.go) - main SMT wrapper functionality
+- [hasher.go](../hasher.go) - SMST encoding functions
+- [types.go](../types.go) - SMST interfaces and node serialisation/hashing functions
 
 ### Sum Encoding
 
@@ -233,37 +233,37 @@ import (
 )
 
 func main() {
-    // Initialise a new in-memory key-value store to store the nodes of the tree
-    // (Note: the tree only stores hashed values, not raw value data)
-    nodeStore := smt.NewKVStore("")
+	// Initialise a new in-memory key-value store to store the nodes of the tree
+	// (Note: the tree only stores hashed values, not raw value data)
+	nodeStore := smt.NewKVStore("")
 
-    // Ensure the database connection closes
-    defer nodeStore.Stop()
+	// Ensure the database connection closes
+	defer nodeStore.Stop()
 
-    // Initialise the tree
-    tree := smt.NewSparseMerkleSumTree(nodeStore, sha256.New())
+	// Initialise the tree
+	tree := smt.NewSparseMerkleSumTree(nodeStore, sha256.New())
 
-    // Update tree with keys, values and their sums
-    _ = tree.Update([]byte("foo"), []byte("oof"), 10)
-    _ = tree.Update([]byte("baz"), []byte("zab"), 7)
-    _ = tree.Update([]byte("bin"), []byte("nib"), 3)
+	// Update tree with keys, values and their sums
+	_ = tree.Update([]byte("foo"), []byte("oof"), 10)
+	_ = tree.Update([]byte("baz"), []byte("zab"), 7)
+	_ = tree.Update([]byte("bin"), []byte("nib"), 3)
 
-    // Commit the changes to the nodeStore
-    _ = tree.Commit()
+	// Commit the changes to the nodeStore
+	_ = tree.Commit()
 
-    sum := tree.Sum()
-    fmt.Println(sum == 20) // true
+	sum := tree.Sum()
+	fmt.Println(sum == 20) // true
 
-    // Generate a Merkle proof for "foo"
-    proof, _ := tree.Prove([]byte("foo"))
-    root := tree.Root() // We also need the current tree root for the proof
+	// Generate a Merkle proof for "foo"
+	proof, _ := tree.Prove([]byte("foo"))
+	root := tree.Root() // We also need the current tree root for the proof
 
-    // Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-    if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, tree.Spec()); valid {
-   	    fmt.Println("Proof verification succeeded.")
-    } else {
-        fmt.Println("Proof verification failed.")
-    }
+	// Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
+	if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, tree.Spec()); valid {
+		fmt.Println("Proof verification succeeded.")
+	} else {
+		fmt.Println("Proof verification failed.")
+	}
 }
 ```
 
