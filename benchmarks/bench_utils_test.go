@@ -53,8 +53,6 @@ var (
 
 func setupSMT(b *testing.B, persistent bool, num int) *smt.SMT {
 	b.Helper()
-	b.ResetTimer()
-	b.StopTimer()
 	path := ""
 	if persistent {
 		path = b.TempDir()
@@ -93,8 +91,6 @@ func benchmarkSMT(b *testing.B, smt *smt.SMT, commit bool, fn func(*smt.SMT, []b
 
 func setupSMST(b *testing.B, persistent bool, num int) *smt.SMST {
 	b.Helper()
-	b.ResetTimer()
-	b.StopTimer()
 	path := ""
 	if persistent {
 		path = b.TempDir()
