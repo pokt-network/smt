@@ -54,6 +54,19 @@ In order to run the SMT filling benchmarks use the following command:
 go test -benchmem -bench=BenchmarkSparseMerkleTree_Fill ./benchmarks -timeout 0 -benchtime 10x
 ```
 
+| Benchmark Name       | Iterations | Time (ns/op)    | Bytes (B/op)    | Allocations (allocs/op) |
+| -------------------- | ---------- | --------------- | --------------- | ----------------------- |
+| Fill (0.1M)          | 10         | 162,967,196     | 159,479,499     | 2,371,598               |
+| Fill & Commit (0.1M) | 10         | 2,877,307,858   | 972,961,486     | 15,992,605              |
+| Fill (0.5M)          | 10         | 926,864,771     | 890,408,326     | 13,021,258              |
+| Fill & Commit (0.5M) | 10         | 16,043,430,012  | 5,640,034,396   | 82,075,720              |
+| Fill (1M)            | 10         | 2,033,616,088   | 1,860,523,968   | 27,041,639              |
+| Fill & Commit (1M)   | 10         | 32,617,249,642  | 12,655,347,004  | 166,879,661             |
+| Fill (5M)            | 10         | 12,502,309,738  | 10,229,139,731  | 146,821,675             |
+| Fill & Commit (5M)   | 10         | 175,421,250,979 | 78,981,342,709  | 870,235,579             |
+| Fill (10M)           | 10         | 29,718,092,496  | 21,255,245,031  | 303,637,210             |
+| Fill & Commit (10M)  | 10         | 396,142,675,962 | 173,053,933,624 | 1,775,304,977           |
+
 #### Operations
 
 In order to run the SMT operation benchmarks use the following command:
@@ -61,6 +74,39 @@ In order to run the SMT operation benchmarks use the following command:
 ```sh
 go test -benchmem -bench='BenchmarkSparseMerkleTree_(Update|Get|Prove|Delete)' ./benchmarks -timeout 0
 ```
+
+| Benchmark Name                    | Iterations | Time (ns/op) | Bytes (B/op) | Allocations (allocs/op) |
+| --------------------------------- | ---------- | ------------ | ------------ | ----------------------- |
+| Update (Prefilled: 0.1M)          | 740,618    | 1,350        | 1,753        | 25                      |
+| Update & Commit (Prefilled: 0.1M) | 21,022     | 54,665       | 13,110       | 281                     |
+| Update (Prefilled: 0.5M)          | 605,348    | 1,682        | 1,957        | 26                      |
+| Update & Commit (Prefilled: 0.5M) | 11,697     | 91,028       | 21,501       | 468                     |
+| Update (Prefilled: 1M)            | 545,701    | 1,890        | 2,112        | 28                      |
+| Update & Commit (Prefilled: 1M)   | 9,540      | 119,347      | 24,983       | 545                     |
+| Update (Prefilled: 5M)            | 466,688    | 2,226        | 2,453        | 31                      |
+| Update & Commit (Prefilled: 5M)   | 7,906      | 186,026      | 52,621       | 722                     |
+| Update (Prefilled: 10M)           | 284,580    | 5,263        | 2,658        | 33                      |
+| Update & Commit (Prefilled: 10M)  | 4,484      | 298,376      | 117,923      | 844                     |
+| Get (Prefilled: 0.1M)             | 3,923,601  | 303.2        | 48           | 3                       |
+| Get (Prefilled: 0.5M)             | 2,209,981  | 577.7        | 48           | 3                       |
+| Get (Prefilled: 1M)               | 1,844,431  | 661.6        | 48           | 3                       |
+| Get (Prefilled: 5M)               | 1,196,467  | 1,030        | 48           | 3                       |
+| Get (Prefilled: 10M)              | 970,195    | 2,667        | 48           | 3                       |
+| Prove (Prefilled: 0.1M)           | 829,801    | 1,496        | 2,177        | 17                      |
+| Prove (Prefilled: 0.5M)           | 610,402    | 1,835        | 2,747        | 17                      |
+| Prove (Prefilled: 1M)             | 605,799    | 1,905        | 2,728        | 17                      |
+| Prove (Prefilled: 5M)             | 566,930    | 2,129        | 2,731        | 17                      |
+| Prove (Prefilled: 10M)            | 458,472    | 7,113        | 2,735        | 17                      |
+| Delete (Prefilled: 0.1M)          | 12,081,112 | 96.18        | 50           | 3                       |
+| Delete & Commit (Prefilled: 0.1M) | 26,490     | 39,568       | 7,835        | 177                     |
+| Delete (Prefilled: 0.5M)          | 7,253,522  | 140.3        | 64           | 3                       |
+| Delete & Commit (Prefilled: 0.5M) | 12,766     | 80,518       | 16,696       | 376                     |
+| Delete (Prefilled: 1M)            | 1,624,569  | 629.6        | 196          | 4                       |
+| Delete & Commit (Prefilled: 1M)   | 9,811      | 135,606      | 20,254       | 456                     |
+| Delete (Prefilled: 5M)            | 856,424    | 1,400        | 443          | 6                       |
+| Delete & Commit (Prefilled: 5M)   | 8,431      | 151,107      | 74,133       | 626                     |
+| Delete (Prefilled: 10M)           | 545,876    | 4,173        | 556          | 6                       |
+| Delete & Commit (Prefilled: 10M)  | 3,916      | 271,332      | 108,396      | 772                     |
 
 ### SMST
 
@@ -78,6 +124,19 @@ In order to run the SMST filling benchmarks use the following command:
 go test -benchmem -bench=BenchmarkSparseMerkleSumTree_Fill ./benchmarks -timeout 0 -benchtime 10x
 ```
 
+| Benchmark Name       | Iterations | Time (ns/op)    | Bytes (B/op)    | Allocations (allocs/op) |
+| -------------------- | ---------- | --------------- | --------------- | ----------------------- |
+| Fill (0.1M)          | 10         | 157,951,888     | 165,878,234     | 2,471,593               |
+| Fill & Commit (0.1M) | 10         | 3,011,097,462   | 1,058,069,050   | 16,664,811              |
+| Fill (0.5M)          | 10         | 927,521,862     | 922,408,350     | 13,521,259              |
+| Fill & Commit (0.5M) | 10         | 15,338,199,979  | 6,533,439,773   | 85,880,046              |
+| Fill (1M)            | 10         | 1,982,756,162   | 1,924,516,467   | 28,041,610              |
+| Fill & Commit (1M)   | 10         | 31,197,517,821  | 14,874,342,889  | 175,474,251             |
+| Fill (5M)            | 10         | 12,054,370,871  | 10,549,075,488  | 151,821,423             |
+| Fill & Commit (5M)   | 10         | 176,912,009,238 | 89,667,234,678  | 914,653,740             |
+| Fill (10M)           | 10         | 26,859,672,362  | 21,894,837,504  | 313,635,611             |
+| Fill & Commit (10M)  | 10         | 490,805,535,617 | 197,997,807,905 | 1,865,882,489           |
+
 #### Operations
 
 In order to run the SMST operation benchmarks use the following command:
@@ -88,33 +147,33 @@ go test -benchmem -bench='BenchmarkSparseMerkleSumTree_(Update|Get|Prove|Delete)
 
 | Benchmark Name                    | Iterations | Time (ns/op) | Bytes (B/op) | Allocations (allocs/op) |
 | --------------------------------- | ---------- | ------------ | ------------ | ----------------------- |
-| Update (Prefilled: 0.1M)          | 913760     | 1477         | 1843         | 25                      |
-| Update & Commit (Prefilled: 0.1M) | 20318      | 49705        | 13440        | 256                     |
-| Update (Prefilled: 0.5M)          | 687813     | 1506         | 1965         | 27                      |
-| Update & Commit (Prefilled: 0.5M) | 14526      | 83295        | 37604        | 428                     |
-| Update (Prefilled: 1M)            | 630310     | 1679         | 2076         | 28                      |
-| Update & Commit (Prefilled: 1M)   | 11678      | 122568       | 25760        | 501                     |
-| Update (Prefilled: 5M)            | 644193     | 1850         | 2378         | 31                      |
-| Update & Commit (Prefilled: 5M)   | 6214       | 184533       | 60755        | 723                     |
-| Update (Prefilled: 10M)           | 231714     | 4962         | 2616         | 33                      |
-| Update & Commit (Prefilled: 10M)  | 4284       | 279893       | 77377        | 830                     |
-| Get (Prefilled: 0.1M)             | 3924031    | 281.3        | 40           | 2                       |
-| Get (Prefilled: 0.5M)             | 2080167    | 559.6        | 40           | 2                       |
-| Get (Prefilled: 1M)               | 1609478    | 718.6        | 40           | 2                       |
-| Get (Prefilled: 5M)               | 1015630    | 1105         | 40           | 2                       |
-| Get (Prefilled: 10M)              | 352980     | 2949         | 40           | 2                       |
-| Prove (Prefilled: 0.1M)           | 717380     | 1692         | 2344         | 18                      |
-| Prove (Prefilled: 0.5M)           | 618265     | 1972         | 3040         | 19                      |
-| Prove (Prefilled: 1M)             | 567594     | 2117         | 3044         | 19                      |
-| Prove (Prefilled: 5M)             | 446062     | 2289         | 3045         | 19                      |
-| Prove (Prefilled: 10M)            | 122347     | 11215        | 3046         | 19                      |
-| Delete (Prefilled: 0.1M)          | 1000000    | 1022         | 1110         | 7                       |
-| Delete & Commit (Prefilled: 0.1M) | 1000000    | 1039         | 1110         | 7                       |
-| Delete (Prefilled: 0.5M)          | 1046163    | 1159         | 1548         | 7                       |
-| Delete & Commit (Prefilled: 0.5M) | 907071     | 1143         | 1548         | 7                       |
-| Delete (Prefilled: 1M)            | 852918     | 1246         | 1552         | 8                       |
-| Delete & Commit (Prefilled: 1M)   | 807847     | 1303         | 1552         | 8                       |
-| Delete (Prefilled: 5M)            | 625662     | 1604         | 1552         | 8                       |
-| Delete & Commit (Prefilled: 5M)   | 864432     | 1382         | 1552         | 8                       |
-| Delete (Prefilled: 10M)           | 232544     | 4618         | 1552         | 8                       |
-| Delete & Commit (Prefilled: 10M)  | 224767     | 5048         | 1552         | 8                       |
+| Update (Prefilled: 0.1M)          | 913,760    | 1,477        | 1,843        | 25                      |
+| Update & Commit (Prefilled: 0.1M) | 20,318     | 49,705       | 13,440       | 256                     |
+| Update (Prefilled: 0.5M)          | 687,813    | 1,506        | 1,965        | 27                      |
+| Update & Commit (Prefilled: 0.5M) | 14,526     | 83,295       | 37,604       | 428                     |
+| Update (Prefilled: 1M)            | 630,310    | 1,679        | 2,076        | 28                      |
+| Update & Commit (Prefilled: 1M)   | 11,678     | 122,568      | 25,760       | 501                     |
+| Update (Prefilled: 5M)            | 644,193    | 1,850        | 2,378        | 31                      |
+| Update & Commit (Prefilled: 5M)   | 6,214      | 184,533      | 60,755       | 723                     |
+| Update (Prefilled: 10M)           | 231,714    | 4,962        | 2,616        | 33                      |
+| Update & Commit (Prefilled: 10M)  | 4,284      | 279,893      | 77,377       | 830                     |
+| Get (Prefilled: 0.1M)             | 3,924,031  | 281.3        | 40           | 2                       |
+| Get (Prefilled: 0.5M)             | 2,080,167  | 559.6        | 40           | 2                       |
+| Get (Prefilled: 1M)               | 1,609,478  | 718.6        | 40           | 2                       |
+| Get (Prefilled: 5M)               | 1,015,630  | 1,105        | 40           | 2                       |
+| Get (Prefilled: 10M)              | 352,980    | 2,949        | 40           | 2                       |
+| Prove (Prefilled: 0.1M)           | 717,380    | 1,692        | 2,344        | 18                      |
+| Prove (Prefilled: 0.5M)           | 618,265    | 1,972        | 3,040        | 19                      |
+| Prove (Prefilled: 1M)             | 567,594    | 2,117        | 3,044        | 19                      |
+| Prove (Prefilled: 5M)             | 446,062    | 2,289        | 3,045        | 19                      |
+| Prove (Prefilled: 10M)            | 122,347    | 11,215       | 3,046        | 19                      |
+| Delete (Prefilled: 0.1M)          | 1,000,000  | 1,022        | 1,110        | 7                       |
+| Delete & Commit (Prefilled: 0.1M) | 1,000,000  | 1,039        | 1,110        | 7                       |
+| Delete (Prefilled: 0.5M)          | 1,046,163  | 1,159        | 1,548        | 7                       |
+| Delete & Commit (Prefilled: 0.5M) | 907,071    | 1,143        | 1,548        | 7                       |
+| Delete (Prefilled: 1M)            | 852,918    | 1,246        | 1,552        | 8                       |
+| Delete & Commit (Prefilled: 1M)   | 807,847    | 1,303        | 1,552        | 8                       |
+| Delete (Prefilled: 5M)            | 625,662    | 1,604        | 1,552        | 8                       |
+| Delete & Commit (Prefilled: 5M)   | 864,432    | 1,382        | 1,552        | 8                       |
+| Delete (Prefilled: 10M)           | 232,544    | 4,618        | 1,552        | 8                       |
+| Delete & Commit (Prefilled: 10M)  | 224,767    | 5,048        | 1,552        | 8                       |
