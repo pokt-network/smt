@@ -36,7 +36,7 @@ Benchmarks for the different aspects of this SMT library can be found in [benchm
 go test -benchmem -run=^$ -bench Benchmark ./benchmarks -timeout 0
 ```
 
-_NOTE: Unless otherwise stated the benchmarks in this document were ran on a 2023 14-inch Macbook Pro M2 Max with 32GB of RAM._
+_NOTE: Unless otherwise stated the benchmarks in this document were ran on a 2023 14-inch Macbook Pro M2 Max with 32GB of RAM. The trees tested are using the `sha256.New()` hasher._
 
 ### SMT
 
@@ -177,3 +177,31 @@ go test -benchmem -bench='BenchmarkSparseMerkleSumTree_(Update|Get|Prove|Delete)
 | Delete & Commit (Prefilled: 5M)   | 864,432    | 1,382        | 1,552        | 8                       |
 | Delete (Prefilled: 10M)           | 232,544    | 4,618        | 1,552        | 8                       |
 | Delete & Commit (Prefilled: 10M)  | 224,767    | 5,048        | 1,552        | 8                       |
+
+### Proofs
+
+To run the tests to average the proof size for numerous prefilled trees use the following command:
+
+```sh
+go test -v ./benchmarks -run ProofSizes
+```
+
+#### SMT
+
+| Prefilled Size | Average Serialised Proof Size (bytes) | Min (bytes) | Max (bytes) | Average Serialised Compacted Proof Size (bytes) | Min (bytes) | Max (bytes) |
+|----------------|---------------------------------------|-------------|-------------|-------------------------------------------------|-------------|-------------|
+| 100,000        | 780                                   | 650         | 1310        | 790                                             | 692         | 925         |
+| 500,000        | 856                                   | 716         | 1475        | 866                                             | 758         | 1024        |
+| 1,000,000      | 890                                   | 716         | 1475        | 900                                             | 758         | 1057        |
+| 5,000,000      | 966                                   | 815         | 1739        | 976                                             | 858         | 1156        |
+| 10,000,000     | 999                                   | 848         | 1739        | 1010                                            | 891         | 1189        |
+
+#### SMST
+
+| Prefilled Size | Average Serialised Proof Size (bytes) | Min (bytes) | Max (bytes) | Average Serialised Compacted Proof Size (bytes) | Min (bytes) | Max (bytes) |
+|----------------|---------------------------------------|-------------|-------------|-------------------------------------------------|-------------|-------------|
+| 100,000        | 935                                   | 780         | 1590        | 937                                             | 822         | 1101        |
+| 500,000        | 1030                                  | 862         | 1795        | 1032                                            | 904         | 1224        |
+| 1,000,000      | 1071                                  | 868         | 1795        | 1073                                            | 910         | 1265        |
+| 5,000,000      | 1166                                  | 975         | 2123        | 1169                                            | 1018        | 1388        |
+| 10,000,000     | 1207                                  | 1026        | 2123        | 1210                                            | 1059        | 1429        |
