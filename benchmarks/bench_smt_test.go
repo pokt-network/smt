@@ -80,17 +80,17 @@ func BenchmarkSparseMerkleTree_Fill(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMT(b, tc.persistent, tc.treeSize)
+			tree := setupSMT(b, tc.persistent, tc.treeSize)
 			b.ResetTimer()
 			b.StartTimer()
 			b.ReportAllocs()
 			for n := 0; n < b.N; n++ {
 				for i := 0; i < tc.treeSize; i++ {
 					s := strconv.Itoa(i)
-					require.NoError(b, smt.Update([]byte(s), []byte(s)))
+					require.NoError(b, tree.Update([]byte(s), []byte(s)))
 				}
 				if tc.commit {
-					require.NoError(b, smt.Commit())
+					require.NoError(b, tree.Commit())
 				}
 			}
 			b.StopTimer()
@@ -181,8 +181,8 @@ func BenchmarkSparseMerkleTree_Update(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMT(b, tc.persistent, tc.treeSize)
-			benchmarkSMT(b, smt, tc.commit, tc.fn)
+			tree := setupSMT(b, tc.persistent, tc.treeSize)
+			benchmarkSMT(b, tree, tc.commit, tc.fn)
 		})
 	}
 }
@@ -235,8 +235,8 @@ func BenchmarkSparseMerkleTree_Get(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMT(b, tc.persistent, tc.treeSize)
-			benchmarkSMT(b, smt, tc.commit, tc.fn)
+			tree := setupSMT(b, tc.persistent, tc.treeSize)
+			benchmarkSMT(b, tree, tc.commit, tc.fn)
 		})
 	}
 }
@@ -289,8 +289,8 @@ func BenchmarkSparseMerkleTree_Prove(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMT(b, tc.persistent, tc.treeSize)
-			benchmarkSMT(b, smt, tc.commit, tc.fn)
+			tree := setupSMT(b, tc.persistent, tc.treeSize)
+			benchmarkSMT(b, tree, tc.commit, tc.fn)
 		})
 	}
 }
@@ -378,8 +378,8 @@ func BenchmarkSparseMerkleTree_Delete(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMT(b, tc.persistent, tc.treeSize)
-			benchmarkSMT(b, smt, tc.commit, tc.fn)
+			tree := setupSMT(b, tc.persistent, tc.treeSize)
+			benchmarkSMT(b, tree, tc.commit, tc.fn)
 		})
 	}
 }

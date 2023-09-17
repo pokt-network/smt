@@ -80,17 +80,17 @@ func BenchmarkSparseMerkleSumTree_Fill(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMST(b, tc.persistent, tc.treeSize)
+			tree := setupSMST(b, tc.persistent, tc.treeSize)
 			b.ResetTimer()
 			b.StartTimer()
 			b.ReportAllocs()
 			for n := 0; n < b.N; n++ {
 				for i := 0; i < tc.treeSize; i++ {
 					s := strconv.Itoa(i)
-					require.NoError(b, smt.Update([]byte(s), []byte(s), uint64(i)))
+					require.NoError(b, tree.Update([]byte(s), []byte(s), uint64(i)))
 				}
 				if tc.commit {
-					require.NoError(b, smt.Commit())
+					require.NoError(b, tree.Commit())
 				}
 			}
 			b.StopTimer()
@@ -181,8 +181,8 @@ func BenchmarkSparseMerkleSumTree_Update(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMST(b, tc.persistent, tc.treeSize)
-			benchmarkSMST(b, smt, tc.commit, tc.fn)
+			tree := setupSMST(b, tc.persistent, tc.treeSize)
+			benchmarkSMST(b, tree, tc.commit, tc.fn)
 		})
 	}
 }
@@ -235,8 +235,8 @@ func BenchmarkSparseMerkleSumTree_Get(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMST(b, tc.persistent, tc.treeSize)
-			benchmarkSMST(b, smt, tc.commit, tc.fn)
+			tree := setupSMST(b, tc.persistent, tc.treeSize)
+			benchmarkSMST(b, tree, tc.commit, tc.fn)
 		})
 	}
 }
@@ -289,8 +289,8 @@ func BenchmarkSparseMerkleSumTree_Prove(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMST(b, tc.persistent, tc.treeSize)
-			benchmarkSMST(b, smt, tc.commit, tc.fn)
+			tree := setupSMST(b, tc.persistent, tc.treeSize)
+			benchmarkSMST(b, tree, tc.commit, tc.fn)
 		})
 	}
 }
@@ -378,8 +378,8 @@ func BenchmarkSparseMerkleSumTree_Delete(b *testing.B) {
 	for _, tc := range testCases {
 		b.ResetTimer()
 		b.Run(tc.name, func(b *testing.B) {
-			smt := setupSMST(b, tc.persistent, tc.treeSize)
-			benchmarkSMST(b, smt, tc.commit, tc.fn)
+			tree := setupSMST(b, tc.persistent, tc.treeSize)
+			benchmarkSMST(b, tree, tc.commit, tc.fn)
 		})
 	}
 }
