@@ -176,7 +176,7 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 }
 
 func TestSMST_ProveClosest(t *testing.T) {
-	var smn *SimpleMap
+	var smn KVStore
 	var smst *SMST
 	var proof *SparseMerkleProof
 	var result bool
@@ -184,7 +184,8 @@ func TestSMST_ProveClosest(t *testing.T) {
 	var closestSum uint64
 	var err error
 
-	smn = NewSimpleMap()
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
 	smst = NewSparseMerkleSumTree(smn, sha256.New())
 
 	// insert random values

@@ -157,14 +157,15 @@ func TestSMT_ProofsSanityCheck(t *testing.T) {
 }
 
 func TestSMT_ProveClosest(t *testing.T) {
-	var smn *SimpleMap
+	var smn KVStore
 	var smt *SMT
 	var proof *SparseMerkleProof
 	var result bool
 	var root, closestKey, closestValueHash []byte
 	var err error
 
-	smn = NewSimpleMap()
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
 	smt = NewSparseMerkleTree(smn, sha256.New())
 
 	require.NoError(t, smt.Update([]byte("foo"), []byte("bar")))
