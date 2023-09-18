@@ -2,16 +2,16 @@
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  - [In-Memory and Persistent](#in-memory-and-persistent)
-  - [Store methods](#store-methods)
-  - [Lifecycle Methods](#lifecycle-methods)
-  - [Data Methods](#data-methods)
-    - [Backups](#backups)
-    - [Restorations](#restorations)
-  - [Accessor Methods](#accessor-methods)
-    - [Prefixed and Sorted Get All](#prefixed-and-sorted-get-all)
-    - [Clear All Key-Value Pairs](#clear-all-key-value-pairs)
-    - [Len](#len)
+	- [In-Memory and Persistent](#in-memory-and-persistent)
+	- [Store methods](#store-methods)
+	- [Lifecycle Methods](#lifecycle-methods)
+	- [Data Methods](#data-methods)
+		- [Backups](#backups)
+		- [Restorations](#restorations)
+	- [Accessor Methods](#accessor-methods)
+		- [Prefixed and Sorted Get All](#prefixed-and-sorted-get-all)
+		- [Clear All Key-Value Pairs](#clear-all-key-value-pairs)
+		- [Len](#len)
 
 ## Overview
 
@@ -21,7 +21,7 @@ The `KVStore` interface is a key-value store that is used by the `SMT` and `SMST
 
 The `KVStore` is implemented in [`kvstore.go`](./kvstore.go) and is a wrapper around the [BadgerDB](https://github.com/dgraph-io/badger) key-value database.
 
-The interface defines simple key-value store accessor methods as well as other methods desired from a key-value database in general.
+The interface defines simple key-value store accessor methods as well as other methods desired from a key-value database in general, this can be found in [`kvstore.go`](./kvstore.go).
 
 ```go
 type KVStore interface {
@@ -45,7 +45,7 @@ type KVStore interface {
 }
 ```
 
-_NOTE: The `KVStore` interface can be implemented by another key-value store that satisfies the interface and used as the database for the `SM(S)T`_
+_NOTE: The `KVStore` interface can be implemented by any key-value store that satisfies the interface and used as the underlying database store for the `SM(S)T`_
 
 ### In-Memory and Persistent
 

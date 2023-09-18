@@ -2,11 +2,11 @@
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  - [Sum Encoding](#sum-encoding)
-  - [Digests](#digests)
-  - [Visualisations](#visualisations)
-    - [General Tree Structure](#general-tree-structure)
-    - [Binary Sum Digests](#binary-sum-digests)
+	- [Sum Encoding](#sum-encoding)
+	- [Digests](#digests)
+	- [Visualisations](#visualisations)
+		- [General Tree Structure](#general-tree-structure)
+		- [Binary Sum Digests](#binary-sum-digests)
 - [Sum](#sum)
 - [Nil Values](#nil-values)
 - [Example](#example)
@@ -237,33 +237,33 @@ func main() {
 	// (Note: the tree only stores hashed values, not raw value data)
 	nodeStore := smt.NewKVStore("")
 
-    // Ensure the database connection closes
-    defer nodeStore.Stop()
+	// Ensure the database connection closes
+	defer nodeStore.Stop()
 
 	// Initialise the tree
 	tree := smt.NewSparseMerkleSumTree(nodeStore, sha256.New())
 
-	// Update tree with keys, values and their sums
-	_ = tree.Update([]byte("foo"), []byte("oof"), 10)
-	_ = tree.Update([]byte("baz"), []byte("zab"), 7)
-	_ = tree.Update([]byte("bin"), []byte("nib"), 3)
+  // Update tree with keys, values and their sums
+  _ = tree.Update([]byte("foo"), []byte("oof"), 10)
+  _ = tree.Update([]byte("baz"), []byte("zab"), 7)
+  _ = tree.Update([]byte("bin"), []byte("nib"), 3)
 
-    // Commit the changes to the nodeStore
-    _ = tree.Commit()
+  // Commit the changes to the nodeStore
+  _ = tree.Commit()
 
-	sum := tree.Sum()
-	fmt.Println(sum == 20) // true
+  sum := tree.Sum()
+  fmt.Println(sum == 20) // true
 
-	// Generate a Merkle proof for "foo"
-	proof, _ := tree.Prove([]byte("foo"))
-	root := tree.Root() // We also need the current tree root for the proof
+  // Generate a Merkle proof for "foo"
+  proof, _ := tree.Prove([]byte("foo"))
+  root := tree.Root() // We also need the current tree root for the proof
 
-	// Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-	if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, tree.Spec()); valid {
-		fmt.Println("Proof verification succeeded.")
-	} else {
-		fmt.Println("Proof verification failed.")
-	}
+  // Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
+  if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, tree.Spec()); valid {
+    fmt.Println("Proof verification succeeded.")
+  } else {
+    fmt.Println("Proof verification failed.")
+  }
 }
 ```
 
