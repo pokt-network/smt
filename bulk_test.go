@@ -32,7 +32,10 @@ func TestBulkOperations(t *testing.T) {
 
 // Test all tree operations in bulk, with specified ratio probabilities of insert, update and delete.
 func bulkOperations(t *testing.T, operations int, insert int, update int, delete int) {
-	smn, smv := NewSimpleMap(), NewSimpleMap()
+	smn, err := NewKVStore("")
+	require.NoError(t, err)
+	smv, err := NewKVStore("")
+	require.NoError(t, err)
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 
 	max := insert + update + delete
@@ -85,7 +88,10 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			kv[ki].val = defaultValue
 		}
 	}
+
 	bulkCheckAll(t, smt, kv)
+	require.NoError(t, smn.Stop())
+	require.NoError(t, smv.Stop())
 }
 
 func bulkCheckAll(t *testing.T, smt *SMTWithStorage, kv []bulkop) {

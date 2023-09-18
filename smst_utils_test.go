@@ -5,16 +5,18 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+
+	"github.com/dgraph-io/badger/v4"
 )
 
 // SMSTWithStorage wraps an SMST with a mapping of value hashes to values with sums (preimages), for use in tests.
 // Note: this doesn't delete from preimages (inputs to hashing functions), since there could be duplicate stored values.
 type SMSTWithStorage struct {
 	*SMST
-	preimages MapStore
+	preimages KVStore
 }
 
-// Update updates a key with a new value in the tree and adds the value to the preimages MapStore
+// Update updates a key with a new value in the tree and adds the value to the preimages KVStore
 func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
@@ -35,16 +37,18 @@ func (smst *SMSTWithStorage) Delete(key []byte) error {
 }
 
 // GetValueSum returns the value and sum of the key stored in the tree, by looking up
-// the value hash in the preimages MapStore and extracting the sum
+// the value hash in the preimages KVStore and extracting the sum
 func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	valueHash, sum, err := smst.Get(key)
 	if err != nil {
 		return nil, 0, err
 	}
+	if valueHash == nil {
+		return nil, 0, nil
+	}
 	value, err := smst.preimages.Get(valueHash)
 	if err != nil {
-		var invalidKeyError *InvalidKeyError
-		if errors.As(err, &invalidKeyError) {
+		if errors.Is(err, badger.ErrKeyNotFound) {
 			// If key isn't found, return default value and sum
 			return defaultValue, 0, nil
 		} else {

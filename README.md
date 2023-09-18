@@ -6,27 +6,27 @@
 [![Tests](https://github.com/pokt-network/smt/actions/workflows/test.yml/badge.svg)](https://github.com/pokt-network/smt/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/pokt-network/smt/branch/main/graph/badge.svg)](https://codecov.io/gh/pokt-network/smt)
 
-Note: **Requires Go 1.18+**
+Note: **Requires Go 1.19+**
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-	- [Inner Nodes](#inner-nodes)
-	- [Extension Nodes](#extension-nodes)
-	- [Leaf Nodes](#leaf-nodes)
-	- [Lazy Nodes](#lazy-nodes)
-	- [Lazy Loading](#lazy-loading)
-	- [Visualisations](#visualisations)
-		- [General Tree Structure](#general-tree-structure)
-		- [Lazy Nodes](#lazy-nodes-1)
+  - [Inner Nodes](#inner-nodes)
+  - [Extension Nodes](#extension-nodes)
+  - [Leaf Nodes](#leaf-nodes)
+  - [Lazy Nodes](#lazy-nodes)
+  - [Lazy Loading](#lazy-loading)
+  - [Visualisations](#visualisations)
+    - [General Tree Structure](#general-tree-structure)
+    - [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
-	- [Visualisation](#visualisation)
+  - [Visualisation](#visualisation)
 - [Values](#values)
-	- [Nil values](#nil-values)
+  - [Nil values](#nil-values)
 - [Hashers \& Digests](#hashers--digests)
 - [Proofs](#proofs)
-	- [Verification](#verification)
+  - [Verification](#verification)
 - [Database](#database)
-	- [Data Loss](#data-loss)
+  - [Data Loss](#data-loss)
 - [Sparse Merkle Sum Tree](#sparse-merkle-sum-tree)
 - [Example](#example)
 
@@ -295,19 +295,11 @@ The verification step simply uses the proof data to recompute the root hash with
 
 ## Database
 
-This library defines the `MapStore` interface, in [mapstore.go](./mapstore.go)
-
-```go
-type MapStore interface {
-	Get(key []byte) ([]byte, error)
-	Set(key []byte, value []byte) error
-	Delete(key []byte) error
-}
-```
-
-This interface abstracts the `SimpleMap` key-value store and can be used by the SMT to store the nodes of the tree. Any key-value store that implements the `MapStore` interface can be used with this library.
+This library defines the `KVStore` interface which by default is implemented using [BadgerDB](https://github.com/dgraph-io/badger), however any databse that implements this interface can be used as a drop in replacement. The `KVStore` allows for both in memory and persisted databases to be used to store the nodes for the SMT.
 
 When changes are commited to the underlying database using `Commit()` the digests of the leaf nodes are stored at their respective paths. If retrieved manually from the database the returned value will be the digest of the leaf node, **not** the leaf node's value, even when `WithValueHasher(nil)` is used. The node value can be parsed from this value, as the tree `Get` function does by removing the prefix and path bytes from the returned value.
+
+See [KVStore.md](./KVStore.md) for the details of the implementation.
 
 ### Data Loss
 
@@ -330,26 +322,32 @@ import (
 )
 
 func main() {
-	// Initialise a new key-value store to store the nodes of the tree
-	// (Note: the tree only stores hashed values, not raw value data)
-	nodeStore := smt.NewSimpleMap()
+    // Initialise a new in-memory key-value store to store the nodes of the tree
+    // (Note: the tree only stores hashed values, not raw value data)
+    nodeStore := smt.NewKVStore("")
 
-	// Initialise the tree
-	tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
+    // Ensure the database connection closes
+    defer nodeStore.Stop()
 
-	// Update the key "foo" with the value "bar"
-	_ = tree.Update([]byte("foo"), []byte("bar"))
+    // Initialise the tree
+    tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
+
+    // Update the key "foo" with the value "bar"
+    _ = tree.Update([]byte("foo"), []byte("bar"))
+
+    // Commit the changes to the node store
+    _ = tree.Commit()
 
 	// Generate a Merkle proof for "foo"
-	proof, _ := tree.Prove([]byte("foo"))
-	root := tree.Root() // We also need the current tree root for the proof
+    proof, _ := tree.Prove([]byte("foo"))
+    root := tree.Root() // We also need the current tree root for the proof
 
-	// Verify the Merkle proof for "foo"="bar"
-	if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), tree.Spec()) {
-		fmt.Println("Proof verification succeeded.")
-	} else {
-		fmt.Println("Proof verification failed.")
-	}
+    // Verify the Merkle proof for "foo"="bar"
+    if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), tree.Spec()) {
+        fmt.Println("Proof verification succeeded.")
+    } else {
+        fmt.Println("Proof verification failed.")
+    }
 }
 ```
 

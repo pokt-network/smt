@@ -233,31 +233,37 @@ import (
 )
 
 func main() {
-	// Initialise a new key-value store to store the nodes of the tree
-	// (Note: the tree only stores hashed values, not raw value data)
-	nodeStore := smt.NewSimpleMap()
+    // Initialise a new in-memory key-value store to store the nodes of the tree
+    // (Note: the tree only stores hashed values, not raw value data)
+    nodeStore := smt.NewKVStore("")
 
-	// Initialise the tree
-	tree := smt.NewSparseMerkleSumTree(nodeStore, sha256.New())
+    // Ensure the database connection closes
+    defer nodeStore.Stop()
 
-	// Update tree with keys, values and their sums
-	_ = tree.Update([]byte("foo"), []byte("oof"), 10)
-	_ = tree.Update([]byte("baz"), []byte("zab"), 7)
-	_ = tree.Update([]byte("bin"), []byte("nib"), 3)
+    // Initialise the tree
+    tree := smt.NewSparseMerkleSumTree(nodeStore, sha256.New())
 
-	sum := tree.Sum()
-	fmt.Println(sum == 20) // true
+    // Update tree with keys, values and their sums
+    _ = tree.Update([]byte("foo"), []byte("oof"), 10)
+    _ = tree.Update([]byte("baz"), []byte("zab"), 7)
+    _ = tree.Update([]byte("bin"), []byte("nib"), 3)
 
-	// Generate a Merkle proof for "foo"
-	proof, _ := tree.Prove([]byte("foo"))
-	root := tree.Root() // We also need the current tree root for the proof
+    // Commit the changes to the nodeStore
+    _ = tree.Commit()
 
-	// Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-	if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, tree.Spec()); valid {
-		fmt.Println("Proof verification succeeded.")
-	} else {
-		fmt.Println("Proof verification failed.")
-	}
+    sum := tree.Sum()
+    fmt.Println(sum == 20) // true
+
+    // Generate a Merkle proof for "foo"
+    proof, _ := tree.Prove([]byte("foo"))
+    root := tree.Root() // We also need the current tree root for the proof
+
+    // Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
+    if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, tree.Spec()); valid {
+   	    fmt.Println("Proof verification succeeded.")
+    } else {
+        fmt.Println("Proof verification failed.")
+    }
 }
 ```
 
