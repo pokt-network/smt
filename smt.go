@@ -409,7 +409,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 		// save current node information as "parent" info
 		parentDepth = depth
 		parent = node
-		// if we hit a nil node we must backstep and try the other child of the
+		// if we hit a nil node we must back-step and try the other child of the
 		// parent node (left -> right, right -> left)
 		if node == nil {
 			parent, err = smt.resolveLazy(parent)
@@ -420,7 +420,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			if !ok {
 				panic("parent not inner node")
 			}
-			// trim the last sibling node added as it is no longer relavent
+			// trim the last sibling node added as it is no longer relevant
 			if len(siblings) > 0 {
 				siblings = siblings[:len(siblings)-1]
 			}
@@ -459,7 +459,6 @@ func (smt *SMT) ProveClosest(path []byte) (
 			node, sib = inner.rightChild, inner.leftChild
 		}
 		siblings = append(siblings, sib)
-
 		depth += 1
 	}
 

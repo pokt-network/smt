@@ -17,7 +17,8 @@ func WithValueHasher(vh ValueHasher) Option {
 
 // NoPrehashSpec returns a new TreeSpec that has a nil Value and Path Hasher
 // NOTE: This should only be used when values are already hashed and a path is
-// used instead of a key during proof verification
+// used instead of a key during proof verification, otherwise these will be
+// double hashed and produce an incorrect leaf digest invalidating the proof.
 func NoPrehashSpec(hasher hash.Hash, sumTree bool) *TreeSpec {
 	spec := newTreeSpec(hasher, sumTree)
 	opt := WithPathHasher(newNilPathHasher(hasher.Size()))
