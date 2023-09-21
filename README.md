@@ -43,7 +43,7 @@ _NOTE: Unless otherwise stated the benchmarks in this document were ran on a 202
 In order to run the SMT benchmarks use the following command:
 
 ```sh
-go test -benchmem -bench=BenchmarkSparseMerkleTree ./benchmarks -timeout 0
+go test -benchmem -run=^$ -bench=BenchmarkSparseMerkleTree ./benchmarks -timeout 0
 ```
 
 #### Fill
@@ -51,7 +51,7 @@ go test -benchmem -bench=BenchmarkSparseMerkleTree ./benchmarks -timeout 0
 In order to run the SMT filling benchmarks use the following command:
 
 ```sh
-go test -benchmem -bench=BenchmarkSparseMerkleTree_Fill ./benchmarks -timeout 0 -benchtime 10x
+go test -benchmem -run=^$ -bench=BenchmarkSparseMerkleTree_Fill ./benchmarks -timeout 0 -benchtime 10x
 ```
 
 | Benchmark Name       | Iterations | Time (ns/op)    | Bytes (B/op)    | Allocations (allocs/op) |
@@ -72,7 +72,7 @@ go test -benchmem -bench=BenchmarkSparseMerkleTree_Fill ./benchmarks -timeout 0 
 In order to run the SMT operation benchmarks use the following command:
 
 ```sh
-go test -benchmem -bench='BenchmarkSparseMerkleTree_(Update|Get|Prove|Delete)' ./benchmarks -timeout 0
+go test -benchmem -run=^$ -bench='BenchmarkSparseMerkleTree_(Update|Get|Prove|Delete)' ./benchmarks -timeout 0
 ```
 
 | Benchmark Name                    | Iterations | Time (ns/op) | Bytes (B/op) | Allocations (allocs/op) |
@@ -113,7 +113,7 @@ go test -benchmem -bench='BenchmarkSparseMerkleTree_(Update|Get|Prove|Delete)' .
 In order to run the SMST benchmarks use the following command:
 
 ```sh
-go test -benchmem -bench=BenchmarkSparseMerkleSumTree ./benchmarks -timeout 0
+go test -benchmem -run=^$ -bench=BenchmarkSparseMerkleSumTree ./benchmarks -timeout 0
 ```
 
 #### Fill
@@ -121,7 +121,7 @@ go test -benchmem -bench=BenchmarkSparseMerkleSumTree ./benchmarks -timeout 0
 In order to run the SMST filling benchmarks use the following command:
 
 ```sh
-go test -benchmem -bench=BenchmarkSparseMerkleSumTree_Fill ./benchmarks -timeout 0 -benchtime 10x
+go test -benchmem -run=^$ -bench=BenchmarkSparseMerkleSumTree_Fill ./benchmarks -timeout 0 -benchtime 10x
 ```
 
 | Benchmark Name       | Iterations | Time (ns/op)    | Bytes (B/op)    | Allocations (allocs/op) |
@@ -142,7 +142,7 @@ go test -benchmem -bench=BenchmarkSparseMerkleSumTree_Fill ./benchmarks -timeout
 In order to run the SMST operation benchmarks use the following command:
 
 ```sh
-go test -benchmem -bench='BenchmarkSparseMerkleSumTree_(Update|Get|Prove|Delete)' ./benchmarks -timeout 0
+go test -benchmem -run=^$ -bench='BenchmarkSparseMerkleSumTree_(Update|Get|Prove|Delete)' ./benchmarks -timeout 0
 ```
 
 | Benchmark Name                    | Iterations | Time (ns/op) | Bytes (B/op) | Allocations (allocs/op) |
