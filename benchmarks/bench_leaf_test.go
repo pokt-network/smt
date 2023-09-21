@@ -17,31 +17,29 @@ func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 	for _, treeSize := range treeSizes {
 		for _, leafSize := range leafSizes {
 			leaf := make([]byte, leafSize)
-			tree := smt.NewSparseMerkleTree(nodes, sha256.New(), smt.WithValueHasher(nil))
-			b.ResetTimer()
-			b.Run(
-				fmt.Sprintf("Fill [Leaf Size: %d bytes] (%d)", leafSize, treeSize),
-				func(b *testing.B) {
-					b.ResetTimer()
-					b.ReportAllocs()
-					for i := 0; i < treeSize; i++ {
-						require.NoError(b, tree.Update([]byte(strconv.Itoa(i)), leaf))
-					}
-				},
-			)
-			b.ResetTimer()
-			b.Run(
-				fmt.Sprintf("Fill & Commit [Leaf Size: %d bytes] (%d)", leafSize, treeSize),
-				func(b *testing.B) {
-					b.ResetTimer()
-					b.ReportAllocs()
-					for i := 0; i < treeSize; i++ {
-						require.NoError(b, tree.Update([]byte(strconv.Itoa(i)), leaf))
-					}
-					require.NoError(b, tree.Commit())
-				},
-			)
-			require.NoError(b, nodes.ClearAll())
+			for i := 0; i < 2; i++ {
+				commit := i == 1
+				name := "Fill"
+				if commit {
+					name = "Fill & Commit"
+				}
+				tree := smt.NewSparseMerkleTree(nodes, sha256.New(), smt.WithValueHasher(nil))
+				b.ResetTimer()
+				b.Run(
+					fmt.Sprintf("%s [Leaf Size: %d bytes] (%d)", name, leafSize, treeSize),
+					func(b *testing.B) {
+						b.ResetTimer()
+						b.ReportAllocs()
+						for i := 0; i < treeSize; i++ {
+							require.NoError(b, tree.Update([]byte(strconv.Itoa(i)), leaf))
+						}
+						if commit {
+							require.NoError(b, tree.Commit())
+						}
+					},
+				)
+				require.NoError(b, nodes.ClearAll())
+			}
 		}
 	}
 	require.NoError(b, nodes.Stop())
