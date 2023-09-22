@@ -26,8 +26,6 @@ This is a Go library that implements a Sparse Merkle tree for a key-value map. T
 
 Documentation for the different aspects of this library can be found in the [docs](./docs/) directory.
 
-[libra whitepaper]: https://diem-developers-components.netlify.app/papers/the-diem-blockchain/2020-05-26.pdf
-
 ## Benchmarks
 
 Benchmarks for the different aspects of this SMT library can be found in [benchmarks](./benchmarks/). In order to run the entire benchmarking suite use the following command:
@@ -205,3 +203,5 @@ go test -v ./benchmarks -run ProofSizes
 | 1,000,000      | 1071                                  | 868         | 1795        | 1073                                            | 910         | 1265        |
 | 5,000,000      | 1166                                  | 975         | 2123        | 1169                                            | 1018        | 1388        |
 | 10,000,000     | 1207                                  | 1026        | 2123        | 1210                                            | 1059        | 1429        |
+
+[libra whitepaper]: https://diem-developers-components.netlify.app/papers/the-diem-blockchain/2020-05-26.pdf
