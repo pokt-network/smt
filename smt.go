@@ -393,7 +393,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 	proof *SparseMerkleProof, // proof of the key-value pair found
 	err error, // the error value encountered
 ) {
-	workingPath := make([]byte, len(path), len(path))
+	workingPath := make([]byte, len(path))
 	copy(workingPath, path)
 	var siblings []treeNode
 	var sib treeNode
@@ -427,6 +427,8 @@ func (smt *SMT) ProveClosest(path []byte) (
 			depth -= depthDelta
 			// flip the path bit at the parent depth
 			flipPathBit(workingPath, depth)
+		} else {
+			depthDelta = 0
 		}
 		// end traversal when we hit a leaf node
 		if _, ok := node.(*leafNode); ok {
@@ -439,7 +441,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 					siblings = append(siblings, nil)
 				}
 				depth += length
-				depthDelta = length
+				depthDelta += length
 				node = ext.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
@@ -457,7 +459,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 		}
 		siblings = append(siblings, sib)
 		depth += 1
-		depthDelta = 1
+		depthDelta += 1
 	}
 
 	// Retrieve the closest path and value hash if found
