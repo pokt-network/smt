@@ -393,56 +393,53 @@ func (smt *SMT) ProveClosest(path []byte) (
 	proof *SparseMerkleProof, // proof of the key-value pair found
 	err error, // the error value encountered
 ) {
+	workingPath := make([]byte, len(path), len(path))
+	copy(workingPath, path)
 	var siblings []treeNode
 	var sib treeNode
 	var parent treeNode
-	var parentDepth int
+	var depthDelta int
 
 	node := smt.tree
 	depth := 0
 	// continuously traverse the tree until we hit a leaf node
 	for depth < smt.depth() {
+		// save current node information as "parent" info
+		if node != nil {
+			parent = node
+		}
+		// resolve current node
 		node, err = smt.resolveLazy(node)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		// save current node information as "parent" info
-		parentDepth = depth
-		parent = node
-		// if we hit a nil node we must back-step and try the other child of the
-		// parent node (left -> right, right -> left)
+		// if we hit a nil node we backstep to the parent node and flip the path bit
+		// at the parent depth and select the other child
 		if node == nil {
-			parent, err = smt.resolveLazy(parent)
+			node, err = smt.resolveLazy(parent)
 			if err != nil {
 				return nil, nil, nil, err
-			}
-			inner, ok := parent.(*innerNode)
-			if !ok {
-				panic("parent not inner node")
 			}
 			// trim the last sibling node added as it is no longer relevant
 			if len(siblings) > 0 {
 				siblings = siblings[:len(siblings)-1]
 			}
-			depth = parentDepth
-			// flip the path bit at the parent depth and select the other child
-			if GetPathBit(path, depth) == left {
-				node = inner.rightChild
-			} else {
-				node = inner.leftChild
-			}
+			depth -= depthDelta
+			// flip the path bit at the parent depth
+			flipPathBit(workingPath, depth)
 		}
 		// end traversal when we hit a leaf node
 		if _, ok := node.(*leafNode); ok {
 			break
 		}
 		if ext, ok := node.(*extensionNode); ok {
-			length, match := ext.match(path, depth)
+			length, match := ext.match(workingPath, depth)
 			if match {
 				for i := 0; i < length; i++ {
 					siblings = append(siblings, nil)
 				}
 				depth += length
+				depthDelta = length
 				node = ext.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
@@ -453,13 +450,14 @@ func (smt *SMT) ProveClosest(path []byte) (
 			}
 		}
 		inner := node.(*innerNode)
-		if GetPathBit(path, depth) == left {
+		if GetPathBit(workingPath, depth) == left {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
 		}
 		siblings = append(siblings, sib)
 		depth += 1
+		depthDelta = 1
 	}
 
 	// Retrieve the closest path and value hash if found
@@ -749,6 +747,8 @@ func (ext *extensionNode) split(path []byte, depth int) (treeNode, *treeNode, in
 	return head, &b, index
 }
 
+// expand returns the inner node that represents the start of the singly
+// linked list that this extension node represents
 func (ext *extensionNode) expand() treeNode {
 	last := ext.child
 	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {

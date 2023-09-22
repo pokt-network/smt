@@ -37,6 +37,13 @@ func setPathBit(data []byte, position int) {
 	data[position/8] = byte(n)
 }
 
+// flipPathBit flips the bit at an offset from the most significant bit
+func flipPathBit(data []byte, position int) {
+	n := int(data[position/8])           // get index of byte containing the position
+	n ^= 1 << (8 - 1 - uint(position)%8) // XOR the bit within the byte at the position
+	data[position/8] = byte(n)
+}
+
 func countSetBits(data []byte) int {
 	count := 0
 	for i := 0; i < len(data)*8; i++ {
