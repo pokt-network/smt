@@ -15,7 +15,8 @@ func WithValueHasher(vh ValueHasher) Option {
 	return func(ts *TreeSpec) { ts.vh = vh }
 }
 
-// NoPrehashSpec returns a new TreeSpec that has a nil Value and Path Hasher
+// NoPrehashSpec returns a new TreeSpec that has a nil Value Hasher and a nil
+// Path Hasher
 // NOTE: This should only be used when values are already hashed and a path is
 // used instead of a key during proof verification, otherwise these will be
 // double hashed and produce an incorrect leaf digest invalidating the proof.

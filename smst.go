@@ -96,6 +96,9 @@ func (smst *SMST) ProveClosest(path []byte) (
 	if err != nil {
 		return nil, nil, 0, nil, err
 	}
+	if valueHash == nil {
+		return closestPath, nil, 0, proof, nil
+	}
 	closestValueHash = valueHash[:len(valueHash)-sumSize]
 	sumBz := valueHash[len(valueHash)-sumSize:]
 	closestSum = binary.BigEndian.Uint64(sumBz)

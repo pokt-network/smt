@@ -398,6 +398,9 @@ func (smt *SMT) ProveClosest(path []byte) (
 	var siblings []treeNode
 	var sib treeNode
 	var parent treeNode
+	// depthDelta is used to track the depth increase when traversing down the tree
+	// it is used when back-stepping to go back to the correct depth in the path
+	// if we hit a nil node during tree traversal
 	var depthDelta int
 
 	node := smt.tree
@@ -421,6 +424,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 				return nil, nil, nil, err
 			}
 			// trim the last sibling node added as it is no longer relevant
+			// due to back-stepping
 			if len(siblings) > 0 {
 				siblings = siblings[:len(siblings)-1]
 			}
@@ -428,6 +432,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			// flip the path bit at the parent depth
 			flipPathBit(workingPath, depth)
 		} else {
+			// reset depthDelta if node is non nil
 			depthDelta = 0
 		}
 		// end traversal when we hit a leaf node
@@ -436,7 +441,11 @@ func (smt *SMT) ProveClosest(path []byte) (
 		}
 		if ext, ok := node.(*extensionNode); ok {
 			length, match := ext.match(workingPath, depth)
+			// workingPath from depth to end of extension node's path bounds
+			// is a perfect match
 			if match {
+				// extension nodes represent a singly linked list of inner nodes
+				// add nil siblings to represent the empty neighbours
 				for i := 0; i < length; i++ {
 					siblings = append(siblings, nil)
 				}
@@ -451,7 +460,10 @@ func (smt *SMT) ProveClosest(path []byte) (
 				node = ext.expand()
 			}
 		}
-		inner := node.(*innerNode)
+		inner, ok := node.(*innerNode)
+		if !ok { // this can only happen for an empty tree
+			break
+		}
 		if GetPathBit(workingPath, depth) == left {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
@@ -463,10 +475,14 @@ func (smt *SMT) ProveClosest(path []byte) (
 	}
 
 	// Retrieve the closest path and value hash if found
-	if node == nil {
-		panic("no leaf node found")
+	if node == nil { // tree was empty
+		return placeholder(smt.Spec()), nil, &SparseMerkleProof{}, nil
 	}
-	leaf := node.(*leafNode)
+	leaf, ok := node.(*leafNode)
+	if !ok {
+		// if no leaf was found and the tree is not empty something went wrong
+		panic("expected leaf node")
+	}
 	closestPath, closestValueHash = leaf.path, leaf.valueHash
 	// Hash siblings from bottom up.
 	var sideNodes [][]byte
