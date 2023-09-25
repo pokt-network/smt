@@ -1,4 +1,4 @@
-BENCHMARKS_DIR = ./benchmarks
+.SILENT:
 
 .PHONY: test_all
 test_all:
