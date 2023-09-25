@@ -416,24 +416,26 @@ func (smt *SMT) ProveClosest(path []byte) (
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		// if we hit a nil node we backstep to the parent node and flip the path bit
-		// at the parent depth and select the other child
-		if node == nil {
+		if node != nil {
+			// reset depthDelta if node is non nil
+			depthDelta = 0
+		} else {
+			// if we hit a nil node we backstep to the parent node and flip the
+			// path bit at the parent depth and select the other child
 			node, err = smt.resolveLazy(parent)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 			// trim the last sibling node added as it is no longer relevant
-			// due to back-stepping
+			// due to back-stepping we are now going to traverse to the
+			// most recent sibling, including it here would result in an
+			// incorrect root hash when calculated
 			if len(siblings) > 0 {
 				siblings = siblings[:len(siblings)-1]
 			}
 			depth -= depthDelta
 			// flip the path bit at the parent depth
 			flipPathBit(workingPath, depth)
-		} else {
-			// reset depthDelta if node is non nil
-			depthDelta = 0
 		}
 		// end traversal when we hit a leaf node
 		if _, ok := node.(*leafNode); ok {
@@ -443,7 +445,9 @@ func (smt *SMT) ProveClosest(path []byte) (
 			length, match := ext.match(workingPath, depth)
 			// workingPath from depth to end of extension node's path bounds
 			// is a perfect match
-			if match {
+			if !match {
+				node = ext.expand()
+			} else {
 				// extension nodes represent a singly linked list of inner nodes
 				// add nil siblings to represent the empty neighbours
 				for i := 0; i < length; i++ {
@@ -456,8 +460,6 @@ func (smt *SMT) ProveClosest(path []byte) (
 				if err != nil {
 					return nil, nil, nil, err
 				}
-			} else {
-				node = ext.expand()
 			}
 		}
 		inner, ok := node.(*innerNode)
