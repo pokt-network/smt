@@ -51,7 +51,7 @@ var (
 	}
 )
 
-func setupSMT(b *testing.B, persistent bool, num int) *smt.SMT {
+func setupSMT(b *testing.B, persistent bool, numLeaves int) *smt.SMT {
 	b.Helper()
 	path := ""
 	if persistent {
@@ -60,7 +60,7 @@ func setupSMT(b *testing.B, persistent bool, num int) *smt.SMT {
 	nodes, err := smt.NewKVStore(path)
 	require.NoError(b, err)
 	tree := smt.NewSparseMerkleTree(nodes, sha256.New())
-	for i := 0; i < num; i++ {
+	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)
 		require.NoError(b, tree.Update([]byte(s), []byte(s)))
 	}
@@ -89,7 +89,7 @@ func benchmarkSMT(b *testing.B, tree *smt.SMT, commit bool, fn func(*smt.SMT, []
 	b.StopTimer()
 }
 
-func setupSMST(b *testing.B, persistent bool, num int) *smt.SMST {
+func setupSMST(b *testing.B, persistent bool, numLeaves int) *smt.SMST {
 	b.Helper()
 	path := ""
 	if persistent {
@@ -98,7 +98,7 @@ func setupSMST(b *testing.B, persistent bool, num int) *smt.SMST {
 	nodes, err := smt.NewKVStore(path)
 	require.NoError(b, err)
 	tree := smt.NewSparseMerkleSumTree(nodes, sha256.New())
-	for i := 0; i < num; i++ {
+	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)
 		require.NoError(b, tree.Update([]byte(s), []byte(s), uint64(i)))
 	}
