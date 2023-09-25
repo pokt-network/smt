@@ -176,7 +176,7 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 }
 
 // ProveClosest test against a visual representation of the tree
-// See: https://i.imgur.com/cPJObIy.png
+// See: https://github.com/pokt-network/smt/assets/53987565/2a2f33e0-f81f-41c5-bd76-af0cd1cd8f15
 func TestSMST_ProveClosest(t *testing.T) {
 	var smn KVStore
 	var smst *SMST
@@ -237,9 +237,11 @@ func TestSMST_ProveClosest(t *testing.T) {
 	require.Equal(t, closestPath[:], closestKey)
 	require.Equal(t, []byte("testValue4"), closestValueHash)
 	require.Equal(t, closestSum, uint64(30))
+
+	require.NoError(t, smn.Stop())
 }
 
-func TestSMST_ProveClosestEmpty(t *testing.T) {
+func TestSMST_ProveClosestEmptyAndOneNode(t *testing.T) {
 	var smn KVStore
 	var smst *SMST
 	var proof *SparseMerkleProof
@@ -260,4 +262,16 @@ func TestSMST_ProveClosestEmpty(t *testing.T) {
 
 	result := VerifySumProof(proof, smst.Root(), closestPath, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
 	require.True(t, result)
+
+	require.NoError(t, smst.Update([]byte("foo"), []byte("bar"), 5))
+	closestPath, closestValueHash, closestSum, proof, err = smst.ProveClosest(path[:])
+	require.NoError(t, err)
+	require.Equal(t, proof, &SparseMerkleProof{})
+	require.Equal(t, closestValueHash, []byte("bar"))
+	require.Equal(t, closestSum, uint64(5))
+
+	result = VerifySumProof(proof, smst.Root(), closestPath, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
+	require.True(t, result)
+
+	require.NoError(t, smn.Stop())
 }
