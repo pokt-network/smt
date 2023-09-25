@@ -184,10 +184,11 @@ func TestSMT_ProveClosest(t *testing.T) {
 
 	root = smt.Root()
 
-	// testKey2 is the child of an inner node which is the child of an extension node
-	// the extension node has the path bounds of [3, 7] by flipping these bits we force
-	// a double backstep to return to avoid nil nodes and find the closest key which is
-	// then testKey2
+	// `testKey2` is the child of an inner node, which is the child of an extension node.
+	// The extension node has the path bounds of [3, 7]. This means any bits between
+	// 3-6 can be flipped, and the resulting path would still traverse through the same
+	// extension node and lead to testKey2 - the closest key. However, flipping bit 7
+	// will lead to testKey4.
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
 	flipPathBit(path[:], 6)
