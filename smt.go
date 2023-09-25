@@ -114,7 +114,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 			}
 		}
 		inner := (*node).(*innerNode)
-		if GetPathBit(path, depth) == left {
+		if getPathBit(path, depth) == left {
 			node = &inner.leftChild
 		} else {
 			node = &inner.rightChild
@@ -172,7 +172,7 @@ func (smt *SMT) update(
 			*last = &ext
 			last = &ext.child
 		}
-		if GetPathBit(path, prefixlen) == left {
+		if getPathBit(path, prefixlen) == left {
 			*last = &innerNode{leftChild: newLeaf, rightChild: leaf}
 		} else {
 			*last = &innerNode{leftChild: leaf, rightChild: newLeaf}
@@ -195,7 +195,7 @@ func (smt *SMT) update(
 
 	inner := node.(*innerNode)
 	var child *treeNode
-	if GetPathBit(path, depth) == left {
+	if getPathBit(path, depth) == left {
 		child = &inner.leftChild
 	} else {
 		child = &inner.rightChild
@@ -266,7 +266,7 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 
 	inner := node.(*innerNode)
 	var child, sib *treeNode
-	if GetPathBit(path, depth) == left {
+	if getPathBit(path, depth) == left {
 		child, sib = &inner.leftChild, &inner.rightChild
 	} else {
 		child, sib = &inner.rightChild, &inner.leftChild
@@ -335,7 +335,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 			}
 		}
 		inner := node.(*innerNode)
-		if GetPathBit(path, depth) == left {
+		if getPathBit(path, depth) == left {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -466,7 +466,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 		if !ok { // this can only happen for an empty tree
 			break
 		}
-		if GetPathBit(workingPath, depth) == left {
+		if getPathBit(workingPath, depth) == left {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -689,7 +689,7 @@ func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
 		panic("depth != path_begin")
 	}
 	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if GetPathBit(ext.path, i) != GetPathBit(path, i) {
+		if getPathBit(ext.path, i) != getPathBit(path, i) {
 			return i - ext.pathStart(), false
 		}
 	}
@@ -700,7 +700,7 @@ func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
 func (ext *extensionNode) commonPrefix(path []byte) int {
 	count := 0
 	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if GetPathBit(ext.path, i) != GetPathBit(path, i) {
+		if getPathBit(ext.path, i) != getPathBit(path, i) {
 			break
 		}
 		count++
@@ -719,8 +719,8 @@ func (ext *extensionNode) split(path []byte, depth int) (treeNode, *treeNode, in
 	index := ext.pathStart()
 	var myBit, branchBit int
 	for ; index < ext.pathEnd(); index++ {
-		myBit = GetPathBit(ext.path, index)
-		branchBit = GetPathBit(path, index)
+		myBit = getPathBit(ext.path, index)
+		branchBit = getPathBit(path, index)
 		if myBit != branchBit {
 			break
 		}
@@ -773,7 +773,7 @@ func (ext *extensionNode) expand() treeNode {
 	last := ext.child
 	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {
 		var next innerNode
-		if GetPathBit(ext.path, i) == left {
+		if getPathBit(ext.path, i) == left {
 			next.leftChild = last
 		} else {
 			next.rightChild = last

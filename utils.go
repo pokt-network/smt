@@ -11,9 +11,9 @@ func newNilPathHasher(hashSize int) PathHasher {
 	return &nilPathHasher{hashSize: hashSize}
 }
 
-// GetPathBit gets the bit at an offset from the most significant bit
-// TODO: Unexport this method
-func GetPathBit(data []byte, position int) int {
+// getPathBit gets the bit at an offset (see position) in the data
+// provided relative to the most significant bit
+func getPathBit(data []byte, position int) int {
 	// get the byte at the position and then left shift one by the offset of the position
 	// from the leftmost bit in the byte. Check if the bitwise AND is the same
 	// Path: []byte{ {0 1 0 1 1 0 1 0}, {0 1 1 0 1 1 0 1}, {1 0 0 1 0 0 1 0} } (length = 24 bits / 3 bytes)
@@ -50,7 +50,7 @@ func flipPathBit(data []byte, position int) {
 func countSetBits(data []byte) int {
 	count := 0
 	for i := 0; i < len(data)*8; i++ {
-		if GetPathBit(data, i) == 1 {
+		if getPathBit(data, i) == 1 {
 			count++
 		}
 	}
@@ -61,7 +61,7 @@ func countSetBits(data []byte) int {
 func countCommonPrefix(data1, data2 []byte, from int) int {
 	count := 0
 	for i := from; i < len(data1)*8; i++ {
-		if GetPathBit(data1, i) == GetPathBit(data2, i) {
+		if getPathBit(data1, i) == getPathBit(data2, i) {
 			count++
 		} else {
 			break
