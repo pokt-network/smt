@@ -155,3 +155,100 @@ func TestSMT_ProofsSanityCheck(t *testing.T) {
 	require.NoError(t, smn.Stop())
 	require.NoError(t, smv.Stop())
 }
+
+// ProveClosest test against a visual representation of the tree
+// See: https://github.com/pokt-network/smt/assets/53987565/2c2ea530-a2e8-49d7-89c2-ca9c615b0c79
+func TestSMT_ProveClosest(t *testing.T) {
+	var smn KVStore
+	var smt *SMT
+	var proof *SparseMerkleProof
+	var result bool
+	var root, closestKey, closestValueHash []byte
+	var err error
+
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
+	smt = NewSparseMerkleTree(smn, sha256.New(), WithValueHasher(nil))
+
+	// insert some unrelated values to populate the tree
+	require.NoError(t, smt.Update([]byte("foo"), []byte("oof")))
+	require.NoError(t, smt.Update([]byte("bar"), []byte("rab")))
+	require.NoError(t, smt.Update([]byte("baz"), []byte("zab")))
+	require.NoError(t, smt.Update([]byte("bin"), []byte("nib")))
+	require.NoError(t, smt.Update([]byte("fiz"), []byte("zif")))
+	require.NoError(t, smt.Update([]byte("fob"), []byte("bof")))
+	require.NoError(t, smt.Update([]byte("testKey"), []byte("testValue")))
+	require.NoError(t, smt.Update([]byte("testKey2"), []byte("testValue2")))
+	require.NoError(t, smt.Update([]byte("testKey3"), []byte("testValue3")))
+	require.NoError(t, smt.Update([]byte("testKey4"), []byte("testValue4")))
+
+	root = smt.Root()
+
+	// `testKey2` is the child of an inner node, which is the child of an extension node.
+	// The extension node has the path bounds of [3, 7]. This means any bits between
+	// 3-6 can be flipped, and the resulting path would still traverse through the same
+	// extension node and lead to testKey2 - the closest key. However, flipping bit 7
+	// will lead to testKey4.
+	path := sha256.Sum256([]byte("testKey2"))
+	flipPathBit(path[:], 3)
+	flipPathBit(path[:], 6)
+	closestKey, closestValueHash, proof, err = smt.ProveClosest(path[:])
+	require.NoError(t, err)
+	require.NotEqual(t, proof, &SparseMerkleProof{})
+
+	result = VerifyProof(proof, root, closestKey, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	require.True(t, result)
+	closestPath := sha256.Sum256([]byte("testKey2"))
+	require.Equal(t, closestPath[:], closestKey)
+	require.Equal(t, []byte("testValue2"), closestValueHash)
+
+	// testKey4 is the neighbour of testKey2, by flipping the final bit of the
+	// extension node we change the longest common prefix to that of testKey4
+	path2 := sha256.Sum256([]byte("testKey2"))
+	flipPathBit(path2[:], 3)
+	flipPathBit(path2[:], 7)
+	closestKey, closestValueHash, proof, err = smt.ProveClosest(path2[:])
+	require.NoError(t, err)
+	require.NotEqual(t, proof, &SparseMerkleProof{})
+
+	result = VerifyProof(proof, root, closestKey, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	require.True(t, result)
+	closestPath = sha256.Sum256([]byte("testKey4"))
+	require.Equal(t, closestPath[:], closestKey)
+	require.Equal(t, []byte("testValue4"), closestValueHash)
+
+	require.NoError(t, smn.Stop())
+}
+
+func TestSMT_ProveClosestEmptyAndOneNode(t *testing.T) {
+	var smn KVStore
+	var smt *SMT
+	var proof *SparseMerkleProof
+	var err error
+	var closestPath, closestValueHash []byte
+
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
+	smt = NewSparseMerkleTree(smn, sha256.New(), WithValueHasher(nil))
+
+	path := sha256.Sum256([]byte("testKey2"))
+	flipPathBit(path[:], 3)
+	flipPathBit(path[:], 6)
+	closestPath, closestValueHash, proof, err = smt.ProveClosest(path[:])
+	require.NoError(t, err)
+	require.Equal(t, proof, &SparseMerkleProof{})
+
+	result := VerifyProof(proof, smt.Root(), closestPath, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	require.True(t, result)
+
+	require.NoError(t, smt.Update([]byte("foo"), []byte("bar")))
+	closestPath, closestValueHash, proof, err = smt.ProveClosest(path[:])
+	require.NoError(t, err)
+	require.Equal(t, proof, &SparseMerkleProof{})
+	require.Equal(t, closestValueHash, []byte("bar"))
+
+	result = VerifyProof(proof, smt.Root(), closestPath, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	require.True(t, result)
+
+	require.NoError(t, smn.Stop())
+}

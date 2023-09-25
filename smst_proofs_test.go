@@ -174,3 +174,105 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 	require.NoError(t, smn.Stop())
 	require.NoError(t, smv.Stop())
 }
+
+// ProveClosest test against a visual representation of the tree
+// See: https://github.com/pokt-network/smt/assets/53987565/2a2f33e0-f81f-41c5-bd76-af0cd1cd8f15
+func TestSMST_ProveClosest(t *testing.T) {
+	var smn KVStore
+	var smst *SMST
+	var proof *SparseMerkleProof
+	var result bool
+	var root, closestKey, closestValueHash []byte
+	var closestSum uint64
+	var err error
+
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
+	smst = NewSparseMerkleSumTree(smn, sha256.New(), WithValueHasher(nil))
+
+	// insert some unrelated values to populate the tree
+	require.NoError(t, smst.Update([]byte("foo"), []byte("oof"), 3))
+	require.NoError(t, smst.Update([]byte("bar"), []byte("rab"), 6))
+	require.NoError(t, smst.Update([]byte("baz"), []byte("zab"), 9))
+	require.NoError(t, smst.Update([]byte("bin"), []byte("nib"), 12))
+	require.NoError(t, smst.Update([]byte("fiz"), []byte("zif"), 15))
+	require.NoError(t, smst.Update([]byte("fob"), []byte("bof"), 18))
+	require.NoError(t, smst.Update([]byte("testKey"), []byte("testValue"), 21))
+	require.NoError(t, smst.Update([]byte("testKey2"), []byte("testValue2"), 24))
+	require.NoError(t, smst.Update([]byte("testKey3"), []byte("testValue3"), 27))
+	require.NoError(t, smst.Update([]byte("testKey4"), []byte("testValue4"), 30))
+
+	root = smst.Root()
+
+	// `testKey2` is the child of an inner node, which is the child of an extension node.
+	// The extension node has the path bounds of [3, 7]. This means any bits between
+	// 3-6 can be flipped, and the resulting path would still traverse through the same
+	// extension node and lead to testKey2 - the closest key. However, flipping bit 7
+	// will lead to testKey4.
+	path := sha256.Sum256([]byte("testKey2"))
+	flipPathBit(path[:], 3)
+	flipPathBit(path[:], 6)
+	closestKey, closestValueHash, closestSum, proof, err = smst.ProveClosest(path[:])
+	require.NoError(t, err)
+	require.NotEqual(t, proof, &SparseMerkleProof{})
+
+	result = VerifySumProof(proof, root, closestKey, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
+	require.True(t, result)
+	closestPath := sha256.Sum256([]byte("testKey2"))
+	require.Equal(t, closestPath[:], closestKey)
+	require.Equal(t, []byte("testValue2"), closestValueHash)
+	require.Equal(t, closestSum, uint64(24))
+
+	// testKey4 is the neighbour of testKey2, by flipping the final bit of the
+	// extension node we change the longest common prefix to that of testKey4
+	path2 := sha256.Sum256([]byte("testKey2"))
+	flipPathBit(path2[:], 3)
+	flipPathBit(path2[:], 7)
+	closestKey, closestValueHash, closestSum, proof, err = smst.ProveClosest(path2[:])
+	require.NoError(t, err)
+	require.NotEqual(t, proof, &SparseMerkleProof{})
+
+	result = VerifySumProof(proof, root, closestKey, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
+	require.True(t, result)
+	closestPath = sha256.Sum256([]byte("testKey4"))
+	require.Equal(t, closestPath[:], closestKey)
+	require.Equal(t, []byte("testValue4"), closestValueHash)
+	require.Equal(t, closestSum, uint64(30))
+
+	require.NoError(t, smn.Stop())
+}
+
+func TestSMST_ProveClosestEmptyAndOneNode(t *testing.T) {
+	var smn KVStore
+	var smst *SMST
+	var proof *SparseMerkleProof
+	var err error
+	var closestPath, closestValueHash []byte
+	var closestSum uint64
+
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
+	smst = NewSparseMerkleSumTree(smn, sha256.New(), WithValueHasher(nil))
+
+	path := sha256.Sum256([]byte("testKey2"))
+	flipPathBit(path[:], 3)
+	flipPathBit(path[:], 6)
+	closestPath, closestValueHash, closestSum, proof, err = smst.ProveClosest(path[:])
+	require.NoError(t, err)
+	require.Equal(t, proof, &SparseMerkleProof{})
+
+	result := VerifySumProof(proof, smst.Root(), closestPath, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
+	require.True(t, result)
+
+	require.NoError(t, smst.Update([]byte("foo"), []byte("bar"), 5))
+	closestPath, closestValueHash, closestSum, proof, err = smst.ProveClosest(path[:])
+	require.NoError(t, err)
+	require.Equal(t, proof, &SparseMerkleProof{})
+	require.Equal(t, closestValueHash, []byte("bar"))
+	require.Equal(t, closestSum, uint64(5))
+
+	result = VerifySumProof(proof, smst.Root(), closestPath, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
+	require.True(t, result)
+
+	require.NoError(t, smn.Stop())
+}

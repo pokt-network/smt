@@ -1,6 +1,18 @@
 package smt
 
+type nilPathHasher struct {
+	hashSize int
+}
+
+func (n *nilPathHasher) Path(key []byte) []byte { return key[:n.hashSize] }
+func (n *nilPathHasher) PathSize() int          { return n.hashSize }
+
+func newNilPathHasher(hashSize int) PathHasher {
+	return &nilPathHasher{hashSize: hashSize}
+}
+
 // GetPathBit gets the bit at an offset from the most significant bit
+// TODO: Unexport this method
 func GetPathBit(data []byte, position int) int {
 	// get the byte at the position and then left shift one by the offset of the position
 	// from the leftmost bit in the byte. Check if the bitwise AND is the same
@@ -19,10 +31,19 @@ func GetPathBit(data []byte, position int) int {
 	return 0
 }
 
-// setPathBit sets the bit at an offset from the most significant bit
+// setPathBit sets the bit at an offset (see position) in the data
+// provided relative to the most significant bit
 func setPathBit(data []byte, position int) {
 	n := int(data[position/8])
 	n |= 1 << (8 - 1 - uint(position)%8)
+	data[position/8] = byte(n)
+}
+
+// flipPathBit flips the bit at an offset (see position) in the data
+// provided relative to most significant bit
+func flipPathBit(data []byte, position int) {
+	n := int(data[position/8])           // get index of byte containing the position
+	n ^= 1 << (8 - 1 - uint(position)%8) // XOR the bit within the byte at the position
 	data[position/8] = byte(n)
 }
 
