@@ -142,6 +142,35 @@ func (proof *SparseCompactMerkleProof) sanityCheck(spec *TreeSpec) bool {
 	return true
 }
 
+// SparseMerkleClosestProof is a wrapper around a SparseMerkleProof that
+// represents the proof of the leaf with the closest path to the one provided.
+type SparseMerkleClosestProof struct {
+	Path             []byte             // the path provided to the ProveClosest method
+	FlippedBits      []int              // the index of the bits flipped in the path during tree traversal
+	Depth            int                // the depth of the tree when tree traversal stopped
+	ClosestPath      []byte             // the path of the leaf closest to the path provided
+	ClosestValueHash []byte             // the value hash of the leaf closest to the path provided
+	ClosestProof     *SparseMerkleProof // the proof of the leaf closest to the path provided
+}
+
+func (proof *SparseMerkleClosestProof) sanityCheck(spec *TreeSpec) bool {
+	workingPath := proof.Path
+	for _, i := range proof.FlippedBits {
+		flipPathBit(workingPath, i)
+	}
+	if prefix := countCommonPrefix(
+		workingPath[:proof.Depth/8],
+		proof.ClosestPath[:proof.Depth/8],
+		0,
+	); prefix != proof.Depth {
+		return false
+	}
+	if !proof.ClosestProof.sanityCheck(spec) {
+		return false
+	}
+	return true
+}
+
 // VerifyProof verifies a Merkle proof.
 func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TreeSpec) bool {
 	result, _ := verifyProofWithUpdates(proof, root, key, value, spec)
@@ -166,6 +195,23 @@ func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint6
 	nvh := WithValueHasher(nil)
 	nvh(smtSpec)
 	return VerifyProof(proof, root, key, valueHash, smtSpec)
+}
+
+// VerifyClosestProof verifies a Merkle proof for a proof of a leaf found to
+// have the closest path to the one provided to the proof function
+func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *TreeSpec) bool {
+	if !proof.sanityCheck(spec) {
+		return false
+	}
+	if !spec.sumTree {
+		return VerifyProof(proof.ClosestProof, root, proof.ClosestPath, proof.ClosestValueHash, spec)
+	}
+	if proof.ClosestValueHash == nil {
+		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, spec)
+	}
+	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSize:]
+	sum := binary.BigEndian.Uint64(sumBz)
+	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSize], sum, spec)
 }
 
 func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, value []byte, spec *TreeSpec) (bool, [][][]byte) {

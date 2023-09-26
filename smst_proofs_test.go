@@ -180,11 +180,11 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 func TestSMST_ProveClosest(t *testing.T) {
 	var smn KVStore
 	var smst *SMST
-	var proof *SparseMerkleProof
+	var proof *SparseMerkleClosestProof
 	var result bool
-	var root, closestKey, closestValueHash []byte
-	var closestSum uint64
+	var root []byte
 	var err error
+	var sumBz [sumSize]byte
 
 	smn, err = NewKVStore("")
 	require.NoError(t, err)
@@ -212,32 +212,48 @@ func TestSMST_ProveClosest(t *testing.T) {
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
 	flipPathBit(path[:], 6)
-	closestKey, closestValueHash, closestSum, proof, err = smst.ProveClosest(path[:])
+	proof, err = smst.ProveClosest(path[:])
 	require.NoError(t, err)
-	require.NotEqual(t, proof, &SparseMerkleProof{})
-
-	result = VerifySumProof(proof, root, closestKey, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
-	require.True(t, result)
+	require.NotEqual(t, proof, &SparseMerkleClosestProof{})
 	closestPath := sha256.Sum256([]byte("testKey2"))
-	require.Equal(t, closestPath[:], closestKey)
-	require.Equal(t, []byte("testValue2"), closestValueHash)
-	require.Equal(t, closestSum, uint64(24))
+	closestValueHash := []byte("testValue2")
+	binary.BigEndian.PutUint64(sumBz[:], 24)
+	closestValueHash = append(closestValueHash, sumBz[:]...)
+	require.Equal(t, proof, &SparseMerkleClosestProof{
+		Path:             path[:],
+		FlippedBits:      []int{3, 6},
+		Depth:            8,
+		ClosestPath:      closestPath[:],
+		ClosestValueHash: closestValueHash,
+		ClosestProof:     proof.ClosestProof, // copy of proof as we are checking equality of other fields
+	})
+
+	result = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), true))
+	require.True(t, result)
 
 	// testKey4 is the neighbour of testKey2, by flipping the final bit of the
 	// extension node we change the longest common prefix to that of testKey4
 	path2 := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path2[:], 3)
 	flipPathBit(path2[:], 7)
-	closestKey, closestValueHash, closestSum, proof, err = smst.ProveClosest(path2[:])
+	proof, err = smst.ProveClosest(path2[:])
 	require.NoError(t, err)
-	require.NotEqual(t, proof, &SparseMerkleProof{})
-
-	result = VerifySumProof(proof, root, closestKey, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
-	require.True(t, result)
+	require.NotEqual(t, proof, &SparseMerkleClosestProof{})
 	closestPath = sha256.Sum256([]byte("testKey4"))
-	require.Equal(t, closestPath[:], closestKey)
-	require.Equal(t, []byte("testValue4"), closestValueHash)
-	require.Equal(t, closestSum, uint64(30))
+	closestValueHash = []byte("testValue4")
+	binary.BigEndian.PutUint64(sumBz[:], 30)
+	closestValueHash = append(closestValueHash, sumBz[:]...)
+	require.Equal(t, proof, &SparseMerkleClosestProof{
+		Path:             path2[:],
+		FlippedBits:      []int{3},
+		Depth:            8,
+		ClosestPath:      closestPath[:],
+		ClosestValueHash: closestValueHash,
+		ClosestProof:     proof.ClosestProof, // copy of proof as we are checking equality of other fields
+	})
+
+	result = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), true))
+	require.True(t, result)
 
 	require.NoError(t, smn.Stop())
 }
@@ -245,10 +261,8 @@ func TestSMST_ProveClosest(t *testing.T) {
 func TestSMST_ProveClosestEmptyAndOneNode(t *testing.T) {
 	var smn KVStore
 	var smst *SMST
-	var proof *SparseMerkleProof
+	var proof *SparseMerkleClosestProof
 	var err error
-	var closestPath, closestValueHash []byte
-	var closestSum uint64
 
 	smn, err = NewKVStore("")
 	require.NoError(t, err)
@@ -257,21 +271,37 @@ func TestSMST_ProveClosestEmptyAndOneNode(t *testing.T) {
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
 	flipPathBit(path[:], 6)
-	closestPath, closestValueHash, closestSum, proof, err = smst.ProveClosest(path[:])
+	proof, err = smst.ProveClosest(path[:])
 	require.NoError(t, err)
-	require.Equal(t, proof, &SparseMerkleProof{})
+	require.Equal(t, proof, &SparseMerkleClosestProof{
+		Path:         path[:],
+		FlippedBits:  []int{0},
+		Depth:        0,
+		ClosestPath:  placeholder(smst.Spec()),
+		ClosestProof: &SparseMerkleProof{},
+	})
 
-	result := VerifySumProof(proof, smst.Root(), closestPath, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
+	result := VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
 	require.True(t, result)
 
 	require.NoError(t, smst.Update([]byte("foo"), []byte("bar"), 5))
-	closestPath, closestValueHash, closestSum, proof, err = smst.ProveClosest(path[:])
+	proof, err = smst.ProveClosest(path[:])
 	require.NoError(t, err)
-	require.Equal(t, proof, &SparseMerkleProof{})
-	require.Equal(t, closestValueHash, []byte("bar"))
-	require.Equal(t, closestSum, uint64(5))
+	closestPath := sha256.Sum256([]byte("foo"))
+	closestValueHash := []byte("bar")
+	var sumBz [sumSize]byte
+	binary.BigEndian.PutUint64(sumBz[:], 5)
+	closestValueHash = append(closestValueHash, sumBz[:]...)
+	require.Equal(t, proof, &SparseMerkleClosestProof{
+		Path:             path[:],
+		FlippedBits:      []int{},
+		Depth:            0,
+		ClosestPath:      closestPath[:],
+		ClosestValueHash: closestValueHash,
+		ClosestProof:     &SparseMerkleProof{},
+	})
 
-	result = VerifySumProof(proof, smst.Root(), closestPath, closestValueHash, closestSum, NoPrehashSpec(sha256.New(), true))
+	result = VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
 	require.True(t, result)
 
 	require.NoError(t, smn.Stop())

@@ -161,9 +161,9 @@ func TestSMT_ProofsSanityCheck(t *testing.T) {
 func TestSMT_ProveClosest(t *testing.T) {
 	var smn KVStore
 	var smt *SMT
-	var proof *SparseMerkleProof
+	var proof *SparseMerkleClosestProof
 	var result bool
-	var root, closestKey, closestValueHash []byte
+	var root []byte
 	var err error
 
 	smn, err = NewKVStore("")
@@ -192,30 +192,30 @@ func TestSMT_ProveClosest(t *testing.T) {
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
 	flipPathBit(path[:], 6)
-	closestKey, closestValueHash, proof, err = smt.ProveClosest(path[:])
+	proof, err = smt.ProveClosest(path[:])
 	require.NoError(t, err)
-	require.NotEqual(t, proof, &SparseMerkleProof{})
+	require.NotEqual(t, proof, &SparseMerkleClosestProof{})
 
-	result = VerifyProof(proof, root, closestKey, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	result = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), false))
 	require.True(t, result)
 	closestPath := sha256.Sum256([]byte("testKey2"))
-	require.Equal(t, closestPath[:], closestKey)
-	require.Equal(t, []byte("testValue2"), closestValueHash)
+	require.Equal(t, closestPath[:], proof.ClosestPath)
+	require.Equal(t, []byte("testValue2"), proof.ClosestValueHash)
 
 	// testKey4 is the neighbour of testKey2, by flipping the final bit of the
 	// extension node we change the longest common prefix to that of testKey4
 	path2 := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path2[:], 3)
 	flipPathBit(path2[:], 7)
-	closestKey, closestValueHash, proof, err = smt.ProveClosest(path2[:])
+	proof, err = smt.ProveClosest(path2[:])
 	require.NoError(t, err)
-	require.NotEqual(t, proof, &SparseMerkleProof{})
+	require.NotEqual(t, proof, &SparseMerkleClosestProof{})
 
-	result = VerifyProof(proof, root, closestKey, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	result = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), false))
 	require.True(t, result)
 	closestPath = sha256.Sum256([]byte("testKey4"))
-	require.Equal(t, closestPath[:], closestKey)
-	require.Equal(t, []byte("testValue4"), closestValueHash)
+	require.Equal(t, closestPath[:], proof.ClosestPath)
+	require.Equal(t, []byte("testValue4"), proof.ClosestValueHash)
 
 	require.NoError(t, smn.Stop())
 }
@@ -223,9 +223,8 @@ func TestSMT_ProveClosest(t *testing.T) {
 func TestSMT_ProveClosestEmptyAndOneNode(t *testing.T) {
 	var smn KVStore
 	var smt *SMT
-	var proof *SparseMerkleProof
+	var proof *SparseMerkleClosestProof
 	var err error
-	var closestPath, closestValueHash []byte
 
 	smn, err = NewKVStore("")
 	require.NoError(t, err)
@@ -234,20 +233,33 @@ func TestSMT_ProveClosestEmptyAndOneNode(t *testing.T) {
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
 	flipPathBit(path[:], 6)
-	closestPath, closestValueHash, proof, err = smt.ProveClosest(path[:])
+	proof, err = smt.ProveClosest(path[:])
 	require.NoError(t, err)
-	require.Equal(t, proof, &SparseMerkleProof{})
+	require.Equal(t, proof, &SparseMerkleClosestProof{
+		Path:         path[:],
+		FlippedBits:  []int{0},
+		Depth:        0,
+		ClosestPath:  placeholder(smt.Spec()),
+		ClosestProof: &SparseMerkleProof{},
+	})
 
-	result := VerifyProof(proof, smt.Root(), closestPath, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	result := VerifyClosestProof(proof, smt.Root(), NoPrehashSpec(sha256.New(), false))
 	require.True(t, result)
 
 	require.NoError(t, smt.Update([]byte("foo"), []byte("bar")))
-	closestPath, closestValueHash, proof, err = smt.ProveClosest(path[:])
+	proof, err = smt.ProveClosest(path[:])
 	require.NoError(t, err)
-	require.Equal(t, proof, &SparseMerkleProof{})
-	require.Equal(t, closestValueHash, []byte("bar"))
+	closestPath := sha256.Sum256([]byte("foo"))
+	require.Equal(t, proof, &SparseMerkleClosestProof{
+		Path:             path[:],
+		FlippedBits:      []int{},
+		Depth:            0,
+		ClosestPath:      closestPath[:],
+		ClosestValueHash: []byte("bar"),
+		ClosestProof:     &SparseMerkleProof{},
+	})
 
-	result = VerifyProof(proof, smt.Root(), closestPath, closestValueHash, NoPrehashSpec(sha256.New(), false))
+	result = VerifyClosestProof(proof, smt.Root(), NoPrehashSpec(sha256.New(), false))
 	require.True(t, result)
 
 	require.NoError(t, smn.Stop())

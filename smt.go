@@ -389,8 +389,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 // a proof of inclusion is found that has the most common bits with the path
 // provided, biased to the longest common prefix
 func (smt *SMT) ProveClosest(path []byte) (
-	closestPath, closestValueHash []byte, // the closest leaf info for the key provided
-	proof *SparseMerkleProof, // proof of the key-value pair found
+	proof *SparseMerkleClosestProof, // proof of the key-value pair found
 	err error, // the error value encountered
 ) {
 	workingPath := make([]byte, len(path))
@@ -402,6 +401,10 @@ func (smt *SMT) ProveClosest(path []byte) (
 	// it is used when back-stepping to go back to the correct depth in the path
 	// if we hit a nil node during tree traversal
 	var depthDelta int
+	proof = &SparseMerkleClosestProof{
+		Path:        path,
+		FlippedBits: make([]int, 0),
+	}
 
 	node := smt.tree
 	depth := 0
@@ -414,7 +417,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 		// resolve current node
 		node, err = smt.resolveLazy(node)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, err
 		}
 		if node != nil {
 			// reset depthDelta if node is non nil
@@ -424,7 +427,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			// path bit at the parent depth and select the other child
 			node, err = smt.resolveLazy(parent)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, err
 			}
 			// trim the last sibling node added as it is no longer relevant
 			// due to back-stepping we are now going to traverse to the
@@ -436,9 +439,11 @@ func (smt *SMT) ProveClosest(path []byte) (
 			depth -= depthDelta
 			// flip the path bit at the parent depth
 			flipPathBit(workingPath, depth)
+			proof.FlippedBits = append(proof.FlippedBits, depth)
 		}
 		// end traversal when we hit a leaf node
 		if _, ok := node.(*leafNode); ok {
+			proof.Depth = depth
 			break
 		}
 		if ext, ok := node.(*extensionNode); ok {
@@ -458,12 +463,13 @@ func (smt *SMT) ProveClosest(path []byte) (
 				node = ext.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
-					return nil, nil, nil, err
+					return nil, err
 				}
 			}
 		}
 		inner, ok := node.(*innerNode)
 		if !ok { // this can only happen for an empty tree
+			proof.Depth = depth
 			break
 		}
 		if getPathBit(workingPath, depth) == left {
@@ -478,14 +484,16 @@ func (smt *SMT) ProveClosest(path []byte) (
 
 	// Retrieve the closest path and value hash if found
 	if node == nil { // tree was empty
-		return placeholder(smt.Spec()), nil, &SparseMerkleProof{}, nil
+		proof.ClosestPath, proof.ClosestValueHash = placeholder(smt.Spec()), nil
+		proof.ClosestProof = &SparseMerkleProof{}
+		return proof, nil
 	}
 	leaf, ok := node.(*leafNode)
 	if !ok {
 		// if no leaf was found and the tree is not empty something went wrong
 		panic("expected leaf node")
 	}
-	closestPath, closestValueHash = leaf.path, leaf.valueHash
+	proof.ClosestPath, proof.ClosestValueHash = leaf.path, leaf.valueHash
 	// Hash siblings from bottom up.
 	var sideNodes [][]byte
 	for i := range siblings {
@@ -494,18 +502,18 @@ func (smt *SMT) ProveClosest(path []byte) (
 		sideNode = hashNode(smt.Spec(), sibling)
 		sideNodes = append(sideNodes, sideNode)
 	}
-	proof = &SparseMerkleProof{
+	proof.ClosestProof = &SparseMerkleProof{
 		SideNodes: sideNodes,
 	}
 	if sib != nil {
 		sib, err = smt.resolveLazy(sib)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, err
 		}
-		proof.SiblingData = serialize(smt.Spec(), sib)
+		proof.ClosestProof.SiblingData = serialize(smt.Spec(), sib)
 	}
 
-	return closestPath, closestValueHash, proof, nil
+	return proof, nil
 }
 
 //nolint:unused
