@@ -11,6 +11,8 @@ import (
 func init() {
 	gob.Register(SparseMerkleProof{})
 	gob.Register(SparseCompactMerkleProof{})
+	gob.Register(SparseMerkleClosestProof{})
+	gob.Register(SparseCompactMerkleClosestProof{})
 }
 
 // ErrBadProof is returned when an invalid Merkle proof is supplied.
@@ -153,7 +155,35 @@ type SparseMerkleClosestProof struct {
 	ClosestProof     *SparseMerkleProof // the proof of the leaf closest to the path provided
 }
 
+// Marshal serialises the SparseMerkleClosestProof to bytes
+func (proof *SparseMerkleClosestProof) Marshal() ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(proof); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Unmarshal deserialises the SparseMerkleClosestProof from bytes
+func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
+	buf := bytes.NewBuffer(bz)
+	dec := gob.NewDecoder(buf)
+	return dec.Decode(proof)
+}
+
 func (proof *SparseMerkleClosestProof) sanityCheck(spec *TreeSpec) bool {
+	if proof.Depth > spec.ph.PathSize()*8 {
+		return false
+	}
+	for _, i := range proof.FlippedBits {
+		if i > proof.Depth {
+			return false
+		}
+		if i > spec.ph.PathSize()*8 {
+			return false
+		}
+	}
 	workingPath := proof.Path
 	for _, i := range proof.FlippedBits {
 		flipPathBit(workingPath, i)
@@ -169,6 +199,61 @@ func (proof *SparseMerkleClosestProof) sanityCheck(spec *TreeSpec) bool {
 		return false
 	}
 	return true
+}
+
+type SparseCompactMerkleClosestProof struct {
+	Path             []byte                    // the path provided to the ProveClosest method
+	FlippedBits      []byte                    // the index of the bits flipped in the path during tree traversal
+	Depth            byte                      // the depth of the tree when tree traversal stopped
+	ClosestPath      []byte                    // the path of the leaf closest to the path provided
+	ClosestValueHash []byte                    // the value hash of the leaf closest to the path provided
+	ClosestProof     *SparseCompactMerkleProof // the proof of the leaf closest to the path provided
+}
+
+func (proof *SparseCompactMerkleClosestProof) sanityCheck(spec *TreeSpec) bool {
+	if int(proof.Depth) > spec.ph.PathSize()*8 {
+		return false
+	}
+	for _, i := range proof.FlippedBits {
+		if i > proof.Depth {
+			return false
+		}
+		if int(i) > spec.ph.PathSize()*8 {
+			return false
+		}
+	}
+	workingPath := proof.Path
+	for _, i := range proof.FlippedBits {
+		flipPathBit(workingPath, int(i))
+	}
+	if prefix := countCommonPrefix(
+		workingPath[:proof.Depth/8],
+		proof.ClosestPath[:proof.Depth/8],
+		0,
+	); prefix != int(proof.Depth) {
+		return false
+	}
+	if !proof.ClosestProof.sanityCheck(spec) {
+		return false
+	}
+	return true
+}
+
+// Marshal serialises the SparseCompactMerkleClosestProof to bytes
+func (proof *SparseCompactMerkleClosestProof) Marshal() ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(proof); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Unmarshal deserialises the SparseCompactMerkleClosestProof from bytes
+func (proof *SparseCompactMerkleClosestProof) Unmarshal(bz []byte) error {
+	buf := bytes.NewBuffer(bz)
+	dec := gob.NewDecoder(buf)
+	return dec.Decode(proof)
 }
 
 // VerifyProof verifies a Merkle proof.
@@ -286,6 +371,15 @@ func VerifyCompactSumProof(proof *SparseCompactMerkleProof, root []byte, key, va
 	return VerifySumProof(decompactedProof, root, key, value, sum, spec)
 }
 
+// VerifyCompactClosestProof verifies a compacted Merkle proof
+func VerifyCompactClosestProof(proof *SparseCompactMerkleClosestProof, root []byte, spec *TreeSpec) bool {
+	decompactedProof, err := DecompactClosestProof(proof, spec)
+	if err != nil {
+		return false
+	}
+	return VerifyClosestProof(decompactedProof, root, spec)
+}
+
 // CompactProof compacts a proof, to reduce its size.
 func CompactProof(proof *SparseMerkleProof, spec *TreeSpec) (*SparseCompactMerkleProof, error) {
 	if !proof.sanityCheck(spec) {
@@ -334,5 +428,51 @@ func DecompactProof(proof *SparseCompactMerkleProof, spec *TreeSpec) (*SparseMer
 		SideNodes:             decompactedSideNodes,
 		NonMembershipLeafData: proof.NonMembershipLeafData,
 		SiblingData:           proof.SiblingData,
+	}, nil
+}
+
+// CompactClosestProof compacts a proof, to reduce its size.
+func CompactClosestProof(proof *SparseMerkleClosestProof, spec *TreeSpec) (*SparseCompactMerkleClosestProof, error) {
+	if !proof.sanityCheck(spec) {
+		return nil, ErrBadProof
+	}
+	compactedProof, err := CompactProof(proof.ClosestProof, spec)
+	if err != nil {
+		return nil, err
+	}
+	flippedBits := make([]byte, len(proof.FlippedBits))
+	for i, v := range proof.FlippedBits {
+		flippedBits[i] = byte(v)
+	}
+	return &SparseCompactMerkleClosestProof{
+		Path:             proof.Path,
+		FlippedBits:      flippedBits,
+		Depth:            byte(proof.Depth),
+		ClosestPath:      proof.ClosestPath,
+		ClosestValueHash: proof.ClosestValueHash,
+		ClosestProof:     compactedProof,
+	}, nil
+}
+
+// DecompactClosestProof decompacts a proof, so that it can be used for VerifyClosestProof.
+func DecompactClosestProof(proof *SparseCompactMerkleClosestProof, spec *TreeSpec) (*SparseMerkleClosestProof, error) {
+	if !proof.ClosestProof.sanityCheck(spec) {
+		return nil, ErrBadProof
+	}
+	decompactedProof, err := DecompactProof(proof.ClosestProof, spec)
+	if err != nil {
+		return nil, err
+	}
+	flippedBits := make([]int, len(proof.FlippedBits))
+	for i, v := range proof.FlippedBits {
+		flippedBits[i] = int(v)
+	}
+	return &SparseMerkleClosestProof{
+		Path:             proof.Path,
+		FlippedBits:      flippedBits,
+		Depth:            int(proof.Depth),
+		ClosestPath:      proof.ClosestPath,
+		ClosestValueHash: proof.ClosestValueHash,
+		ClosestProof:     decompactedProof,
 	}, nil
 }
