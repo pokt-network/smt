@@ -201,6 +201,9 @@ func (proof *SparseMerkleClosestProof) sanityCheck(spec *TreeSpec) bool {
 	return true
 }
 
+// SparseCompactMerkleClosestProof is a compressed representation of the SparseMerkleClosestProof
+// NOTE: This compact proof assumes the path hasher is 256 bits
+// TODO: Generalise this compact proof to support other path hasher sizes
 type SparseCompactMerkleClosestProof struct {
 	Path             []byte                    // the path provided to the ProveClosest method
 	FlippedBits      []byte                    // the index of the bits flipped in the path during tree traversal
