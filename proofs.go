@@ -459,7 +459,7 @@ func CompactClosestProof(proof *SparseMerkleClosestProof, spec *TreeSpec) (*Spar
 
 // DecompactClosestProof decompacts a proof, so that it can be used for VerifyClosestProof.
 func DecompactClosestProof(proof *SparseCompactMerkleClosestProof, spec *TreeSpec) (*SparseMerkleClosestProof, error) {
-	if !proof.ClosestProof.sanityCheck(spec) {
+	if !proof.sanityCheck(spec) {
 		return nil, ErrBadProof
 	}
 	decompactedProof, err := DecompactProof(proof.ClosestProof, spec)
