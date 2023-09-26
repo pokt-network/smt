@@ -1,7 +1,19 @@
 package smt
 
-// GetPathBit gets the bit at an offset from the most significant bit
-func GetPathBit(data []byte, position int) int {
+type nilPathHasher struct {
+	hashSize int
+}
+
+func (n *nilPathHasher) Path(key []byte) []byte { return key[:n.hashSize] }
+func (n *nilPathHasher) PathSize() int          { return n.hashSize }
+
+func newNilPathHasher(hashSize int) PathHasher {
+	return &nilPathHasher{hashSize: hashSize}
+}
+
+// getPathBit gets the bit at an offset (see position) in the data
+// provided relative to the most significant bit
+func getPathBit(data []byte, position int) int {
 	// get the byte at the position and then left shift one by the offset of the position
 	// from the leftmost bit in the byte. Check if the bitwise AND is the same
 	// Path: []byte{ {0 1 0 1 1 0 1 0}, {0 1 1 0 1 1 0 1}, {1 0 0 1 0 0 1 0} } (length = 24 bits / 3 bytes)
@@ -19,17 +31,26 @@ func GetPathBit(data []byte, position int) int {
 	return 0
 }
 
-// setPathBit sets the bit at an offset from the most significant bit
+// setPathBit sets the bit at an offset (see position) in the data
+// provided relative to the most significant bit
 func setPathBit(data []byte, position int) {
 	n := int(data[position/8])
 	n |= 1 << (8 - 1 - uint(position)%8)
 	data[position/8] = byte(n)
 }
 
+// flipPathBit flips the bit at an offset (see position) in the data
+// provided relative to most significant bit
+func flipPathBit(data []byte, position int) {
+	n := int(data[position/8])           // get index of byte containing the position
+	n ^= 1 << (8 - 1 - uint(position)%8) // XOR the bit within the byte at the position
+	data[position/8] = byte(n)
+}
+
 func countSetBits(data []byte) int {
 	count := 0
 	for i := 0; i < len(data)*8; i++ {
-		if GetPathBit(data, i) == 1 {
+		if getPathBit(data, i) == 1 {
 			count++
 		}
 	}
@@ -40,7 +61,7 @@ func countSetBits(data []byte) int {
 func countCommonPrefix(data1, data2 []byte, from int) int {
 	count := 0
 	for i := from; i < len(data1)*8; i++ {
-		if GetPathBit(data1, i) == GetPathBit(data2, i) {
+		if getPathBit(data1, i) == getPathBit(data2, i) {
 			count++
 		} else {
 			break

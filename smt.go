@@ -114,7 +114,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 			}
 		}
 		inner := (*node).(*innerNode)
-		if GetPathBit(path, depth) == left {
+		if getPathBit(path, depth) == left {
 			node = &inner.leftChild
 		} else {
 			node = &inner.rightChild
@@ -172,7 +172,7 @@ func (smt *SMT) update(
 			*last = &ext
 			last = &ext.child
 		}
-		if GetPathBit(path, prefixlen) == left {
+		if getPathBit(path, prefixlen) == left {
 			*last = &innerNode{leftChild: newLeaf, rightChild: leaf}
 		} else {
 			*last = &innerNode{leftChild: leaf, rightChild: newLeaf}
@@ -195,7 +195,7 @@ func (smt *SMT) update(
 
 	inner := node.(*innerNode)
 	var child *treeNode
-	if GetPathBit(path, depth) == left {
+	if getPathBit(path, depth) == left {
 		child = &inner.leftChild
 	} else {
 		child = &inner.rightChild
@@ -266,7 +266,7 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 
 	inner := node.(*innerNode)
 	var child, sib *treeNode
-	if GetPathBit(path, depth) == left {
+	if getPathBit(path, depth) == left {
 		child, sib = &inner.leftChild, &inner.rightChild
 	} else {
 		child, sib = &inner.rightChild, &inner.leftChild
@@ -335,7 +335,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 			}
 		}
 		inner := node.(*innerNode)
-		if GetPathBit(path, depth) == left {
+		if getPathBit(path, depth) == left {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -375,6 +375,137 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		proof.SiblingData = serialize(smt.Spec(), sib)
 	}
 	return proof, nil
+}
+
+// ProveClosest generates a SparseMerkleProof of inclusion for the first
+// key with the most common bits as the path provided.
+//
+// This method will follow the path provided until it hits a leaf node and then
+// exit. If the leaf is along the path it will produce an inclusion proof for
+// the key (and return the key-value internal pair) as they share a common
+// prefix. If however, during the tree traversal according to the path, a nil
+// node is encountered, the traversal backsteps and flips the path bit for that
+// depth (ie tries left if it tried right and vice versa). This guarentees that
+// a proof of inclusion is found that has the most common bits with the path
+// provided, biased to the longest common prefix
+func (smt *SMT) ProveClosest(path []byte) (
+	closestPath, closestValueHash []byte, // the closest leaf info for the key provided
+	proof *SparseMerkleProof, // proof of the key-value pair found
+	err error, // the error value encountered
+) {
+	workingPath := make([]byte, len(path))
+	copy(workingPath, path)
+	var siblings []treeNode
+	var sib treeNode
+	var parent treeNode
+	// depthDelta is used to track the depth increase when traversing down the tree
+	// it is used when back-stepping to go back to the correct depth in the path
+	// if we hit a nil node during tree traversal
+	var depthDelta int
+
+	node := smt.tree
+	depth := 0
+	// continuously traverse the tree until we hit a leaf node
+	for depth < smt.depth() {
+		// save current node information as "parent" info
+		if node != nil {
+			parent = node
+		}
+		// resolve current node
+		node, err = smt.resolveLazy(node)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if node != nil {
+			// reset depthDelta if node is non nil
+			depthDelta = 0
+		} else {
+			// if we hit a nil node we backstep to the parent node and flip the
+			// path bit at the parent depth and select the other child
+			node, err = smt.resolveLazy(parent)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			// trim the last sibling node added as it is no longer relevant
+			// due to back-stepping we are now going to traverse to the
+			// most recent sibling, including it here would result in an
+			// incorrect root hash when calculated
+			if len(siblings) > 0 {
+				siblings = siblings[:len(siblings)-1]
+			}
+			depth -= depthDelta
+			// flip the path bit at the parent depth
+			flipPathBit(workingPath, depth)
+		}
+		// end traversal when we hit a leaf node
+		if _, ok := node.(*leafNode); ok {
+			break
+		}
+		if ext, ok := node.(*extensionNode); ok {
+			length, match := ext.match(workingPath, depth)
+			// workingPath from depth to end of extension node's path bounds
+			// is a perfect match
+			if !match {
+				node = ext.expand()
+			} else {
+				// extension nodes represent a singly linked list of inner nodes
+				// add nil siblings to represent the empty neighbours
+				for i := 0; i < length; i++ {
+					siblings = append(siblings, nil)
+				}
+				depth += length
+				depthDelta += length
+				node = ext.child
+				node, err = smt.resolveLazy(node)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+			}
+		}
+		inner, ok := node.(*innerNode)
+		if !ok { // this can only happen for an empty tree
+			break
+		}
+		if getPathBit(workingPath, depth) == left {
+			node, sib = inner.leftChild, inner.rightChild
+		} else {
+			node, sib = inner.rightChild, inner.leftChild
+		}
+		siblings = append(siblings, sib)
+		depth += 1
+		depthDelta += 1
+	}
+
+	// Retrieve the closest path and value hash if found
+	if node == nil { // tree was empty
+		return placeholder(smt.Spec()), nil, &SparseMerkleProof{}, nil
+	}
+	leaf, ok := node.(*leafNode)
+	if !ok {
+		// if no leaf was found and the tree is not empty something went wrong
+		panic("expected leaf node")
+	}
+	closestPath, closestValueHash = leaf.path, leaf.valueHash
+	// Hash siblings from bottom up.
+	var sideNodes [][]byte
+	for i := range siblings {
+		var sideNode []byte
+		sibling := siblings[len(siblings)-i-1]
+		sideNode = hashNode(smt.Spec(), sibling)
+		sideNodes = append(sideNodes, sideNode)
+	}
+	proof = &SparseMerkleProof{
+		SideNodes: sideNodes,
+	}
+	if sib != nil {
+		sib, err = smt.resolveLazy(sib)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		proof.SiblingData = serialize(smt.Spec(), sib)
+	}
+
+	return closestPath, closestValueHash, proof, nil
 }
 
 //nolint:unused
@@ -558,7 +689,7 @@ func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
 		panic("depth != path_begin")
 	}
 	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if GetPathBit(ext.path, i) != GetPathBit(path, i) {
+		if getPathBit(ext.path, i) != getPathBit(path, i) {
 			return i - ext.pathStart(), false
 		}
 	}
@@ -569,7 +700,7 @@ func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
 func (ext *extensionNode) commonPrefix(path []byte) int {
 	count := 0
 	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if GetPathBit(ext.path, i) != GetPathBit(path, i) {
+		if getPathBit(ext.path, i) != getPathBit(path, i) {
 			break
 		}
 		count++
@@ -588,8 +719,8 @@ func (ext *extensionNode) split(path []byte, depth int) (treeNode, *treeNode, in
 	index := ext.pathStart()
 	var myBit, branchBit int
 	for ; index < ext.pathEnd(); index++ {
-		myBit = GetPathBit(ext.path, index)
-		branchBit = GetPathBit(path, index)
+		myBit = getPathBit(ext.path, index)
+		branchBit = getPathBit(path, index)
 		if myBit != branchBit {
 			break
 		}
@@ -636,11 +767,13 @@ func (ext *extensionNode) split(path []byte, depth int) (treeNode, *treeNode, in
 	return head, &b, index
 }
 
+// expand returns the inner node that represents the start of the singly
+// linked list that this extension node represents
 func (ext *extensionNode) expand() treeNode {
 	last := ext.child
 	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {
 		var next innerNode
-		if GetPathBit(ext.path, i) == left {
+		if getPathBit(ext.path, i) == left {
 			next.leftChild = last
 		} else {
 			next.rightChild = last

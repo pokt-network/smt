@@ -17,6 +17,7 @@ func init() {
 var ErrBadProof = errors.New("bad proof")
 
 // SparseMerkleProof is a Merkle proof for an element in a SparseMerkleTree.
+// TODO: Research whether the SiblingData is required and remove it if not
 type SparseMerkleProof struct {
 	// SideNodes is an array of the sibling nodes leading up to the leaf of the proof.
 	SideNodes [][]byte
@@ -207,7 +208,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 		node := make([]byte, hashSize(spec))
 		copy(node, proof.SideNodes[i])
 
-		if GetPathBit(path, len(proof.SideNodes)-1-i) == left {
+		if getPathBit(path, len(proof.SideNodes)-1-i) == left {
 			currentHash, currentData = digestNode(spec, currentHash, node)
 		} else {
 			currentHash, currentData = digestNode(spec, node, currentHash)
@@ -275,7 +276,7 @@ func DecompactProof(proof *SparseCompactMerkleProof, spec *TreeSpec) (*SparseMer
 	decompactedSideNodes := make([][]byte, proof.NumSideNodes)
 	position := 0
 	for i := 0; i < proof.NumSideNodes; i++ {
-		if GetPathBit(proof.BitMask, i) == 1 {
+		if getPathBit(proof.BitMask, i) == 1 {
 			decompactedSideNodes[i] = placeholder(spec)
 		} else {
 			decompactedSideNodes[i] = proof.SideNodes[position]
