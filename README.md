@@ -46,11 +46,11 @@ Below is a list of terms used in the benchmarks' results that may need clarifica
 
 #### Sizing
  - The tests use the following sizes: 0.1M, 0.5M, 1M, 5M, 10M. The `M` refers to millions hence:
-   - 0.1M = 100000 (One hundred thousand)
-   - 0.5M = 500000 (Five hundred thousand)
-   - 1M = 1000000 (One million)
-   - 5M = 5000000 (Five million)
-   - 10M = 10000000 (Ten million)
+   - 0.1M = 100,000 (One hundred thousand)
+   - 0.5M = 500,000 (Five hundred thousand)
+   - 1M = 1,000,000 (One million)
+   - 5M = 5,000,000 (Five million)
+   - 10M = 10,000,000 (Ten million)
  - These sizes refer to the number of key-value pairs or key-value-sum triples inserted into the tree either beforehand or during the benchmark depending on which benchmark it is.
 
 _NOTE: Unless otherwise stated the benchmarks in this document were ran on a 2023 14-inch Macbook Pro M2 Max with 32GB of RAM. The trees tested are using the `sha256.New()` hasher._
