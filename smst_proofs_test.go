@@ -28,9 +28,11 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, placeholder(base), []byte("testKey3"), defaultValue, 0, base)
+	result, err = VerifySumProof(proof, placeholder(base), []byte("testKey3"), defaultValue, 0, base)
+	require.NoError(t, err)
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 5, base)
+	result, err = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 5, base)
+	require.NoError(t, err)
 	require.False(t, result)
 
 	// Add a key, generate and verify a Merkle proof.
@@ -40,13 +42,17 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, base) // valid
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, base) // valid
+	require.NoError(t, err)
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 5, base) // wrong value
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 5, base) // wrong value
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 10, base) // wrong sum
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 10, base) // wrong sum
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base) // wrong value and sum
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base) // wrong value and sum
+	require.NoError(t, err)
 	require.False(t, result)
 
 	// Add a key, generate and verify both Merkle proofs.
@@ -56,29 +62,39 @@ func TestSMST_ProofsBasic(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, base) // valid
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, base) // valid
+	require.NoError(t, err)
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 5, base) // wrong value
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 5, base) // wrong value
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 10, base) // wrong sum
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 10, base) // wrong sum
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base) // wrong value and sum
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base) // wrong value and sum
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey"), []byte("testValue"), 5, base) // invalid proof
+	result, err = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey"), []byte("testValue"), 5, base) // invalid proof
+	require.NoError(t, err)
 	require.False(t, result)
 
 	proof, err = smst.Prove([]byte("testKey2"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("testValue"), 5, base) // valid
+	result, err = VerifySumProof(proof, root, []byte("testKey2"), []byte("testValue"), 5, base) // valid
+	require.NoError(t, err)
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("badValue"), 5, base) // wrong value
+	result, err = VerifySumProof(proof, root, []byte("testKey2"), []byte("badValue"), 5, base) // wrong value
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("testValue"), 10, base) // wrong sum
+	result, err = VerifySumProof(proof, root, []byte("testKey2"), []byte("testValue"), 10, base) // wrong sum
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey2"), []byte("badValue"), 10, base) // wrong value and sum
+	result, err = VerifySumProof(proof, root, []byte("testKey2"), []byte("badValue"), 10, base) // wrong value and sum
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey2"), []byte("testValue"), 5, base) // invalid proof
+	result, err = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey2"), []byte("testValue"), 5, base) // invalid proof
+	require.NoError(t, err)
 	require.False(t, result)
 
 	// Try proving a default value for a non-default leaf.
@@ -91,20 +107,25 @@ func TestSMST_ProofsBasic(t *testing.T) {
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,
 	}
-	result = VerifySumProof(proof, root, []byte("testKey2"), defaultValue, 0, base)
+	result, err = VerifySumProof(proof, root, []byte("testKey2"), defaultValue, 0, base)
+	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 
 	// Generate and verify a proof on an empty key.
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 0, base) // valid
+	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 0, base) // valid
+	require.NoError(t, err)
 	require.True(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 0, base) // wrong value
+	result, err = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 0, base) // wrong value
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 5, base) // wrong sum
+	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 5, base) // wrong sum
+	require.NoError(t, err)
 	require.False(t, result)
-	result = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey3"), defaultValue, 0, base) // invalid proof
+	result, err = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey3"), defaultValue, 0, base) // invalid proof
+	require.NoError(t, err)
 	require.False(t, result)
 
 	require.NoError(t, smn.Stop())
@@ -112,7 +133,7 @@ func TestSMST_ProofsBasic(t *testing.T) {
 }
 
 // Test sanity check cases for non-compact proofs.
-func TestSMST_ProofsSanityCheck(t *testing.T) {
+func TestSMST_ProofsValidateBasic(t *testing.T) {
 	smn, err := NewKVStore("")
 	require.NoError(t, err)
 	smv, err := NewKVStore("")
@@ -137,8 +158,9 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 		sideNodes[i] = proof.SideNodes[0]
 	}
 	proof.SideNodes = sideNodes
-	require.False(t, proof.sanityCheck(base))
-	result := VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
+	require.EqualError(t, proof.validateBasic(base), "too many side nodes: 257")
+	result, err := VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
+	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactProof(proof, base)
 	require.Error(t, err)
@@ -146,8 +168,9 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 	// Case: incorrect size for NonMembershipLeafData.
 	proof, _ = smst.Prove([]byte("testKey1"))
 	proof.NonMembershipLeafData = make([]byte, 1)
-	require.False(t, proof.sanityCheck(base))
-	result = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
+	require.EqualError(t, proof.validateBasic(base), "invalid non-membership leaf data size: 1")
+	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
+	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactProof(proof, base)
 	require.Error(t, err)
@@ -155,8 +178,9 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 	// Case: unexpected sidenode size.
 	proof, _ = smst.Prove([]byte("testKey1"))
 	proof.SideNodes[0] = make([]byte, 1)
-	require.False(t, proof.sanityCheck(base))
-	result = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
+	require.EqualError(t, proof.validateBasic(base), "invalid side node size: 1")
+	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
+	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactProof(proof, base)
 	require.Error(t, err)
@@ -164,9 +188,10 @@ func TestSMST_ProofsSanityCheck(t *testing.T) {
 	// Case: incorrect non-nil sibling data
 	proof, _ = smst.Prove([]byte("testKey1"))
 	proof.SiblingData = base.th.digest(proof.SiblingData)
-	require.False(t, proof.sanityCheck(base))
+	require.EqualError(t, proof.validateBasic(base), "invalid sibling data hash: 437437455c0f5ca33597b9dd2a307bdfcc6833d3c272e101f30ed6358783fc247f0b9966865746c1")
 
-	result = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
+	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
+	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactProof(proof, base)
 	require.Error(t, err)
@@ -228,7 +253,8 @@ func TestSMST_ProveClosest(t *testing.T) {
 		ClosestProof:     proof.ClosestProof, // copy of proof as we are checking equality of other fields
 	})
 
-	result = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), true))
+	result, err = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), true))
+	require.NoError(t, err)
 	require.True(t, result)
 
 	// testKey4 is the neighbour of testKey2, by flipping the final bit of the
@@ -252,13 +278,14 @@ func TestSMST_ProveClosest(t *testing.T) {
 		ClosestProof:     proof.ClosestProof, // copy of proof as we are checking equality of other fields
 	})
 
-	result = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), true))
+	result, err = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), true))
+	require.NoError(t, err)
 	require.True(t, result)
 
 	require.NoError(t, smn.Stop())
 }
 
-func TestSMST_ProveClosestEmptyAndOneNode(t *testing.T) {
+func TestSMST_ProveClosestEmpty(t *testing.T) {
 	var smn KVStore
 	var smst *SMST
 	var proof *SparseMerkleClosestProof
@@ -281,12 +308,31 @@ func TestSMST_ProveClosestEmptyAndOneNode(t *testing.T) {
 		ClosestProof: &SparseMerkleProof{},
 	})
 
-	result := VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
+	result, err := VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
+	require.NoError(t, err)
 	require.True(t, result)
 
+	require.NoError(t, smn.Stop())
+}
+
+func TestSMST_ProveClosestOneNode(t *testing.T) {
+	var smn KVStore
+	var smst *SMST
+	var proof *SparseMerkleClosestProof
+	var err error
+
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
+	smst = NewSparseMerkleSumTree(smn, sha256.New(), WithValueHasher(nil))
+
 	require.NoError(t, smst.Update([]byte("foo"), []byte("bar"), 5))
+
+	path := sha256.Sum256([]byte("testKey2"))
+	flipPathBit(path[:], 3)
+	flipPathBit(path[:], 6)
 	proof, err = smst.ProveClosest(path[:])
 	require.NoError(t, err)
+
 	closestPath := sha256.Sum256([]byte("foo"))
 	closestValueHash := []byte("bar")
 	var sumBz [sumSize]byte
@@ -301,7 +347,8 @@ func TestSMST_ProveClosestEmptyAndOneNode(t *testing.T) {
 		ClosestProof:     &SparseMerkleProof{},
 	})
 
-	result = VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
+	result, err := VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
+	require.NoError(t, err)
 	require.True(t, result)
 
 	require.NoError(t, smn.Stop())

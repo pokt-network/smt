@@ -472,7 +472,8 @@ func TestSMST_TotalSum(t *testing.T) {
 	proof, err := smst.Prove([]byte("key1"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, smst.Spec())
-	valid := VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, smst.Spec())
+	valid, err := VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, smst.Spec())
+	require.NoError(t, err)
 	require.True(t, valid)
 
 	// Check that the sum is correct after deleting a key

@@ -1,5 +1,7 @@
 package smt
 
+import "fmt"
+
 type nilPathHasher struct {
 	hashSize int
 }
@@ -47,6 +49,7 @@ func flipPathBit(data []byte, position int) {
 	data[position/8] = byte(n)
 }
 
+// countSetBits counts the number of bits set in the data provided (ie the number of 1s)
 func countSetBits(data []byte) int {
 	count := 0
 	for i := 0; i < len(data)*8; i++ {
@@ -57,8 +60,8 @@ func countSetBits(data []byte) int {
 	return count
 }
 
-// counts common bits in each path, starting from some position
-func countCommonPrefix(data1, data2 []byte, from int) int {
+// countCommonPrefixBits counts common bits in each path, starting from some position
+func countCommonPrefixBits(data1, data2 []byte, from int) int {
 	count := 0
 	for i := from; i < len(data1)*8; i++ {
 		if getPathBit(data1, i) == getPathBit(data2, i) {
@@ -68,6 +71,14 @@ func countCommonPrefix(data1, data2 []byte, from int) int {
 		}
 	}
 	return count + from
+}
+
+// intToByte converts an int safely to a byte panicing on error
+func intToByte(i int) byte {
+	if i > 255 || i < 0 {
+		panic(fmt.Errorf("int outside of byte range [0, 255): %d", i))
+	}
+	return byte(i)
 }
 
 // placeholder returns the default placeholder value depending on the tree type
