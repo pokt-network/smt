@@ -183,7 +183,7 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 
 func (proof *SparseMerkleClosestProof) validateBasic(spec *TreeSpec) error {
 	// ensure the depth of the leaf node being proven is within the path size
-	if proof.Depth > spec.ph.PathSize()*8 || proof.Depth > 255 {
+	if proof.Depth > spec.ph.PathSize()*8 {
 		return fmt.Errorf("invalid depth: %d", proof.Depth)
 	}
 	// for each of the bits flipped ensure that they are within the path size
@@ -216,42 +216,38 @@ func (proof *SparseMerkleClosestProof) validateBasic(spec *TreeSpec) error {
 }
 
 // SparseCompactMerkleClosestProof is a compressed representation of the SparseMerkleClosestProof
-// NOTE: This compact proof assumes the path hasher is 256 bits
-// TODO: Generalise this compact proof to support other path hasher sizes
 type SparseCompactMerkleClosestProof struct {
 	Path             []byte                    // the path provided to the ProveClosest method
-	FlippedBits      []byte                    // the index of the bits flipped in the path during tree traversal
-	Depth            byte                      // the depth of the tree when tree traversal stopped
+	FlippedBits      [][]byte                  // the index of the bits flipped in the path during tree traversal
+	Depth            []byte                    // the depth of the tree when tree traversal stopped
 	ClosestPath      []byte                    // the path of the leaf closest to the path provided
 	ClosestValueHash []byte                    // the value hash of the leaf closest to the path provided
 	ClosestProof     *SparseCompactMerkleProof // the proof of the leaf closest to the path provided
 }
 
 func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TreeSpec) error {
-	// ensure the depth of the leaf node being proven is within the path size
-	if int(proof.Depth) > spec.ph.PathSize()*8 || proof.Depth > 255 {
+	// ensure no compressed fields are larger than the path size
+	maxSliceLen := minBytes(spec.ph.PathSize() * 8)
+	if len(proof.Depth) > maxSliceLen {
 		return fmt.Errorf("invalid depth: %d", proof.Depth)
 	}
-	// for each of the bits flipped ensure that they are within the path size
-	// and that they are not greater than the depth of the leaf node being proven
 	for _, i := range proof.FlippedBits {
-		// as proof.Depth <= spec.ph.PathSize()*8, i <= proof.Depth
-		if i > proof.Depth {
-			return fmt.Errorf("invalid flipped bit index: %d", i)
+		if len(i) > maxSliceLen {
+			return fmt.Errorf("invalid flipped bit index: %d", bytesToInt(i))
 		}
 	}
 	// create the path of the leaf node using the flipped bits metadata
 	workingPath := proof.Path
 	for _, i := range proof.FlippedBits {
-		flipPathBit(workingPath, int(i))
+		flipPathBit(workingPath, bytesToInt(i))
 	}
 	// ensure that the path of the leaf node being proven has a prefix
 	// of length depth as the path provided (with bits flipped)
 	if prefix := countCommonPrefixBits(
-		workingPath[:proof.Depth/8],
-		proof.ClosestPath[:proof.Depth/8],
+		workingPath[:bytesToInt(proof.Depth)/8],
+		proof.ClosestPath[:bytesToInt(proof.Depth)/8],
 		0,
-	); prefix != int(proof.Depth) {
+	); prefix != bytesToInt(proof.Depth) {
 		return fmt.Errorf("invalid closest path: %x", proof.ClosestPath)
 	}
 	// validate the proof itself
@@ -463,14 +459,14 @@ func CompactClosestProof(proof *SparseMerkleClosestProof, spec *TreeSpec) (*Spar
 	if err != nil {
 		return nil, err
 	}
-	flippedBits := make([]byte, len(proof.FlippedBits))
+	flippedBits := make([][]byte, len(proof.FlippedBits))
 	for i, v := range proof.FlippedBits {
-		flippedBits[i] = intToByte(v)
+		flippedBits[i] = intToBytes(v)
 	}
 	return &SparseCompactMerkleClosestProof{
 		Path:             proof.Path,
 		FlippedBits:      flippedBits,
-		Depth:            intToByte(proof.Depth),
+		Depth:            intToBytes(proof.Depth),
 		ClosestPath:      proof.ClosestPath,
 		ClosestValueHash: proof.ClosestValueHash,
 		ClosestProof:     compactedProof,
@@ -488,12 +484,12 @@ func DecompactClosestProof(proof *SparseCompactMerkleClosestProof, spec *TreeSpe
 	}
 	flippedBits := make([]int, len(proof.FlippedBits))
 	for i, v := range proof.FlippedBits {
-		flippedBits[i] = int(v)
+		flippedBits[i] = bytesToInt(v)
 	}
 	return &SparseMerkleClosestProof{
 		Path:             proof.Path,
 		FlippedBits:      flippedBits,
-		Depth:            int(proof.Depth),
+		Depth:            bytesToInt(proof.Depth),
 		ClosestPath:      proof.ClosestPath,
 		ClosestValueHash: proof.ClosestValueHash,
 		ClosestProof:     decompactedProof,

@@ -1,6 +1,6 @@
 package smt
 
-import "fmt"
+import "encoding/binary"
 
 type nilPathHasher struct {
 	hashSize int
@@ -73,12 +73,34 @@ func countCommonPrefixBits(data1, data2 []byte, from int) int {
 	return count + from
 }
 
-// intToByte converts an int safely to a byte panicing on error
-func intToByte(i int) byte {
-	if i > 255 || i < 0 {
-		panic(fmt.Errorf("int outside of byte range [0, 255): %d", i))
+// minBytes calculates the minimum number of bytes required to store an int
+func minBytes(i int) int {
+	if i == 0 {
+		return 1
 	}
-	return byte(i)
+	bytes := 0
+	for i > 0 {
+		bytes++
+		i >>= 8
+	}
+	return bytes
+}
+
+// intToBytes converts an int to a byte slice
+func intToBytes(i int) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(i))
+	d := minBytes(i)
+	return b[8-d:]
+}
+
+// bytesToInt converts a byte slice to an int
+func bytesToInt(bz []byte) int {
+	b := make([]byte, 8)
+	d := 8 - len(bz)
+	copy(b[d:], bz)
+	u := binary.BigEndian.Uint64(b)
+	return int(u)
 }
 
 // placeholder returns the default placeholder value depending on the tree type
