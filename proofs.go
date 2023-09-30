@@ -183,14 +183,14 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 
 func (proof *SparseMerkleClosestProof) validateBasic(spec *TreeSpec) error {
 	// ensure the depth of the leaf node being proven is within the path size
-	if proof.Depth > spec.ph.PathSize()*8 {
+	if proof.Depth < 0 || proof.Depth > spec.ph.PathSize()*8 {
 		return fmt.Errorf("invalid depth: %d", proof.Depth)
 	}
 	// for each of the bits flipped ensure that they are within the path size
 	// and that they are not greater than the depth of the leaf node being proven
 	for _, i := range proof.FlippedBits {
 		// as proof.Depth <= spec.ph.PathSize()*8, i <= proof.Depth
-		if i > proof.Depth {
+		if i < 0 || i > proof.Depth {
 			return fmt.Errorf("invalid flipped bit index: %d", i)
 		}
 	}
@@ -226,6 +226,12 @@ type SparseCompactMerkleClosestProof struct {
 }
 
 func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TreeSpec) error {
+	// Do a basic sanity check on the proof on the fields of the proof specific to
+	// the compact proof only.
+	//
+	// When the proof is de-compacted and verified, the sanity check for the
+	// de-compacted proof should be executed.
+
 	// ensure no compressed fields are larger than the path size
 	maxSliceLen := minBytes(spec.ph.PathSize() * 8)
 	if len(proof.Depth) > maxSliceLen {
@@ -236,21 +242,7 @@ func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TreeSpec) erro
 			return fmt.Errorf("invalid flipped bit index: %d", bytesToInt(i))
 		}
 	}
-	// create the path of the leaf node using the flipped bits metadata
-	workingPath := proof.Path
-	for _, i := range proof.FlippedBits {
-		flipPathBit(workingPath, bytesToInt(i))
-	}
-	// ensure that the path of the leaf node being proven has a prefix
-	// of length depth as the path provided (with bits flipped)
-	if prefix := countCommonPrefixBits(
-		workingPath[:bytesToInt(proof.Depth)/8],
-		proof.ClosestPath[:bytesToInt(proof.Depth)/8],
-		0,
-	); prefix != bytesToInt(proof.Depth) {
-		return fmt.Errorf("invalid closest path: %x", proof.ClosestPath)
-	}
-	// validate the proof itself
+	// perform a sanity check on the closest proof
 	if err := proof.ClosestProof.validateBasic(spec); err != nil {
 		return fmt.Errorf("invalid closest proof: %w", err)
 	}

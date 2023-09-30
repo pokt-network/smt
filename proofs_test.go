@@ -68,7 +68,7 @@ func TestSparseMerkleProof_Unmarshal(t *testing.T) {
 	require.Equal(t, proof3, uproof3)
 }
 
-func TestSparseCompactMerkletProof_Marshal(t *testing.T) {
+func TestSparseCompactMerkleProof_Marshal(t *testing.T) {
 	tree := setupTree(t)
 
 	proof, err := tree.Prove([]byte("key"))
