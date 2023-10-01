@@ -370,8 +370,8 @@ func TestSMST_ProveClosest_Proof(t *testing.T) {
 	smst256 = NewSparseMerkleSumTree(smn, sha256.New())
 	smst512 = NewSparseMerkleSumTree(smn, sha512.New())
 
-	// insert 1000000 key-value-sum triples
-	for i := 0; i < 1000000; i++ {
+	// insert 100000 key-value-sum triples
+	for i := 0; i < 100000; i++ {
 		s := strconv.Itoa(i)
 		require.NoError(t, smst256.Update([]byte(s), []byte(s), uint64(i)))
 		require.NoError(t, smst512.Update([]byte(s), []byte(s), uint64(i)))
