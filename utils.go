@@ -73,6 +73,16 @@ func countCommonPrefixBits(data1, data2 []byte, from int) int {
 	return count + from
 }
 
+// equalPrefixBits checks if the bits from n to m (inclusive) in the two paths are equal
+func equalPrefixBits(data1, data2 []byte, n, m int) (bool, int) {
+	for i := n; i < m; i++ {
+		if getPathBit(data1, i) != getPathBit(data2, i) {
+			return false, i
+		}
+	}
+	return true, -1
+}
+
 // minBytes calculates the minimum number of bytes required to store an int
 func minBytes(i int) int {
 	if i == 0 {

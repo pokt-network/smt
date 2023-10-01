@@ -201,12 +201,12 @@ func (proof *SparseMerkleClosestProof) validateBasic(spec *TreeSpec) error {
 	}
 	// ensure that the path of the leaf node being proven has a prefix
 	// of length depth as the path provided (with bits flipped)
-	if prefix := countCommonPrefixBits(
-		workingPath[:proof.Depth/8],
-		proof.ClosestPath[:proof.Depth/8],
-		0,
-	); prefix != proof.Depth {
-		return fmt.Errorf("invalid closest path: %x", proof.ClosestPath)
+	if equal, failed := equalPrefixBits(
+		workingPath,
+		proof.ClosestPath,
+		0, proof.Depth,
+	); !equal {
+		return fmt.Errorf("invalid closest path: %x (not equal at bit: %d)", proof.ClosestPath, failed)
 	}
 	// validate the proof itself
 	if err := proof.ClosestProof.validateBasic(spec); err != nil {
@@ -435,6 +435,9 @@ func DecompactProof(proof *SparseCompactMerkleProof, spec *TreeSpec) (*SparseMer
 		}
 	}
 
+	if len(decompactedSideNodes) == 0 {
+		decompactedSideNodes = nil
+	}
 	return &SparseMerkleProof{
 		SideNodes:             decompactedSideNodes,
 		NonMembershipLeafData: proof.NonMembershipLeafData,

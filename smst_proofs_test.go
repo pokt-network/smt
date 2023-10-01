@@ -2,7 +2,9 @@ package smt
 
 import (
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/binary"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -285,7 +287,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	require.NoError(t, smn.Stop())
 }
 
-func TestSMST_ProveClosestEmpty(t *testing.T) {
+func TestSMST_ProveClosest_Empty(t *testing.T) {
 	var smn KVStore
 	var smst *SMST
 	var proof *SparseMerkleClosestProof
@@ -315,7 +317,7 @@ func TestSMST_ProveClosestEmpty(t *testing.T) {
 	require.NoError(t, smn.Stop())
 }
 
-func TestSMST_ProveClosestOneNode(t *testing.T) {
+func TestSMST_ProveClosest_OneNode(t *testing.T) {
 	var smn KVStore
 	var smst *SMST
 	var proof *SparseMerkleClosestProof
@@ -350,6 +352,40 @@ func TestSMST_ProveClosestOneNode(t *testing.T) {
 	result, err := VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
 	require.NoError(t, err)
 	require.True(t, result)
+
+	require.NoError(t, smn.Stop())
+}
+
+func TestSMST_ProveClosest_Proof(t *testing.T) {
+	var smn KVStore
+	var smst256 *SMST
+	var smst512 *SMST
+	var proof256 *SparseMerkleClosestProof
+	var proof512 *SparseMerkleClosestProof
+	var err error
+
+	// setup tree (256+512 path hasher) and nodestore
+	smn, err = NewKVStore("")
+	require.NoError(t, err)
+	smst256 = NewSparseMerkleSumTree(smn, sha256.New())
+	smst512 = NewSparseMerkleSumTree(smn, sha512.New())
+
+	// insert 1000000 key-value-sum triples
+	for i := 0; i < 1000000; i++ {
+		s := strconv.Itoa(i)
+		require.NoError(t, smst256.Update([]byte(s), []byte(s), uint64(i)))
+		require.NoError(t, smst512.Update([]byte(s), []byte(s), uint64(i)))
+		// generate proofs for each key in the tree
+		path256 := sha256.Sum256([]byte(s))
+		path512 := sha512.Sum512([]byte(s))
+		proof256, err = smst256.ProveClosest(path256[:])
+		require.NoError(t, err)
+		proof512, err = smst512.ProveClosest(path512[:])
+		require.NoError(t, err)
+		// ensure proof is same after compression and decompression
+		checkClosestCompactEquivalence(t, proof256, smst256.Spec())
+		checkClosestCompactEquivalence(t, proof512, smst512.Spec())
+	}
 
 	require.NoError(t, smn.Stop())
 }
