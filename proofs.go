@@ -142,6 +142,9 @@ func (proof *SparseCompactMerkleProof) validateBasic(spec *TreeSpec) error {
 
 	// Compact proofs: check that the length of the bit mask is as expected
 	// according to NumSideNodes.
+	// number of bytes needed to represent the number of side nodes
+	// for example: 1 byte is needed to represent 8 side nodes
+	//			    32 bytes are needed to represent 256 side nodes
 	bml := int(math.Ceil(float64(proof.NumSideNodes) / float64(8)))
 	if len(proof.BitMask) != bml {
 		return fmt.Errorf("invalid bit mask length: got %d want %d", len(proof.BitMask), bml)
