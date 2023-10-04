@@ -1,3 +1,4 @@
+// TODO(#22): Define protobufs for all proof types and enable deterministic serialisation
 package smt
 
 import (
@@ -59,17 +60,18 @@ func (proof *SparseMerkleProof) validateBasic(spec *TreeSpec) error {
 
 	// Check that the number of supplied sidenodes does not exceed the maximum possible.
 	if len(proof.SideNodes) > spec.ph.PathSize()*8 {
-		return fmt.Errorf("too many side nodes: %d", len(proof.SideNodes))
+		return fmt.Errorf("too many side nodes: got %d but max is %d", len(proof.SideNodes), spec.ph.PathSize()*8)
 	}
 	// Check that leaf data for non-membership proofs is a valid size.
-	if proof.NonMembershipLeafData != nil && len(proof.NonMembershipLeafData) < len(leafPrefix)+spec.ph.PathSize() {
-		return fmt.Errorf("invalid non-membership leaf data size: %d", len(proof.NonMembershipLeafData))
+	lps := len(leafPrefix) + spec.ph.PathSize()
+	if proof.NonMembershipLeafData != nil && len(proof.NonMembershipLeafData) < lps {
+		return fmt.Errorf("invalid non-membership leaf data size: got %d but min is %d", len(proof.NonMembershipLeafData), lps)
 	}
 
 	// Check that all supplied sidenodes are the correct size.
 	for _, v := range proof.SideNodes {
 		if len(v) != hashSize(spec) {
-			return fmt.Errorf("invalid side node size: %d", len(v))
+			return fmt.Errorf("invalid side node size: got %d but want %d", len(v), hashSize(spec))
 		}
 	}
 
@@ -79,7 +81,7 @@ func (proof *SparseMerkleProof) validateBasic(spec *TreeSpec) error {
 	}
 	siblingHash := hashPreimage(spec, proof.SiblingData)
 	if eq := bytes.Equal(proof.SideNodes[0], siblingHash); !eq {
-		return fmt.Errorf("invalid sibling data hash: %x", siblingHash)
+		return fmt.Errorf("invalid sibling data hash: got %x but want %x", siblingHash, proof.SideNodes[0])
 	}
 
 	return nil
@@ -135,19 +137,22 @@ func (proof *SparseCompactMerkleProof) validateBasic(spec *TreeSpec) error {
 
 	// Compact proofs: check that NumSideNodes is within the right range.
 	if proof.NumSideNodes < 0 || proof.NumSideNodes > spec.ph.PathSize()*8 {
-		return fmt.Errorf("invalid number of side nodes: %d", proof.NumSideNodes)
+		return fmt.Errorf("invalid number of side nodes: got %d, min is 0 and max is %d", len(proof.SideNodes), spec.ph.PathSize()*8)
 	}
 
 	// Compact proofs: check that the length of the bit mask is as expected
 	// according to NumSideNodes.
-	if len(proof.BitMask) != int(math.Ceil(float64(proof.NumSideNodes)/float64(8))) {
-		return fmt.Errorf("invalid bit mask length: %d", len(proof.BitMask))
+	bml := int(math.Ceil(float64(proof.NumSideNodes) / float64(8)))
+	if len(proof.BitMask) != bml {
+		return fmt.Errorf("invalid bit mask length: got %d want %d", len(proof.BitMask), bml)
 	}
 
 	// Compact proofs: check that the correct number of sidenodes have been
-	// supplied according to the bit mask.
-	if proof.NumSideNodes > 0 && len(proof.SideNodes) != proof.NumSideNodes-countSetBits(proof.BitMask) {
-		return fmt.Errorf("invalid number of side nodes: %d", len(proof.SideNodes))
+	// supplied according to the bit mask. For every flipped bit we have a
+	// placeholder side node.
+	snl := proof.NumSideNodes - countSetBits(proof.BitMask)
+	if proof.NumSideNodes > 0 && len(proof.SideNodes) != snl {
+		return fmt.Errorf("invalid number of side nodes: got %d want %d", len(proof.SideNodes), snl)
 	}
 
 	return nil
@@ -184,18 +189,19 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 func (proof *SparseMerkleClosestProof) validateBasic(spec *TreeSpec) error {
 	// ensure the depth of the leaf node being proven is within the path size
 	if proof.Depth < 0 || proof.Depth > spec.ph.PathSize()*8 {
-		return fmt.Errorf("invalid depth: %d", proof.Depth)
+		return fmt.Errorf("invalid depth: got %d, outside of [0, %d]", proof.Depth, spec.ph.PathSize()*8)
 	}
 	// for each of the bits flipped ensure that they are within the path size
 	// and that they are not greater than the depth of the leaf node being proven
-	for _, i := range proof.FlippedBits {
+	for i, b := range proof.FlippedBits {
 		// as proof.Depth <= spec.ph.PathSize()*8, i <= proof.Depth
-		if i < 0 || i > proof.Depth {
-			return fmt.Errorf("invalid flipped bit index: %d", i)
+		if b < 0 || b > proof.Depth {
+			return fmt.Errorf("invalid flipped bit index %d: got %d, outside of [0, %d]", i, b, proof.Depth)
 		}
 	}
 	// create the path of the leaf node using the flipped bits metadata
-	workingPath := proof.Path
+	workingPath := make([]byte, len(proof.Path))
+	copy(workingPath, proof.Path)
 	for _, i := range proof.FlippedBits {
 		flipPathBit(workingPath, i)
 	}
@@ -233,13 +239,15 @@ func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TreeSpec) erro
 	// de-compacted proof should be executed.
 
 	// ensure no compressed fields are larger than the path size
+	// for example, for a 256-bit hasher, minBytes will return 1 and require
+	// all downstream values to have a length of at most one byte
 	maxSliceLen := minBytes(spec.ph.PathSize() * 8)
 	if len(proof.Depth) > maxSliceLen {
-		return fmt.Errorf("invalid depth: %d", proof.Depth)
+		return fmt.Errorf("invalid depth: got %d but max is %d", proof.Depth, maxSliceLen)
 	}
-	for _, i := range proof.FlippedBits {
-		if len(i) > maxSliceLen {
-			return fmt.Errorf("invalid flipped bit index: %d", bytesToInt(i))
+	for i, b := range proof.FlippedBits {
+		if len(b) > maxSliceLen {
+			return fmt.Errorf("invalid compressed flipped bit index %d: got length %d, max is %d]", i, bytesToInt(b), maxSliceLen)
 		}
 	}
 	// perform a sanity check on the closest proof
@@ -294,6 +302,9 @@ func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint6
 
 // VerifyClosestProof verifies a Merkle proof for a proof of inclusion for a leaf
 // found to have the closest path to the one provided to the proof structure
+//
+// TO_AUDITOR: This is akin to an inclusion proof with N (num flipped bits) exclusion
+// proof wrapped into one and needs to be reviewed from an algorithm POV.
 func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *TreeSpec) (bool, error) {
 	if err := proof.validateBasic(spec); err != nil {
 		return false, errors.Join(ErrBadProof, err)

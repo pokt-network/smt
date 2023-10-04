@@ -52,8 +52,10 @@ func flipPathBit(data []byte, position int) {
 // countSetBits counts the number of bits set in the data provided (ie the number of 1s)
 func countSetBits(data []byte) int {
 	count := 0
-	for i := 0; i < len(data)*8; i++ {
-		if getPathBit(data, i) == 1 {
+	for _, b := range data {
+		// Kernighan’s Method of counting set bits in a byte
+		for b != 0 {
+			b = b & (b - 1) // unset the rightmost set bit
 			count++
 		}
 	}
@@ -106,9 +108,9 @@ func intToBytes(i int) []byte {
 
 // bytesToInt converts a byte slice to an int
 func bytesToInt(bz []byte) int {
-	b := make([]byte, 8)
-	d := 8 - len(bz)
-	copy(b[d:], bz)
+	b := make([]byte, 8) // allocate space for a 64-bit unsigned integer
+	d := 8 - len(bz)     // determine how much padding is necessary
+	copy(b[d:], bz)      // copy over the non-zero bytes
 	u := binary.BigEndian.Uint64(b)
 	return int(u)
 }

@@ -11,7 +11,7 @@ import (
 )
 
 // Test base case Merkle proof operations.
-func TestSMST_ProofsBasic(t *testing.T) {
+func TestSMST_Proof_Operations(t *testing.T) {
 	var smn, smv KVStore
 	var smst *SMSTWithStorage
 	var proof *SparseMerkleProof
@@ -135,7 +135,7 @@ func TestSMST_ProofsBasic(t *testing.T) {
 }
 
 // Test sanity check cases for non-compact proofs.
-func TestSMST_ProofsValidateBasic(t *testing.T) {
+func TestSMST_Proof_ValidateBasic(t *testing.T) {
 	smn, err := NewKVStore("")
 	require.NoError(t, err)
 	smv, err := NewKVStore("")
@@ -160,7 +160,7 @@ func TestSMST_ProofsValidateBasic(t *testing.T) {
 		sideNodes[i] = proof.SideNodes[0]
 	}
 	proof.SideNodes = sideNodes
-	require.EqualError(t, proof.validateBasic(base), "too many side nodes: 257")
+	require.EqualError(t, proof.validateBasic(base), "too many side nodes: got 257 but max is 256")
 	result, err := VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
@@ -170,7 +170,7 @@ func TestSMST_ProofsValidateBasic(t *testing.T) {
 	// Case: incorrect size for NonMembershipLeafData.
 	proof, _ = smst.Prove([]byte("testKey1"))
 	proof.NonMembershipLeafData = make([]byte, 1)
-	require.EqualError(t, proof.validateBasic(base), "invalid non-membership leaf data size: 1")
+	require.EqualError(t, proof.validateBasic(base), "invalid non-membership leaf data size: got 1 but min is 33")
 	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
@@ -180,7 +180,7 @@ func TestSMST_ProofsValidateBasic(t *testing.T) {
 	// Case: unexpected sidenode size.
 	proof, _ = smst.Prove([]byte("testKey1"))
 	proof.SideNodes[0] = make([]byte, 1)
-	require.EqualError(t, proof.validateBasic(base), "invalid side node size: 1")
+	require.EqualError(t, proof.validateBasic(base), "invalid side node size: got 1 but want 40")
 	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
@@ -190,7 +190,7 @@ func TestSMST_ProofsValidateBasic(t *testing.T) {
 	// Case: incorrect non-nil sibling data
 	proof, _ = smst.Prove([]byte("testKey1"))
 	proof.SiblingData = base.th.digest(proof.SiblingData)
-	require.EqualError(t, proof.validateBasic(base), "invalid sibling data hash: 437437455c0f5ca33597b9dd2a307bdfcc6833d3c272e101f30ed6358783fc247f0b9966865746c1")
+	require.EqualError(t, proof.validateBasic(base), "invalid sibling data hash: got 437437455c0f5ca33597b9dd2a307bdfcc6833d3c272e101f30ed6358783fc247f0b9966865746c1 but want 1dc9a3da748c53b22c9e54dcafe9e872341babda9b3e50577f0b9966865746c10000000000000009")
 
 	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, base)
 	require.ErrorIs(t, err, ErrBadProof)
@@ -200,6 +200,74 @@ func TestSMST_ProofsValidateBasic(t *testing.T) {
 
 	require.NoError(t, smn.Stop())
 	require.NoError(t, smv.Stop())
+}
+
+func TestSMST_ClosestProof_ValidateBasic(t *testing.T) {
+	smn, err := NewKVStore("")
+	require.NoError(t, err)
+	smst := NewSparseMerkleSumTree(smn, sha256.New())
+	np := NoPrehashSpec(sha256.New(), true)
+	base := smst.Spec()
+	path := sha256.Sum256([]byte("testKey2"))
+	flipPathBit(path[:], 3)
+	flipPathBit(path[:], 6)
+
+	// insert some unrelated values to populate the tree
+	require.NoError(t, smst.Update([]byte("foo"), []byte("oof"), 3))
+	require.NoError(t, smst.Update([]byte("bar"), []byte("rab"), 6))
+	require.NoError(t, smst.Update([]byte("baz"), []byte("zab"), 9))
+	require.NoError(t, smst.Update([]byte("bin"), []byte("nib"), 12))
+	require.NoError(t, smst.Update([]byte("fiz"), []byte("zif"), 15))
+	require.NoError(t, smst.Update([]byte("fob"), []byte("bof"), 18))
+	require.NoError(t, smst.Update([]byte("testKey"), []byte("testValue"), 21))
+	require.NoError(t, smst.Update([]byte("testKey2"), []byte("testValue2"), 24))
+	require.NoError(t, smst.Update([]byte("testKey3"), []byte("testValue3"), 27))
+	require.NoError(t, smst.Update([]byte("testKey4"), []byte("testValue4"), 30))
+	root := smst.Root()
+
+	proof, err := smst.ProveClosest(path[:])
+	require.NoError(t, err)
+	proof.Depth = -1
+	require.EqualError(t, proof.validateBasic(base), "invalid depth: got -1, outside of [0, 256]")
+	result, err := VerifyClosestProof(proof, root, np)
+	require.ErrorIs(t, err, ErrBadProof)
+	require.False(t, result)
+	_, err = CompactClosestProof(proof, base)
+	require.Error(t, err)
+	proof.Depth = 257
+	require.EqualError(t, proof.validateBasic(base), "invalid depth: got 257, outside of [0, 256]")
+	result, err = VerifyClosestProof(proof, root, np)
+	require.ErrorIs(t, err, ErrBadProof)
+	require.False(t, result)
+	_, err = CompactClosestProof(proof, base)
+	require.Error(t, err)
+
+	proof, err = smst.ProveClosest(path[:])
+	require.NoError(t, err)
+	proof.FlippedBits[0] = -1
+	require.EqualError(t, proof.validateBasic(base), "invalid flipped bit index 0: got -1, outside of [0, 8]")
+	result, err = VerifyClosestProof(proof, root, np)
+	require.ErrorIs(t, err, ErrBadProof)
+	require.False(t, result)
+	_, err = CompactClosestProof(proof, base)
+	require.Error(t, err)
+	proof.FlippedBits[0] = 9
+	require.EqualError(t, proof.validateBasic(base), "invalid flipped bit index 0: got 9, outside of [0, 8]")
+	result, err = VerifyClosestProof(proof, root, np)
+	require.ErrorIs(t, err, ErrBadProof)
+	require.False(t, result)
+	_, err = CompactClosestProof(proof, base)
+	require.Error(t, err)
+
+	proof, err = smst.ProveClosest(path[:])
+	require.NoError(t, err)
+	flipPathBit(proof.Path, 3)
+	require.EqualError(t, proof.validateBasic(base), "invalid closest path: 8d13809f932d0296b88c1913231ab4b403f05c88363575476204fef6930f22ae (not equal at bit: 3)")
+	result, err = VerifyClosestProof(proof, root, np)
+	require.ErrorIs(t, err, ErrBadProof)
+	require.False(t, result)
+	_, err = CompactClosestProof(proof, base)
+	require.Error(t, err)
 }
 
 // ProveClosest test against a visual representation of the tree
@@ -241,6 +309,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	flipPathBit(path[:], 6)
 	proof, err = smst.ProveClosest(path[:])
 	require.NoError(t, err)
+	checkClosestCompactEquivalence(t, proof, smst.Spec())
 	require.NotEqual(t, proof, &SparseMerkleClosestProof{})
 	closestPath := sha256.Sum256([]byte("testKey2"))
 	closestValueHash := []byte("testValue2")
@@ -266,6 +335,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	flipPathBit(path2[:], 7)
 	proof, err = smst.ProveClosest(path2[:])
 	require.NoError(t, err)
+	checkClosestCompactEquivalence(t, proof, smst.Spec())
 	require.NotEqual(t, proof, &SparseMerkleClosestProof{})
 	closestPath = sha256.Sum256([]byte("testKey4"))
 	closestValueHash = []byte("testValue4")
@@ -302,6 +372,7 @@ func TestSMST_ProveClosest_Empty(t *testing.T) {
 	flipPathBit(path[:], 6)
 	proof, err = smst.ProveClosest(path[:])
 	require.NoError(t, err)
+	checkClosestCompactEquivalence(t, proof, smst.Spec())
 	require.Equal(t, proof, &SparseMerkleClosestProof{
 		Path:         path[:],
 		FlippedBits:  []int{0},
@@ -334,6 +405,7 @@ func TestSMST_ProveClosest_OneNode(t *testing.T) {
 	flipPathBit(path[:], 6)
 	proof, err = smst.ProveClosest(path[:])
 	require.NoError(t, err)
+	checkClosestCompactEquivalence(t, proof, smst.Spec())
 
 	closestPath := sha256.Sum256([]byte("foo"))
 	closestValueHash := []byte("bar")
