@@ -6,7 +6,7 @@
 [![Tests](https://github.com/pokt-network/smt/actions/workflows/test.yml/badge.svg)](https://github.com/pokt-network/smt/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/pokt-network/smt/branch/main/graph/badge.svg)](https://codecov.io/gh/pokt-network/smt)
 
-Note: **Requires Go 1.19+**
+Note: **Requires Go 1.20+**
 
 - [Overview](#overview)
 - [Documentation](#documentation)

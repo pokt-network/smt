@@ -1,5 +1,7 @@
 package smt
 
+import "encoding/binary"
+
 type nilPathHasher struct {
 	hashSize int
 }
@@ -47,18 +49,21 @@ func flipPathBit(data []byte, position int) {
 	data[position/8] = byte(n)
 }
 
+// countSetBits counts the number of bits set in the data provided (ie the number of 1s)
 func countSetBits(data []byte) int {
 	count := 0
-	for i := 0; i < len(data)*8; i++ {
-		if getPathBit(data, i) == 1 {
+	for _, b := range data {
+		// Kernighan’s Method of counting set bits in a byte
+		for b != 0 {
+			b = b & (b - 1) // unset the rightmost set bit
 			count++
 		}
 	}
 	return count
 }
 
-// counts common bits in each path, starting from some position
-func countCommonPrefix(data1, data2 []byte, from int) int {
+// countCommonPrefixBits counts common bits in each path, starting from some position
+func countCommonPrefixBits(data1, data2 []byte, from int) int {
 	count := 0
 	for i := from; i < len(data1)*8; i++ {
 		if getPathBit(data1, i) == getPathBit(data2, i) {
@@ -68,6 +73,46 @@ func countCommonPrefix(data1, data2 []byte, from int) int {
 		}
 	}
 	return count + from
+}
+
+// equalPrefixBits checks if the bits from n to m (inclusive) in the two paths are equal
+func equalPrefixBits(data1, data2 []byte, n, m int) (bool, int) {
+	for i := n; i < m; i++ {
+		if getPathBit(data1, i) != getPathBit(data2, i) {
+			return false, i
+		}
+	}
+	return true, -1
+}
+
+// minBytes calculates the minimum number of bytes required to store an int
+func minBytes(i int) int {
+	if i == 0 {
+		return 1
+	}
+	bytes := 0
+	for i > 0 {
+		bytes++
+		i >>= 8
+	}
+	return bytes
+}
+
+// intToBytes converts an int to a byte slice
+func intToBytes(i int) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(i))
+	d := minBytes(i)
+	return b[8-d:]
+}
+
+// bytesToInt converts a byte slice to an int
+func bytesToInt(bz []byte) int {
+	b := make([]byte, 8) // allocate space for a 64-bit unsigned integer
+	d := 8 - len(bz)     // determine how much padding is necessary
+	copy(b[d:], bz)      // copy over the non-zero bytes
+	u := binary.BigEndian.Uint64(b)
+	return int(u)
 }
 
 // placeholder returns the default placeholder value depending on the tree type

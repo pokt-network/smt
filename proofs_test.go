@@ -1,7 +1,6 @@
 package smt
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"testing"
@@ -68,7 +67,7 @@ func TestSparseMerkleProof_Unmarshal(t *testing.T) {
 	require.Equal(t, proof3, uproof3)
 }
 
-func TestSparseCompactMerkletProof_Marshal(t *testing.T) {
+func TestSparseCompactMerkleProof_Marshal(t *testing.T) {
 	tree := setupTree(t)
 
 	proof, err := tree.Prove([]byte("key"))
@@ -201,14 +200,19 @@ func checkCompactEquivalence(t *testing.T, proof *SparseMerkleProof, base *TreeS
 	if err != nil {
 		t.Fatalf("failed to decompact proof: %v", err)
 	}
+	require.Equal(t, proof, decompactedProof)
+}
 
-	for i, sideNode := range proof.SideNodes {
-		if !bytes.Equal(decompactedProof.SideNodes[i], sideNode) {
-			t.Fatalf("de-compacted proof does not match original proof")
-		}
+// Check that a non-compact proof is equivalent to the proof returned when it is compacted and de-compacted.
+func checkClosestCompactEquivalence(t *testing.T, proof *SparseMerkleClosestProof, spec *TreeSpec) {
+	t.Helper()
+	compactedProof, err := CompactClosestProof(proof, spec)
+	if err != nil {
+		t.Fatalf("failed to compact proof: %v", err)
 	}
-
-	if !bytes.Equal(proof.NonMembershipLeafData, decompactedProof.NonMembershipLeafData) {
-		t.Fatalf("de-compacted proof does not match original proof")
+	decompactedProof, err := DecompactClosestProof(compactedProof, spec)
+	if err != nil {
+		t.Fatalf("failed to decompact proof: %v", err)
 	}
+	require.Equal(t, proof, decompactedProof)
 }
