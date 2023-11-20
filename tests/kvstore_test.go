@@ -1,4 +1,4 @@
-package smt
+package tests
 
 import (
 	"bytes"
@@ -7,12 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	badger "github.com/dgraph-io/badger/v4"
+	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore/badger"
 	"github.com/stretchr/testify/require"
 )
 
 func TestKVStore_BasicOperations(t *testing.T) {
-	store, err := NewKVStore("")
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -160,7 +161,7 @@ func TestKVStore_BasicOperations(t *testing.T) {
 }
 
 func TestKVStore_GetAllBasic(t *testing.T) {
-	store, err := NewKVStore("")
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -197,7 +198,7 @@ func TestKVStore_GetAllBasic(t *testing.T) {
 }
 
 func TestKVStore_GetAllPrefixed(t *testing.T) {
-	store, err := NewKVStore("")
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -247,7 +248,7 @@ func TestKVStore_GetAllPrefixed(t *testing.T) {
 }
 
 func TestKVStore_Exists(t *testing.T) {
-	store, err := NewKVStore("")
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -289,7 +290,7 @@ func TestKVStore_Exists(t *testing.T) {
 }
 
 func TestKVStore_ClearAll(t *testing.T) {
-	store, err := NewKVStore("")
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -337,7 +338,7 @@ func TestKVStore_ClearAll(t *testing.T) {
 }
 
 func TestKVStore_BackupAndRestore(t *testing.T) {
-	store, err := NewKVStore("")
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -362,7 +363,7 @@ func TestKVStore_BackupAndRestore(t *testing.T) {
 }
 
 func TestKVStore_Len(t *testing.T) {
-	store, err := NewKVStore("")
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -394,7 +395,7 @@ func TestKVStore_Len(t *testing.T) {
 	}
 }
 
-func setupStore(t *testing.T, store KVStore) {
+func setupStore(t *testing.T, store smt.KVStore) {
 	t.Helper()
 	err := store.Set([]byte("foo"), []byte("bar"))
 	require.NoError(t, err)

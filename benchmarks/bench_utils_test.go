@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore/badger"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,7 +58,7 @@ func setupSMT(b *testing.B, persistent bool, numLeaves int) *smt.SMT {
 	if persistent {
 		path = b.TempDir()
 	}
-	nodes, err := smt.NewKVStore(path)
+	nodes, err := badger.NewKVStore(path)
 	require.NoError(b, err)
 	tree := smt.NewSparseMerkleTree(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
@@ -95,7 +96,7 @@ func setupSMST(b *testing.B, persistent bool, numLeaves int) *smt.SMST {
 	if persistent {
 		path = b.TempDir()
 	}
-	nodes, err := smt.NewKVStore(path)
+	nodes, err := badger.NewKVStore(path)
 	require.NoError(b, err)
 	tree := smt.NewSparseMerkleSumTree(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {

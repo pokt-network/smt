@@ -3,13 +3,15 @@ package smt
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"github.com/pokt-network/smt"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSMT_ProofSizes(t *testing.T) {
-	nodes, err := smt.NewKVStore("")
+	nodes, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	testCases := []struct {
 		name     string
@@ -92,7 +94,7 @@ func TestSMT_ProofSizes(t *testing.T) {
 }
 
 func TestSMST_ProofSizes(t *testing.T) {
-	nodes, err := smt.NewKVStore("")
+	nodes, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	testCases := []struct {
 		name     string

@@ -41,9 +41,9 @@ func setPathBit(data []byte, position int) {
 	data[position/8] = byte(n)
 }
 
-// flipPathBit flips the bit at an offset (see position) in the data
+// FlipPathBit flips the bit at an offset (see position) in the data
 // provided relative to most significant bit
-func flipPathBit(data []byte, position int) {
+func FlipPathBit(data []byte, position int) {
 	n := int(data[position/8])           // get index of byte containing the position
 	n ^= 1 << (8 - 1 - uint(position)%8) // XOR the bit within the byte at the position
 	data[position/8] = byte(n)
@@ -62,8 +62,8 @@ func countSetBits(data []byte) int {
 	return count
 }
 
-// countCommonPrefixBits counts common bits in each path, starting from some position
-func countCommonPrefixBits(data1, data2 []byte, from int) int {
+// CountCommonPrefixBits counts common bits in each path, starting from some position
+func CountCommonPrefixBits(data1, data2 []byte, from int) int {
 	count := 0
 	for i := from; i < len(data1)*8; i++ {
 		if getPathBit(data1, i) == getPathBit(data2, i) {
@@ -115,20 +115,20 @@ func bytesToInt(bz []byte) int {
 	return int(u)
 }
 
-// placeholder returns the default placeholder value depending on the tree type
-func placeholder(spec *TreeSpec) []byte {
+// Placeholder returns the default Placeholder value depending on the tree type
+func Placeholder(spec *TreeSpec) []byte {
 	if spec.sumTree {
-		placeholder := spec.th.placeholder()
-		placeholder = append(placeholder, defaultSum[:]...)
+		placeholder := spec.th.Placeholder()
+		placeholder = append(placeholder, DefaultSum[:]...)
 		return placeholder
 	}
-	return spec.th.placeholder()
+	return spec.th.Placeholder()
 }
 
 // hashSize returns the hash size depending on the tree type
 func hashSize(spec *TreeSpec) int {
 	if spec.sumTree {
-		return spec.th.hashSize() + sumSize
+		return spec.th.hashSize() + SumSize
 	}
 	return spec.th.hashSize()
 }
@@ -136,9 +136,9 @@ func hashSize(spec *TreeSpec) int {
 // digestLeaf returns the hash and preimage of a leaf node depending on the tree type
 func digestLeaf(spec *TreeSpec, path, value []byte) ([]byte, []byte) {
 	if spec.sumTree {
-		return spec.th.digestSumLeaf(path, value)
+		return spec.th.DigestSumLeaf(path, value)
 	}
-	return spec.th.digestLeaf(path, value)
+	return spec.th.DigestLeaf(path, value)
 }
 
 // digestNode returns the hash and preimage of a node depending on the tree type
@@ -181,7 +181,7 @@ func hashSerialization(smt *TreeSpec, data []byte) []byte {
 		copy(ext.pathBounds[:], pathBounds)
 		return smt.hashNode(&ext)
 	} else {
-		return smt.th.digest(data)
+		return smt.th.Digest(data)
 	}
 }
 
@@ -193,8 +193,8 @@ func hashSumSerialization(smt *TreeSpec, data []byte) []byte {
 		copy(ext.pathBounds[:], pathBounds)
 		return smt.hashSumNode(&ext)
 	} else {
-		digest := smt.th.digest(data)
-		digest = append(digest, data[len(data)-sumSize:]...)
+		digest := smt.th.Digest(data)
+		digest = append(digest, data[len(data)-SumSize:]...)
 		return digest
 	}
 }

@@ -9,7 +9,7 @@ on:
 
 env:
   # Even though we can test against multiple versions, this one is considered a target version.
-  TARGET_GOLANG_VERSION: "1.19"
+  TARGET_GOLANG_VERSION: "1.20"
 
 jobs:
   tests:
@@ -35,6 +35,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-golang-${{ matrix.go }}-
       - name: Create coverage report and run tests
+        working-directory: ./tests
         run: |
           set -euo pipefail
           GODEBUG=netdns=cgo go test -p 1 -json ./ -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic 2>&1 | tee test_results.json

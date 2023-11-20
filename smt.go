@@ -114,14 +114,14 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 			}
 		}
 		inner := (*node).(*innerNode)
-		if getPathBit(path, depth) == left {
+		if getPathBit(path, depth) == Left {
 			node = &inner.leftChild
 		} else {
 			node = &inner.rightChild
 		}
 	}
 	if leaf == nil {
-		return defaultValue, nil
+		return DefaultValue, nil
 	}
 	return leaf.valueHash, nil
 }
@@ -129,7 +129,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 // Update sets the value for the given key, to the digest of the provided value
 func (smt *SMT) Update(key []byte, value []byte) error {
 	path := smt.ph.Path(key)
-	valueHash := smt.digestValue(value)
+	valueHash := smt.DigestValue(value)
 	var orphans orphanNodes
 	tree, err := smt.update(smt.tree, 0, path, valueHash, &orphans)
 	if err != nil {
@@ -156,8 +156,8 @@ func (smt *SMT) update(
 		return newLeaf, nil
 	}
 	if leaf, ok := node.(*leafNode); ok {
-		prefixlen := countCommonPrefixBits(path, leaf.path, depth)
-		if prefixlen == smt.depth() { // replace leaf if paths are equal
+		prefixlen := CountCommonPrefixBits(path, leaf.path, depth)
+		if prefixlen == smt.Depth() { // replace leaf if paths are equal
 			smt.addOrphan(orphans, node)
 			return newLeaf, nil
 		}
@@ -172,7 +172,7 @@ func (smt *SMT) update(
 			*last = &ext
 			last = &ext.child
 		}
-		if getPathBit(path, prefixlen) == left {
+		if getPathBit(path, prefixlen) == Left {
 			*last = &innerNode{leftChild: newLeaf, rightChild: leaf}
 		} else {
 			*last = &innerNode{leftChild: leaf, rightChild: newLeaf}
@@ -195,7 +195,7 @@ func (smt *SMT) update(
 
 	inner := node.(*innerNode)
 	var child *treeNode
-	if getPathBit(path, depth) == left {
+	if getPathBit(path, depth) == Left {
 		child = &inner.leftChild
 	} else {
 		child = &inner.rightChild
@@ -266,7 +266,7 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 
 	inner := node.(*innerNode)
 	var child, sib *treeNode
-	if getPathBit(path, depth) == left {
+	if getPathBit(path, depth) == Left {
 		child, sib = &inner.leftChild, &inner.rightChild
 	} else {
 		child, sib = &inner.rightChild, &inner.leftChild
@@ -307,7 +307,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	var sib treeNode
 
 	node := smt.tree
-	for depth := 0; depth < smt.depth(); depth++ {
+	for depth := 0; depth < smt.Depth(); depth++ {
 		node, err = smt.resolveLazy(node)
 		if err != nil {
 			return nil, err
@@ -335,7 +335,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 			}
 		}
 		inner := node.(*innerNode)
-		if getPathBit(path, depth) == left {
+		if getPathBit(path, depth) == Left {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -409,7 +409,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 	node := smt.tree
 	depth := 0
 	// continuously traverse the tree until we hit a leaf node
-	for depth < smt.depth() {
+	for depth < smt.Depth() {
 		// save current node information as "parent" info
 		if node != nil {
 			parent = node
@@ -438,7 +438,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			}
 			depth -= depthDelta
 			// flip the path bit at the parent depth
-			flipPathBit(workingPath, depth)
+			FlipPathBit(workingPath, depth)
 			proof.FlippedBits = append(proof.FlippedBits, depth)
 		}
 		// end traversal when we hit a leaf node
@@ -472,7 +472,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			proof.Depth = depth
 			break
 		}
-		if getPathBit(workingPath, depth) == left {
+		if getPathBit(workingPath, depth) == Left {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -484,7 +484,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 
 	// Retrieve the closest path and value hash if found
 	if node == nil { // tree was empty
-		proof.ClosestPath, proof.ClosestValueHash = placeholder(smt.Spec()), nil
+		proof.ClosestPath, proof.ClosestValueHash = Placeholder(smt.Spec()), nil
 		proof.ClosestProof = &SparseMerkleProof{}
 		return proof, nil
 	}
@@ -539,7 +539,7 @@ func (smt *SMT) resolveLazy(node treeNode) (treeNode, error) {
 
 func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 ) (ret treeNode, err error) {
-	if bytes.Equal(smt.th.placeholder(), hash) {
+	if bytes.Equal(smt.th.Placeholder(), hash) {
 		return
 	}
 	data, err := smt.nodes.Get(hash)
@@ -577,7 +577,7 @@ func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 
 func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (treeNode, error),
 ) (ret treeNode, err error) {
-	if bytes.Equal(placeholder(smt.Spec()), hash) {
+	if bytes.Equal(Placeholder(smt.Spec()), hash) {
 		return
 	}
 	data, err := smt.nodes.Get(hash)
@@ -741,7 +741,7 @@ func (ext *extensionNode) split(path []byte, depth int) (treeNode, *treeNode, in
 	var branch innerNode
 	var head treeNode
 	var tail *treeNode
-	if myBit == left {
+	if myBit == Left {
 		tail = &branch.leftChild
 	} else {
 		tail = &branch.rightChild
@@ -781,7 +781,7 @@ func (ext *extensionNode) expand() treeNode {
 	last := ext.child
 	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {
 		var next innerNode
-		if getPathBit(ext.path, i) == left {
+		if getPathBit(ext.path, i) == Left {
 			next.leftChild = last
 		} else {
 			next.rightChild = last

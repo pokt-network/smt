@@ -1,4 +1,4 @@
-package smt
+package tests
 
 import (
 	"crypto/rand"
@@ -6,92 +6,94 @@ import (
 	"hash"
 	"testing"
 
+	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore/badger"
 	"github.com/stretchr/testify/require"
 )
 
-func NewSMTWithStorage(nodes, preimages KVStore, hasher hash.Hash, options ...Option) *SMTWithStorage {
+func NewSMTWithStorage(nodes, preimages smt.KVStore, hasher hash.Hash, options ...smt.Option) *SMTWithStorage {
 	return &SMTWithStorage{
-		SMT:       NewSparseMerkleTree(nodes, hasher, options...),
+		SMT:       smt.NewSparseMerkleTree(nodes, hasher, options...),
 		preimages: preimages,
 	}
 }
 
 func TestSMT_TreeUpdateBasic(t *testing.T) {
-	smn, err := NewKVStore("")
+	smn, err := badger.NewKVStore("")
 	require.NoError(t, err)
-	smv, err := NewKVStore("")
+	smv, err := badger.NewKVStore("")
 	require.NoError(t, err)
-	lazy := NewSparseMerkleTree(smn, sha256.New())
-	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
+	lazy := smt.NewSparseMerkleTree(smn, sha256.New())
+	smtWithStorage := &SMTWithStorage{SMT: lazy, preimages: smv}
 	var value []byte
 	var has bool
 
 	// Test getting an empty key.
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value)
+	require.Equal(t, smt.DefaultValue, value)
 
-	has, err = smt.Has([]byte("testKey"))
+	has, err = smtWithStorage.Has([]byte("testKey"))
 	require.NoError(t, err)
 	require.False(t, has)
 
 	// Test updating the empty key.
-	err = smt.Update([]byte("testKey"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("testKey"), []byte("testValue"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
 
-	has, err = smt.Has([]byte("testKey"))
+	has, err = smtWithStorage.Has([]byte("testKey"))
 	require.NoError(t, err)
 	require.True(t, has)
 
 	// Test updating the non-empty key.
-	err = smt.Update([]byte("testKey"), []byte("testValue2"))
+	err = smtWithStorage.Update([]byte("testKey"), []byte("testValue2"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue2"), value)
 
 	// Test updating a second empty key where the path for both keys share the
 	// first 2 bits (when using SHA256).
-	err = smt.Update([]byte("foo"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("foo"), []byte("testValue"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("foo"))
+	value, err = smtWithStorage.GetValue([]byte("foo"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
 
 	// Test updating a third empty key.
-	err = smt.Update([]byte("testKey2"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("testKey2"), []byte("testValue"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("testKey2"))
+	value, err = smtWithStorage.GetValue([]byte("testKey2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue2"), value)
 
 	require.NoError(t, lazy.Commit())
 
 	// Test that a tree can be imported from a KVStore
-	lazy = ImportSparseMerkleTree(smn, sha256.New(), smt.Root())
+	lazy = smt.ImportSparseMerkleTree(smn, sha256.New(), smtWithStorage.Root())
 	require.NoError(t, err)
-	smt = &SMTWithStorage{SMT: lazy, preimages: smv}
+	smtWithStorage = &SMTWithStorage{SMT: lazy, preimages: smv}
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue2"), value)
 
-	value, err = smt.GetValue([]byte("foo"))
+	value, err = smtWithStorage.GetValue([]byte("foo"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
 
-	value, err = smt.GetValue([]byte("testKey2"))
+	value, err = smtWithStorage.GetValue([]byte("testKey2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
 
@@ -101,102 +103,102 @@ func TestSMT_TreeUpdateBasic(t *testing.T) {
 
 // Test base case tree delete operations with a few keys.
 func TestSMT_TreeDeleteBasic(t *testing.T) {
-	smn, err := NewKVStore("")
+	smn, err := badger.NewKVStore("")
 	require.NoError(t, err)
-	smv, err := NewKVStore("")
+	smv, err := badger.NewKVStore("")
 	require.NoError(t, err)
-	lazy := NewSparseMerkleTree(smn, sha256.New())
-	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
-	rootEmpty := smt.Root()
+	lazy := smt.NewSparseMerkleTree(smn, sha256.New())
+	smtWithStorage := &SMTWithStorage{SMT: lazy, preimages: smv}
+	rootEmpty := smtWithStorage.Root()
 
 	// Testing inserting, deleting a key, and inserting it again.
-	err = smt.Update([]byte("testKey"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("testKey"), []byte("testValue"))
 	require.NoError(t, err)
 
-	root1 := smt.Root()
-	err = smt.Delete([]byte("testKey"))
+	root1 := smtWithStorage.Root()
+	err = smtWithStorage.Delete([]byte("testKey"))
 	require.NoError(t, err)
 
-	value, err := smt.GetValue([]byte("testKey"))
+	value, err := smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, smt.DefaultValue, value, "getting deleted key")
 
-	has, err := smt.Has([]byte("testKey"))
+	has, err := smtWithStorage.Has([]byte("testKey"))
 	require.NoError(t, err)
 	require.False(t, has, "checking existence of deleted key")
 
-	err = smt.Update([]byte("testKey"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("testKey"), []byte("testValue"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
-	require.Equal(t, root1, smt.Root(), "re-inserting key after deletion")
+	require.Equal(t, root1, smtWithStorage.Root(), "re-inserting key after deletion")
 
 	// Test inserting and deleting a second key.
-	err = smt.Update([]byte("testKey2"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("testKey2"), []byte("testValue"))
 	require.NoError(t, err)
 
-	err = smt.Delete([]byte("testKey2"))
+	err = smtWithStorage.Delete([]byte("testKey2"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("testKey2"))
+	value, err = smtWithStorage.GetValue([]byte("testKey2"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, smt.DefaultValue, value, "getting deleted key")
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
-	require.Equal(t, root1, smt.Root(), "after deleting second key")
+	require.Equal(t, root1, smtWithStorage.Root(), "after deleting second key")
 
 	// Test inserting and deleting a different second key, when the the first 2
 	// bits of the path for the two keys in the tree are the same (when using SHA256).
-	err = smt.Update([]byte("foo"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("foo"), []byte("testValue"))
 	require.NoError(t, err)
 
-	_, err = smt.GetValue([]byte("foo"))
+	_, err = smtWithStorage.GetValue([]byte("foo"))
 	require.NoError(t, err)
 
-	err = smt.Delete([]byte("foo"))
+	err = smtWithStorage.Delete([]byte("foo"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("foo"))
+	value, err = smtWithStorage.GetValue([]byte("foo"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, smt.DefaultValue, value, "getting deleted key")
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
-	require.Equal(t, root1, smt.Root(), "after deleting second key")
+	require.Equal(t, root1, smtWithStorage.Root(), "after deleting second key")
 
 	// Testing inserting, deleting a key, and inserting it again
-	err = smt.Update([]byte("testKey"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("testKey"), []byte("testValue"))
 	require.NoError(t, err)
 
-	root1 = smt.Root()
-	err = smt.Delete([]byte("testKey"))
+	root1 = smtWithStorage.Root()
+	err = smtWithStorage.Delete([]byte("testKey"))
 	require.NoError(t, err)
 
 	// Fail to delete an absent key, but leave tree in a valid state
-	err = smt.Delete([]byte("testKey"))
+	err = smtWithStorage.Delete([]byte("testKey"))
 	require.Error(t, err)
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, smt.DefaultValue, value, "getting deleted key")
 
-	has, err = smt.Has([]byte("testKey"))
+	has, err = smtWithStorage.Has([]byte("testKey"))
 	require.NoError(t, err)
 	require.False(t, has, "checking existence of deleted key")
-	require.Equal(t, rootEmpty, smt.Root())
+	require.Equal(t, rootEmpty, smtWithStorage.Root())
 
-	err = smt.Update([]byte("testKey"), []byte("testValue"))
+	err = smtWithStorage.Update([]byte("testKey"), []byte("testValue"))
 	require.NoError(t, err)
 
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err = smtWithStorage.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
-	require.Equal(t, root1, smt.Root(), "re-inserting key after deletion")
+	require.Equal(t, root1, smtWithStorage.Root(), "re-inserting key after deletion")
 
 	require.NoError(t, smn.Stop())
 	require.NoError(t, smv.Stop())
@@ -205,11 +207,11 @@ func TestSMT_TreeDeleteBasic(t *testing.T) {
 // Test tree ops with known paths
 func TestSMT_TreeKnownPath(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn, err := NewKVStore("")
+	smn, err := badger.NewKVStore("")
 	require.NoError(t, err)
-	smv, err := NewKVStore("")
+	smv, err := badger.NewKVStore("")
 	require.NoError(t, err)
-	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
+	smt := NewSMTWithStorage(smn, smv, sha256.New(), smt.WithPathHasher(ph))
 	var value []byte
 
 	baseKey := make([]byte, ph.PathSize())
@@ -281,11 +283,11 @@ func TestSMT_TreeKnownPath(t *testing.T) {
 // Test tree operations when two leafs are immediate neighbors.
 func TestSMT_TreeMaxHeightCase(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn, err := NewKVStore("")
+	smn, err := badger.NewKVStore("")
 	require.NoError(t, err)
-	smv, err := NewKVStore("")
+	smv, err := badger.NewKVStore("")
 	require.NoError(t, err)
-	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
+	smt := NewSMTWithStorage(smn, smv, sha256.New(), smt.WithPathHasher(ph))
 	var value []byte
 
 	// Make two neighboring keys.
@@ -322,9 +324,9 @@ func TestSMT_TreeMaxHeightCase(t *testing.T) {
 }
 
 func TestSMT_OrphanRemoval(t *testing.T) {
-	var smn, smv KVStore
-	var impl *SMT
-	var smt *SMTWithStorage
+	var smn, smv smt.KVStore
+	var impl *smt.SMT
+	var smtWithStorage *SMTWithStorage
 	var err error
 
 	nodeCount := func(t *testing.T) int {
@@ -332,28 +334,28 @@ func TestSMT_OrphanRemoval(t *testing.T) {
 		return smn.Len()
 	}
 	setup := func() {
-		smn, err = NewKVStore("")
+		smn, err = badger.NewKVStore("")
 		require.NoError(t, err)
-		smv, err = NewKVStore("")
+		smv, err = badger.NewKVStore("")
 		require.NoError(t, err)
-		impl = NewSparseMerkleTree(smn, sha256.New())
-		smt = &SMTWithStorage{SMT: impl, preimages: smv}
+		impl = smt.NewSparseMerkleTree(smn, sha256.New())
+		smtWithStorage = &SMTWithStorage{SMT: impl, preimages: smv}
 
-		err = smt.Update([]byte("testKey"), []byte("testValue"))
+		err = smtWithStorage.Update([]byte("testKey"), []byte("testValue"))
 		require.NoError(t, err)
 		require.Equal(t, 1, nodeCount(t)) // only root node
 	}
 
 	t.Run("delete 1", func(t *testing.T) {
 		setup()
-		err = smt.Delete([]byte("testKey"))
+		err = smtWithStorage.Delete([]byte("testKey"))
 		require.NoError(t, err)
 		require.Equal(t, 0, nodeCount(t))
 	})
 
 	t.Run("overwrite 1", func(t *testing.T) {
 		setup()
-		err = smt.Update([]byte("testKey"), []byte("testValue2"))
+		err = smtWithStorage.Update([]byte("testKey"), []byte("testValue2"))
 		require.NoError(t, err)
 		require.Equal(t, 1, nodeCount(t))
 	})
@@ -374,39 +376,39 @@ func TestSMT_OrphanRemoval(t *testing.T) {
 
 	t.Run("overwrite and delete", func(t *testing.T) {
 		setup()
-		err = smt.Update([]byte("testKey"), []byte("testValue2"))
+		err = smtWithStorage.Update([]byte("testKey"), []byte("testValue2"))
 		require.NoError(t, err)
 		require.Equal(t, 1, nodeCount(t))
 
-		err = smt.Delete([]byte("testKey"))
+		err = smtWithStorage.Delete([]byte("testKey"))
 		require.NoError(t, err)
 		require.Equal(t, 0, nodeCount(t))
 
 		for tci, tc := range cases {
 			setup()
 			for _, key := range tc.keys {
-				err = smt.Update([]byte(key), []byte("testValue2"))
+				err = smtWithStorage.Update([]byte(key), []byte("testValue2"))
 				require.NoError(t, err, tci)
 			}
 			require.Equal(t, tc.count, nodeCount(t), tci)
 
 			// Overwrite doesn't change count
 			for _, key := range tc.keys {
-				err = smt.Update([]byte(key), []byte("testValue3"))
+				err = smtWithStorage.Update([]byte(key), []byte("testValue3"))
 				require.NoError(t, err, tci)
 			}
 			require.Equal(t, tc.count, nodeCount(t), tci)
 
 			// Deletion removes all nodes except root
 			for _, key := range tc.keys {
-				err = smt.Delete([]byte(key))
+				err = smtWithStorage.Delete([]byte(key))
 				require.NoError(t, err, tci)
 			}
 			require.Equal(t, 1, nodeCount(t), tci)
 
 			// Deleting and re-inserting a persisted node doesn't change count
-			require.NoError(t, smt.Delete([]byte("testKey")))
-			require.NoError(t, smt.Update([]byte("testKey"), []byte("testValue")))
+			require.NoError(t, smtWithStorage.Delete([]byte("testKey")))
+			require.NoError(t, smtWithStorage.Update([]byte("testKey"), []byte("testValue")))
 			require.Equal(t, 1, nodeCount(t), tci)
 		}
 	})

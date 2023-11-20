@@ -3,16 +3,18 @@ package smt
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pokt-network/smt"
-	"github.com/stretchr/testify/require"
 	"strconv"
 	"testing"
+
+	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 	treeSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
 	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
-	nodes, err := smt.NewKVStore("")
+	nodes, err := badger.NewKVStore("")
 	require.NoError(b, err)
 	for _, treeSize := range treeSizes {
 		for _, leafSize := range leafSizes {
@@ -43,7 +45,7 @@ func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 func BenchmarkSMSTLeafSizes_Fill(b *testing.B) {
 	treeSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
 	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
-	nodes, err := smt.NewKVStore("")
+	nodes, err := badger.NewKVStore("")
 	require.NoError(b, err)
 	for _, treeSize := range treeSizes {
 		for _, leafSize := range leafSizes {
