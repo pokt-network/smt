@@ -9,7 +9,7 @@ on:
 
 env:
   # Even though we can test against multiple versions, this one is considered a target version.
-  TARGET_GOLANG_VERSION: "1.19"
+  TARGET_GOLANG_VERSION: "1.20"
 
 jobs:
   tests:
