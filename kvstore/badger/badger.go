@@ -1,32 +1,43 @@
 package badger
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
-	badger "github.com/dgraph-io/badger/v4"
-	"github.com/pokt-network/smt"
+	"github.com/dgraph-io/badger/v4"
+	"github.com/pokt-network/smt/kvstore"
 )
 
 const (
 	maxPendingWrites = 16 // used in backup restoration
 )
 
-var (
-	ErrKeyNotFound = badger.ErrKeyNotFound
-	ErrEmptyKey    = badger.ErrEmptyKey
-)
-
-var _ smt.KVStore = &badgerKVStore{}
+var _ kvstore.KVStore = &badgerKVStore{}
 
 type badgerKVStore struct {
 	db          *badger.DB
 	last_backup uint64 // timestamp of the most recent backup
 }
 
+var badgerToSMTErrorsMap = map[error]error{
+	badger.ErrKeyNotFound: kvstore.ErrKVStoreKeyNotFound,
+	badger.ErrEmptyKey:    kvstore.ErrKVStoreEmptyKey,
+}
+
+func badgerToKVStoreError(err error) error {
+	for badgerError, smtError := range badgerToSMTErrorsMap {
+		if errors.Is(err, badgerError) {
+			return smtError
+		}
+	}
+
+	return err
+}
+
 // NewKVStore creates a new KVStore using badger as the underlying database
 // if no path for a peristence database is provided it will create one in-memory
-func NewKVStore(path string) (smt.KVStore, error) {
+func NewKVStore(path string) (kvstore.KVStore, error) {
 	var db *badger.DB
 	var err error
 	if path == "" {
@@ -35,16 +46,17 @@ func NewKVStore(path string) (smt.KVStore, error) {
 		db, err = badger.Open(badgerOptions(path))
 	}
 	if err != nil {
-		return nil, err
+		return nil, badgerToKVStoreError(err)
 	}
+
 	return &badgerKVStore{db: db}, nil
 }
 
 // Set sets/updates the value for a given key
 func (store *badgerKVStore) Set(key, value []byte) error {
-	return store.db.Update(func(tx *badger.Txn) error {
+	return badgerToKVStoreError(store.db.Update(func(tx *badger.Txn) error {
 		return tx.Set(key, value)
-	})
+	}))
 }
 
 // Get returns the value for a given key
@@ -61,16 +73,16 @@ func (store *badgerKVStore) Get(key []byte) ([]byte, error) {
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, badgerToKVStoreError(err)
 	}
 	return val, nil
 }
 
 // Delete removes a key and its value from the store
 func (store *badgerKVStore) Delete(key []byte) error {
-	return store.db.Update(func(tx *badger.Txn) error {
+	return badgerToKVStoreError(store.db.Update(func(tx *badger.Txn) error {
 		return tx.Delete(key)
-	})
+	}))
 }
 
 // GetAll returns all keys and values with the given prefix in the specified order
@@ -102,7 +114,7 @@ func (store *badgerKVStore) GetAll(prefix []byte, descending bool) (keys, values
 		}
 		return nil
 	}); err != nil {
-		return nil, nil, err
+		return nil, nil, badgerToKVStoreError(err)
 	}
 	return keys, values, nil
 }
@@ -111,14 +123,14 @@ func (store *badgerKVStore) GetAll(prefix []byte, descending bool) (keys, values
 func (store *badgerKVStore) Exists(key []byte) (bool, error) {
 	val, err := store.Get(key)
 	if err != nil {
-		return false, err
+		return false, badgerToKVStoreError(err)
 	}
 	return val != nil, nil
 }
 
 // ClearAll deletes all key-value pairs in the store
 func (store *badgerKVStore) ClearAll() error {
-	return store.db.DropAll()
+	return badgerToKVStoreError(store.db.DropAll())
 }
 
 // Backup creates a full backup of the store written to the provided writer
@@ -130,7 +142,7 @@ func (store *badgerKVStore) Backup(w io.Writer, incremental bool) error {
 	}
 	timestamp, err := store.db.Backup(w, version)
 	if err != nil {
-		return err
+		return badgerToKVStoreError(err)
 	}
 	store.last_backup = timestamp
 	return nil
@@ -139,12 +151,12 @@ func (store *badgerKVStore) Backup(w io.Writer, incremental bool) error {
 // Restore loads the store from a backup in the reader provided
 // NOTE: Do not call on a database that is running other concurrent transactions
 func (store *badgerKVStore) Restore(r io.Reader) error {
-	return store.db.Load(r, maxPendingWrites)
+	return badgerToKVStoreError(store.db.Load(r, maxPendingWrites))
 }
 
 // Stop closes the database connection, disabling any access to the store
 func (store *badgerKVStore) Stop() error {
-	return store.db.Close()
+	return badgerToKVStoreError(store.db.Close())
 }
 
 // Len gives the number of keys in the store

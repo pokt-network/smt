@@ -1,4 +1,4 @@
-package smt
+package benchmarks
 
 import (
 	"crypto/sha256"
@@ -7,15 +7,15 @@ import (
 	"testing"
 
 	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 	treeSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
 	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
-	nodes, err := badger.NewKVStore("")
-	require.NoError(b, err)
+	nodes := simplemap.New()
+
 	for _, treeSize := range treeSizes {
 		for _, leafSize := range leafSizes {
 			leaf := make([]byte, leafSize)
@@ -45,8 +45,8 @@ func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 func BenchmarkSMSTLeafSizes_Fill(b *testing.B) {
 	treeSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
 	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
-	nodes, err := badger.NewKVStore("")
-	require.NoError(b, err)
+	nodes := simplemap.New()
+
 	for _, treeSize := range treeSizes {
 		for _, leafSize := range leafSizes {
 			leaf := make([]byte, leafSize)

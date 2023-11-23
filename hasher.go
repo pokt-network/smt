@@ -31,26 +31,26 @@ type ValueHasher interface {
 	HashValue([]byte) []byte
 }
 
-type TreeHasher struct {
+type treeHasher struct {
 	hasher    hash.Hash
 	zeroValue []byte
 }
 type pathHasher struct {
-	TreeHasher
+	treeHasher
 }
 type valueHasher struct {
-	TreeHasher
+	treeHasher
 }
 
-func newTreeHasher(hasher hash.Hash) *TreeHasher {
-	th := TreeHasher{hasher: hasher}
+func newTreeHasher(hasher hash.Hash) *treeHasher {
+	th := treeHasher{hasher: hasher}
 	th.zeroValue = make([]byte, th.hashSize())
 	return &th
 }
 
 // Path returns the digest of a key produced by the path hasher
 func (ph *pathHasher) Path(key []byte) []byte {
-	return ph.Digest(key)[:ph.PathSize()]
+	return ph.digest(key)[:ph.PathSize()]
 }
 
 // PathSize returns the length (in bytes) of digests produced by the path hasher
@@ -60,54 +60,54 @@ func (ph *pathHasher) PathSize() int {
 }
 
 func (vh *valueHasher) HashValue(data []byte) []byte {
-	return vh.Digest(data)
+	return vh.digest(data)
 }
 
-func (th *TreeHasher) Digest(data []byte) []byte {
+func (th *treeHasher) digest(data []byte) []byte {
 	th.hasher.Write(data)
 	sum := th.hasher.Sum(nil)
 	th.hasher.Reset()
 	return sum
 }
 
-func (th *TreeHasher) DigestLeaf(path []byte, leafData []byte) ([]byte, []byte) {
+func (th *treeHasher) digestLeaf(path []byte, leafData []byte) ([]byte, []byte) {
 	value := encodeLeaf(path, leafData)
-	return th.Digest(value), value
+	return th.digest(value), value
 }
 
-func (th *TreeHasher) DigestSumLeaf(path []byte, leafData []byte) ([]byte, []byte) {
+func (th *treeHasher) digestSumLeaf(path []byte, leafData []byte) ([]byte, []byte) {
 	value := encodeLeaf(path, leafData)
-	digest := th.Digest(value)
-	digest = append(digest, value[len(value)-SumSize:]...)
+	digest := th.digest(value)
+	digest = append(digest, value[len(value)-sumSize:]...)
 	return digest, value
 }
 
-func (th *TreeHasher) digestNode(leftData []byte, rightData []byte) ([]byte, []byte) {
+func (th *treeHasher) digestNode(leftData []byte, rightData []byte) ([]byte, []byte) {
 	value := encodeInner(leftData, rightData)
-	return th.Digest(value), value
+	return th.digest(value), value
 }
 
-func (th *TreeHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte) {
+func (th *treeHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte) {
 	value := encodeSumInner(leftData, rightData)
-	digest := th.Digest(value)
-	digest = append(digest, value[len(value)-SumSize:]...)
+	digest := th.digest(value)
+	digest = append(digest, value[len(value)-sumSize:]...)
 	return digest, value
 }
 
-func (th *TreeHasher) parseNode(data []byte) ([]byte, []byte) {
+func (th *treeHasher) parseNode(data []byte) ([]byte, []byte) {
 	return data[len(innerPrefix) : th.hashSize()+len(innerPrefix)], data[len(innerPrefix)+th.hashSize():]
 }
 
-func (th *TreeHasher) parseSumNode(data []byte) ([]byte, []byte) {
-	sumless := data[:len(data)-SumSize]
-	return sumless[len(innerPrefix) : th.hashSize()+SumSize+len(innerPrefix)], sumless[len(innerPrefix)+th.hashSize()+SumSize:]
+func (th *treeHasher) parseSumNode(data []byte) ([]byte, []byte) {
+	sumless := data[:len(data)-sumSize]
+	return sumless[len(innerPrefix) : th.hashSize()+sumSize+len(innerPrefix)], sumless[len(innerPrefix)+th.hashSize()+sumSize:]
 }
 
-func (th *TreeHasher) hashSize() int {
+func (th *treeHasher) hashSize() int {
 	return th.hasher.Size()
 }
 
-func (th *TreeHasher) Placeholder() []byte {
+func (th *treeHasher) placeholder() []byte {
 	return th.zeroValue
 }
 
@@ -129,12 +129,12 @@ func parseExtension(data []byte, ph PathHasher) (pathBounds, path, childData []b
 		data[len(extPrefix)+2+ph.PathSize():]
 }
 
-func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [SumSize]byte) {
-	var sumBz [SumSize]byte
-	copy(sumBz[:], data[len(data)-SumSize:])
+func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [sumSize]byte) {
+	var sumBz [sumSize]byte
+	copy(sumBz[:], data[len(data)-sumSize:])
 	return data[len(extPrefix) : len(extPrefix)+2], // +2 represents the length of the pathBounds
 		data[len(extPrefix)+2 : len(extPrefix)+2+ph.PathSize()],
-		data[len(extPrefix)+2+ph.PathSize() : len(data)-SumSize],
+		data[len(extPrefix)+2+ph.PathSize() : len(data)-sumSize],
 		sumBz
 }
 
@@ -161,15 +161,15 @@ func encodeSumInner(leftData []byte, rightData []byte) []byte {
 	value = append(value, innerPrefix...)
 	value = append(value, leftData...)
 	value = append(value, rightData...)
-	var sum [SumSize]byte
+	var sum [sumSize]byte
 	leftSum := uint64(0)
 	rightSum := uint64(0)
-	leftSumBz := leftData[len(leftData)-SumSize:]
-	rightSumBz := rightData[len(rightData)-SumSize:]
-	if !bytes.Equal(leftSumBz, DefaultSum[:]) {
+	leftSumBz := leftData[len(leftData)-sumSize:]
+	rightSumBz := rightData[len(rightData)-sumSize:]
+	if !bytes.Equal(leftSumBz, defaultSum[:]) {
 		leftSum = binary.BigEndian.Uint64(leftSumBz)
 	}
-	if !bytes.Equal(rightSumBz, DefaultSum[:]) {
+	if !bytes.Equal(rightSumBz, defaultSum[:]) {
 		rightSum = binary.BigEndian.Uint64(rightSumBz)
 	}
 	binary.BigEndian.PutUint64(sum[:], leftSum+rightSum)
@@ -192,8 +192,8 @@ func encodeSumExtension(pathBounds [2]byte, path []byte, childData []byte) []byt
 	value = append(value, pathBounds[:]...)
 	value = append(value, path...)
 	value = append(value, childData...)
-	var sum [SumSize]byte
-	copy(sum[:], childData[len(childData)-SumSize:])
+	var sum [sumSize]byte
+	copy(sum[:], childData[len(childData)-sumSize:])
 	value = append(value, sum[:]...)
 	return value
 }

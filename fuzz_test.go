@@ -1,4 +1,4 @@
-package tests
+package smt
 
 import (
 	"bytes"
@@ -7,8 +7,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,9 +26,8 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, input []byte) {
-		smn, err := badger.NewKVStore("")
-		require.NoError(t, err)
-		tree := smt.NewSparseMerkleTree(smn, sha256.New())
+		smn := simplemap.New()
+		tree := NewSparseMerkleTree(smn, sha256.New())
 
 		r := bytes.NewReader(input)
 		var keys [][]byte
@@ -68,7 +66,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			case Get:
 				_, err := tree.Get(key())
 				if err != nil {
-					require.ErrorIsf(t, err, smt.ErrKeyNotPresent, "unknown error occured while getting")
+					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while getting")
 				}
 				newRoot := tree.Root()
 				require.Equal(t, originalRoot, newRoot, "root changed while getting")
@@ -82,7 +80,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			case Delete:
 				err := tree.Delete(key())
 				if err != nil {
-					require.ErrorIsf(t, err, smt.ErrKeyNotPresent, "unknown error occured while deleting")
+					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while deleting")
 					continue
 				}
 				// If the key was present check root has changed
@@ -91,7 +89,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			case Prove:
 				_, err := tree.Prove(key())
 				if err != nil {
-					require.ErrorIsf(t, err, smt.ErrKeyNotPresent, "unknown error occured while proving")
+					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while proving")
 				}
 				newRoot := tree.Root()
 				require.Equal(t, originalRoot, newRoot, "root changed while proving")

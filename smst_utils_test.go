@@ -1,4 +1,4 @@
-package tests
+package smt
 
 import (
 	"bytes"
@@ -6,15 +6,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
-	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore"
 )
 
 // SMSTWithStorage wraps an SMST with a mapping of value hashes to values with sums (preimages), for use in tests.
 // Note: this doesn't delete from preimages (inputs to hashing functions), since there could be duplicate stored values.
 type SMSTWithStorage struct {
-	*smt.SMST
-	preimages smt.KVStore
+	*SMST
+	preimages kvstore.KVStore
 }
 
 // Update updates a key with a new value in the tree and adds the value to the preimages KVStore
@@ -22,8 +21,8 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
 	}
-	valueHash := smst.DigestValue(value)
-	var sumBz [smt.SumSize]byte
+	valueHash := smst.digestValue(value)
+	var sumBz [sumSize]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	value = append(value, sumBz[:]...)
 	if err := smst.preimages.Set(valueHash, value); err != nil {
@@ -49,34 +48,34 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	}
 	value, err := smst.preimages.Get(valueHash)
 	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
+		if errors.Is(err, kvstore.ErrKVStoreKeyNotFound) {
 			// If key isn't found, return default value and sum
-			return smt.DefaultValue, 0, nil
+			return defaultValue, 0, nil
 		} else {
 			// Otherwise percolate up any other error
 			return nil, 0, err
 		}
 	}
-	var sumBz [smt.SumSize]byte
-	copy(sumBz[:], value[len(value)-smt.SumSize:])
+	var sumBz [sumSize]byte
+	copy(sumBz[:], value[len(value)-sumSize:])
 	storedSum := binary.BigEndian.Uint64(sumBz[:])
 	if storedSum != sum {
 		return nil, 0, fmt.Errorf("sum mismatch for %s: got %d, expected %d", string(key), storedSum, sum)
 	}
-	return value[:len(value)-smt.SumSize], storedSum, nil
+	return value[:len(value)-sumSize], storedSum, nil
 }
 
 // Has returns true if the value at the given key is non-default, false otherwise.
 func (smst *SMSTWithStorage) Has(key []byte) (bool, error) {
 	val, sum, err := smst.GetValueSum(key)
-	return !bytes.Equal(smt.DefaultValue, val) || sum != 0, err
+	return !bytes.Equal(defaultValue, val) || sum != 0, err
 }
 
 // ProveSumCompact generates a compacted Merkle proof for a key against the current root.
-func ProveSumCompact(key []byte, smst smt.SparseMerkleSumTree) (*smt.SparseCompactMerkleProof, error) {
+func ProveSumCompact(key []byte, smst SparseMerkleSumTree) (*SparseCompactMerkleProof, error) {
 	proof, err := smst.Prove(key)
 	if err != nil {
 		return nil, err
 	}
-	return smt.CompactProof(proof, smst.Spec())
+	return CompactProof(proof, smst.Spec())
 }

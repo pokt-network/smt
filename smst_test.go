@@ -1,4 +1,4 @@
-package tests
+package smt
 
 import (
 	"crypto/rand"
@@ -8,33 +8,32 @@ import (
 	"hash"
 	"testing"
 
-	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 	"github.com/stretchr/testify/require"
 )
 
-func NewSMSTWithStorage(nodes, preimages smt.KVStore, hasher hash.Hash, options ...smt.Option) *SMSTWithStorage {
+func NewSMSTWithStorage(nodes, preimages kvstore.KVStore, hasher hash.Hash, options ...Option) *SMSTWithStorage {
 	return &SMSTWithStorage{
-		SMST:      smt.NewSparseMerkleSumTree(nodes, hasher, options...),
+		SMST:      NewSparseMerkleSumTree(nodes, hasher, options...),
 		preimages: preimages,
 	}
 }
 
 func TestSMST_TreeUpdateBasic(t *testing.T) {
-	smn, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smv, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	lazy := smt.NewSparseMerkleSumTree(smn, sha256.New())
+	smn := simplemap.New()
+	smv := simplemap.New()
+	lazy := NewSparseMerkleSumTree(smn, sha256.New())
 	smst := &SMSTWithStorage{SMST: lazy, preimages: smv}
 	var value []byte
 	var sum uint64
 	var has bool
+	var err error
 
 	// Test getting an empty key.
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, smt.DefaultValue, value)
+	require.Equal(t, defaultValue, value)
 	require.Equal(t, uint64(0), sum)
 
 	has, err = smst.Has([]byte("testKey"))
@@ -90,7 +89,7 @@ func TestSMST_TreeUpdateBasic(t *testing.T) {
 	require.NoError(t, lazy.Commit())
 
 	// Test that a tree can be imported from a KVStore.
-	lazy = smt.ImportSparseMerkleSumTree(smn, sha256.New(), smst.Root())
+	lazy = ImportSparseMerkleSumTree(smn, sha256.New(), smst.Root())
 	require.NoError(t, err)
 	smst = &SMSTWithStorage{SMST: lazy, preimages: smv}
 
@@ -115,16 +114,14 @@ func TestSMST_TreeUpdateBasic(t *testing.T) {
 
 // Test base case tree delete operations with a few keys.
 func TestSMST_TreeDeleteBasic(t *testing.T) {
-	smn, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smv, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	lazy := smt.NewSparseMerkleSumTree(smn, sha256.New())
+	smn := simplemap.New()
+	smv := simplemap.New()
+	lazy := NewSparseMerkleSumTree(smn, sha256.New())
 	smst := &SMSTWithStorage{SMST: lazy, preimages: smv}
 	rootEmpty := smst.Root()
 
 	// Testing inserting, deleting a key, and inserting it again.
-	err = smst.Update([]byte("testKey"), []byte("testValue"), 5)
+	err := smst.Update([]byte("testKey"), []byte("testValue"), 5)
 	require.NoError(t, err)
 
 	root1 := smst.Root()
@@ -133,7 +130,7 @@ func TestSMST_TreeDeleteBasic(t *testing.T) {
 
 	value, sum, err := smst.GetValueSum([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, smt.DefaultValue, value, "getting deleted key")
+	require.Equal(t, defaultValue, value, "getting deleted key")
 	require.Equal(t, uint64(0), sum, "getting deleted key")
 
 	has, err := smst.Has([]byte("testKey"))
@@ -158,7 +155,7 @@ func TestSMST_TreeDeleteBasic(t *testing.T) {
 
 	value, sum, err = smst.GetValueSum([]byte("testKey2"))
 	require.NoError(t, err)
-	require.Equal(t, smt.DefaultValue, value, "getting deleted key")
+	require.Equal(t, defaultValue, value, "getting deleted key")
 	require.Equal(t, uint64(0), sum, "getting deleted key")
 
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
@@ -180,7 +177,7 @@ func TestSMST_TreeDeleteBasic(t *testing.T) {
 
 	value, sum, err = smst.GetValueSum([]byte("foo"))
 	require.NoError(t, err)
-	require.Equal(t, smt.DefaultValue, value, "getting deleted key")
+	require.Equal(t, defaultValue, value, "getting deleted key")
 	require.Equal(t, uint64(0), sum, "getting deleted key")
 
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
@@ -203,7 +200,7 @@ func TestSMST_TreeDeleteBasic(t *testing.T) {
 
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, smt.DefaultValue, value, "getting deleted key")
+	require.Equal(t, defaultValue, value, "getting deleted key")
 	require.Equal(t, uint64(0), sum, "getting deleted key")
 
 	has, err = smst.Has([]byte("testKey"))
@@ -227,11 +224,9 @@ func TestSMST_TreeDeleteBasic(t *testing.T) {
 // Test tree ops with known paths
 func TestSMST_TreeKnownPath(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smv, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smst := NewSMSTWithStorage(smn, smv, sha256.New(), smt.WithPathHasher(ph))
+	smn := simplemap.New()
+	smv := simplemap.New()
+	smst := NewSMSTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
 	var value []byte
 	var sum uint64
 
@@ -249,7 +244,7 @@ func TestSMST_TreeKnownPath(t *testing.T) {
 	keys[5][0] = byte(0b11100000)
 	keys[6][0] = byte(0b11110000)
 
-	err = smst.Update(keys[0], []byte("testValue1"), 1)
+	err := smst.Update(keys[0], []byte("testValue1"), 1)
 	require.NoError(t, err)
 	err = smst.Update(keys[1], []byte("testValue2"), 2)
 	require.NoError(t, err)
@@ -311,11 +306,9 @@ func TestSMST_TreeKnownPath(t *testing.T) {
 // Test tree operations when two leafs are immediate neighbors.
 func TestSMST_TreeMaxHeightCase(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smv, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smst := NewSMSTWithStorage(smn, smv, sha256.New(), smt.WithPathHasher(ph))
+	smn := simplemap.New()
+	smv := simplemap.New()
+	smst := NewSMSTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
 	var value []byte
 	var sum uint64
 
@@ -323,7 +316,7 @@ func TestSMST_TreeMaxHeightCase(t *testing.T) {
 	// The dummy hash function will return the preimage itself as the digest.
 	key1 := make([]byte, ph.PathSize())
 	key2 := make([]byte, ph.PathSize())
-	_, err = rand.Read(key1)
+	_, err := rand.Read(key1)
 	require.NoError(t, err)
 	copy(key2, key1)
 	// We make key2's least significant bit different than key1's
@@ -355,8 +348,8 @@ func TestSMST_TreeMaxHeightCase(t *testing.T) {
 }
 
 func TestSMST_OrphanRemoval(t *testing.T) {
-	var smn, smv smt.KVStore
-	var impl *smt.SMST
+	var smn, smv kvstore.KVStore
+	var impl *SMST
 	var smst *SMSTWithStorage
 	var err error
 
@@ -365,11 +358,9 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 		return smn.Len()
 	}
 	setup := func() {
-		smn, err = badger.NewKVStore("")
-		require.NoError(t, err)
-		smv, err = badger.NewKVStore("")
-		require.NoError(t, err)
-		impl = smt.NewSparseMerkleSumTree(smn, sha256.New())
+		smn := simplemap.New()
+		smv := simplemap.New()
+		impl = NewSparseMerkleSumTree(smn, sha256.New())
 		smst = &SMSTWithStorage{SMST: impl, preimages: smv}
 
 		err = smst.Update([]byte("testKey"), []byte("testValue"), 5)
@@ -449,10 +440,9 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 }
 
 func TestSMST_TotalSum(t *testing.T) {
-	snm, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smst := smt.NewSparseMerkleSumTree(snm, sha256.New())
-	err = smst.Update([]byte("key1"), []byte("value1"), 5)
+	smn := simplemap.New()
+	smst := NewSparseMerkleSumTree(smn, sha256.New())
+	err := smst.Update([]byte("key1"), []byte("value1"), 5)
 	require.NoError(t, err)
 	err = smst.Update([]byte("key2"), []byte("value2"), 5)
 	require.NoError(t, err)
@@ -461,7 +451,7 @@ func TestSMST_TotalSum(t *testing.T) {
 
 	// Check root hash contains the correct hex sum
 	root1 := smst.Root()
-	sumBz := root1[len(root1)-smt.SumSize:]
+	sumBz := root1[len(root1)-sumSize:]
 	rootSum := binary.BigEndian.Uint64(sumBz)
 	require.NoError(t, err)
 
@@ -474,7 +464,7 @@ func TestSMST_TotalSum(t *testing.T) {
 	proof, err := smst.Prove([]byte("key1"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, smst.Spec())
-	valid, err := smt.VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, smst.Spec())
+	valid, err := VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, smst.Spec())
 	require.NoError(t, err)
 	require.True(t, valid)
 
@@ -487,14 +477,13 @@ func TestSMST_TotalSum(t *testing.T) {
 	// Check that the sum is correct after importing the tree
 	require.NoError(t, smst.Commit())
 	root2 := smst.Root()
-	smst = smt.ImportSparseMerkleSumTree(snm, sha256.New(), root2)
+	smst = ImportSparseMerkleSumTree(smn, sha256.New(), root2)
 	sum = smst.Sum()
 	require.Equal(t, sum, uint64(10))
 
 	// Calculate the total sum of a larger tree
-	snm, err = badger.NewKVStore("")
-	require.NoError(t, err)
-	smst = smt.NewSparseMerkleSumTree(snm, sha256.New())
+	smn = simplemap.New()
+	smst = NewSparseMerkleSumTree(smn, sha256.New())
 	for i := 1; i < 10000; i++ {
 		err := smst.Update([]byte(fmt.Sprintf("testKey%d", i)), []byte(fmt.Sprintf("testValue%d", i)), uint64(i))
 		require.NoError(t, err)
@@ -503,15 +492,14 @@ func TestSMST_TotalSum(t *testing.T) {
 	sum = smst.Sum()
 	require.Equal(t, sum, uint64(49995000))
 
-	require.NoError(t, snm.Stop())
+	require.NoError(t, smn.Stop())
 }
 
 func TestSMST_Retrieval(t *testing.T) {
-	snm, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smst := smt.NewSparseMerkleSumTree(snm, sha256.New(), smt.WithValueHasher(nil))
+	smn := simplemap.New()
+	smst := NewSparseMerkleSumTree(smn, sha256.New(), WithValueHasher(nil))
 
-	err = smst.Update([]byte("key1"), []byte("value1"), 5)
+	err := smst.Update([]byte("key1"), []byte("value1"), 5)
 	require.NoError(t, err)
 	err = smst.Update([]byte("key2"), []byte("value2"), 5)
 	require.NoError(t, err)
@@ -554,7 +542,7 @@ func TestSMST_Retrieval(t *testing.T) {
 	sum = smst.Sum()
 	require.Equal(t, sum, uint64(15))
 
-	lazy := smt.ImportSparseMerkleSumTree(snm, sha256.New(), root, smt.WithValueHasher(nil))
+	lazy := ImportSparseMerkleSumTree(smn, sha256.New(), root, WithValueHasher(nil))
 
 	value, sum, err = lazy.Get([]byte("key1"))
 	require.NoError(t, err)
@@ -574,5 +562,5 @@ func TestSMST_Retrieval(t *testing.T) {
 	sum = lazy.Sum()
 	require.Equal(t, sum, uint64(15))
 
-	require.NoError(t, snm.Stop())
+	require.NoError(t, smn.Stop())
 }

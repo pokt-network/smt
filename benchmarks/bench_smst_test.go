@@ -1,4 +1,4 @@
-package smt
+package benchmarks
 
 import (
 	"strconv"

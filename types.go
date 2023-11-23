@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	Left    = 0
-	SumSize = 8
+	left    = 0
+	sumSize = 8
 )
 
 var (
-	DefaultValue []byte = nil
-	DefaultSum   [SumSize]byte
+	defaultValue []byte = nil
+	defaultSum   [sumSize]byte
 
 	// ErrKeyNotPresent is returned when a key is not present in the tree.
 	ErrKeyNotPresent = errors.New("key already empty")
@@ -67,7 +67,7 @@ type SparseMerkleSumTree interface {
 // TreeSpec specifies the hashing functions used by a tree instance to encode leaf paths
 // and stored values, and the corresponding maximum tree depth.
 type TreeSpec struct {
-	th      TreeHasher
+	th      treeHasher
 	ph      PathHasher
 	vh      ValueHasher
 	sumTree bool
@@ -81,12 +81,10 @@ func newTreeSpec(hasher hash.Hash, sumTree bool) TreeSpec {
 	return spec
 }
 
-func (spec *TreeSpec) Spec() *TreeSpec          { return spec }
-func (spec *TreeSpec) TreeHasher() *TreeHasher  { return &spec.th }
-func (spec *TreeSpec) PathHasher() PathHasher   { return spec.ph }
-func (spec *TreeSpec) ValueHasher() ValueHasher { return spec.vh }
-func (spec *TreeSpec) Depth() int               { return spec.ph.PathSize() * 8 }
-func (spec *TreeSpec) DigestValue(data []byte) []byte {
+func (spec *TreeSpec) Spec() *TreeSpec { return spec }
+
+func (spec *TreeSpec) depth() int { return spec.ph.PathSize() * 8 }
+func (spec *TreeSpec) digestValue(data []byte) []byte {
 	if spec.vh == nil {
 		return data
 	}
@@ -112,7 +110,7 @@ func (spec *TreeSpec) serialize(node treeNode) (data []byte) {
 
 func (spec *TreeSpec) hashNode(node treeNode) []byte {
 	if node == nil {
-		return spec.th.Placeholder()
+		return spec.th.placeholder()
 	}
 	var cache *[]byte
 	switch n := node.(type) {
@@ -129,7 +127,7 @@ func (spec *TreeSpec) hashNode(node treeNode) []byte {
 		return n.digest
 	}
 	if *cache == nil {
-		*cache = spec.th.Digest(spec.serialize(node))
+		*cache = spec.th.digest(spec.serialize(node))
 	}
 	return *cache
 }
@@ -157,7 +155,7 @@ func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte) {
 // digest = [node hash]+[8 byte sum]
 func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 	if node == nil {
-		return Placeholder(spec)
+		return placeholder(spec)
 	}
 	var cache *[]byte
 	switch n := node.(type) {
@@ -175,8 +173,8 @@ func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
 	}
 	if *cache == nil {
 		preimage := spec.sumSerialize(node)
-		*cache = spec.th.Digest(preimage)
-		*cache = append(*cache, preimage[len(preimage)-SumSize:]...)
+		*cache = spec.th.digest(preimage)
+		*cache = append(*cache, preimage[len(preimage)-sumSize:]...)
 	}
 	return *cache
 }

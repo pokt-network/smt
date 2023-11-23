@@ -1,4 +1,4 @@
-package tests
+package smt
 
 import (
 	"bytes"
@@ -7,8 +7,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,11 +33,10 @@ func TestBulkOperations(t *testing.T) {
 
 // Test all tree operations in bulk, with specified ratio probabilities of insert, update and delete.
 func bulkOperations(t *testing.T, operations int, insert int, update int, delete int) {
-	smn, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smv, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	smtWithStorage := NewSMTWithStorage(smn, smv, sha256.New())
+	smn := simplemap.New()
+	smv := simplemap.New()
+
+	smt := NewSMTWithStorage(smn, smv, sha256.New())
 
 	max := insert + update + delete
 	var kv []bulkop
@@ -57,7 +55,7 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			_, err = crand.Read(val)
 			require.NoError(t, err)
 
-			err = smtWithStorage.Update(key, val)
+			err = smt.Update(key, val)
 			if err != nil {
 				t.Fatalf("error: %v", err)
 			}
@@ -72,7 +70,7 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			_, err := crand.Read(val)
 			require.NoError(t, err)
 
-			err = smtWithStorage.Update(kv[ki].key, val)
+			err = smt.Update(kv[ki].key, val)
 			if err != nil {
 				t.Fatalf("error: %v", err)
 			}
@@ -83,24 +81,24 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			}
 			ki := r.Intn(len(kv))
 
-			err := smtWithStorage.Delete(kv[ki].key)
-			if err != nil && err != smt.ErrKeyNotPresent {
+			err := smt.Delete(kv[ki].key)
+			if err != nil && err != ErrKeyNotPresent {
 				t.Fatalf("error: %v", err)
 			}
-			kv[ki].val = smt.DefaultValue
+			kv[ki].val = defaultValue
 		}
 	}
 
-	bulkCheckAll(t, smtWithStorage, kv)
+	bulkCheckAll(t, smt, kv)
 	require.NoError(t, smn.Stop())
 	require.NoError(t, smv.Stop())
 }
 
-func bulkCheckAll(t *testing.T, smtWithStorage *SMTWithStorage, kv []bulkop) {
+func bulkCheckAll(t *testing.T, smt *SMTWithStorage, kv []bulkop) {
 	for ki := range kv {
 		k, v := kv[ki].key, kv[ki].val
 
-		value, err := smtWithStorage.GetValue([]byte(k))
+		value, err := smt.GetValue([]byte(k))
 		if err != nil {
 			t.Errorf("error: %v", err)
 		}
@@ -109,19 +107,19 @@ func bulkCheckAll(t *testing.T, smtWithStorage *SMTWithStorage, kv []bulkop) {
 		}
 
 		// Generate and verify a Merkle proof for this key.
-		proof, err := smtWithStorage.Prove([]byte(k))
+		proof, err := smt.Prove([]byte(k))
 		if err != nil {
 			t.Errorf("error: %v", err)
 		}
-		valid, err := smt.VerifyProof(proof, smtWithStorage.Root(), []byte(k), []byte(v), smtWithStorage.Spec())
+		valid, err := VerifyProof(proof, smt.Root(), []byte(k), []byte(v), smt.Spec())
 		if !valid || err != nil {
 			t.Fatalf("Merkle proof failed to verify (i=%d): %v", ki, []byte(k))
 		}
-		compactProof, err := ProveCompact([]byte(k), smtWithStorage)
+		compactProof, err := ProveCompact([]byte(k), smt)
 		if err != nil {
 			t.Errorf("error: %v", err)
 		}
-		valid, err = smt.VerifyCompactProof(compactProof, smtWithStorage.Root(), []byte(k), []byte(v), smtWithStorage.Spec())
+		valid, err = VerifyCompactProof(compactProof, smt.Root(), []byte(k), []byte(v), smt.Spec())
 		if !valid || err != nil {
 			t.Fatalf("Compact Merkle proof failed to verify (i=%d): %v", ki, []byte(k))
 		}
@@ -138,9 +136,9 @@ func bulkCheckAll(t *testing.T, smtWithStorage *SMTWithStorage, kv []bulkop) {
 				continue
 			}
 
-			ph := smtWithStorage.Spec().PathHasher()
-			commonPrefix := smt.CountCommonPrefixBits(ph.Path([]byte(k)), ph.Path([]byte(k2)), 0)
-			if commonPrefix != smtWithStorage.Spec().Depth() && commonPrefix > largestCommonPrefix {
+			ph := smt.Spec().ph
+			commonPrefix := countCommonPrefixBits(ph.Path([]byte(k)), ph.Path([]byte(k2)), 0)
+			if commonPrefix != smt.Spec().depth() && commonPrefix > largestCommonPrefix {
 				largestCommonPrefix = commonPrefix
 			}
 		}

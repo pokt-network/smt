@@ -1,4 +1,4 @@
-package smt
+package benchmarks
 
 import (
 	"crypto/sha256"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,8 +58,8 @@ func setupSMT(b *testing.B, persistent bool, numLeaves int) *smt.SMT {
 	if persistent {
 		path = b.TempDir()
 	}
-	nodes, err := badger.NewKVStore(path)
-	require.NoError(b, err)
+	nodes := simplemap.New()
+
 	tree := smt.NewSparseMerkleTree(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)
@@ -96,8 +96,8 @@ func setupSMST(b *testing.B, persistent bool, numLeaves int) *smt.SMST {
 	if persistent {
 		path = b.TempDir()
 	}
-	nodes, err := badger.NewKVStore(path)
-	require.NoError(b, err)
+	nodes := simplemap.New()
+
 	tree := smt.NewSparseMerkleSumTree(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)

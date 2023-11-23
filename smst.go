@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"hash"
+
+	"github.com/pokt-network/smt/kvstore"
 )
 
 var _ SparseMerkleSumTree = (*SMST)(nil)
@@ -15,7 +17,7 @@ type SMST struct {
 }
 
 // NewSparseMerkleSumTree returns a pointer to an SMST struct
-func NewSparseMerkleSumTree(nodes KVStore, hasher hash.Hash, options ...Option) *SMST {
+func NewSparseMerkleSumTree(nodes kvstore.KVStore, hasher hash.Hash, options ...Option) *SMST {
 	smt := &SMT{
 		TreeSpec: newTreeSpec(hasher, true),
 		nodes:    nodes,
@@ -36,7 +38,7 @@ func NewSparseMerkleSumTree(nodes KVStore, hasher hash.Hash, options ...Option) 
 }
 
 // ImportSparseMerkleSumTree returns a pointer to an SMST struct with the root hash provided
-func ImportSparseMerkleSumTree(nodes KVStore, hasher hash.Hash, root []byte, options ...Option) *SMST {
+func ImportSparseMerkleSumTree(nodes kvstore.KVStore, hasher hash.Hash, root []byte, options ...Option) *SMST {
 	smst := NewSparseMerkleSumTree(nodes, hasher, options...)
 	smst.tree = &lazyNode{root}
 	smst.savedRoot = root
@@ -54,21 +56,21 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	if bytes.Equal(valueHash, DefaultValue) {
-		return DefaultValue, 0, nil
+	if bytes.Equal(valueHash, defaultValue) {
+		return defaultValue, 0, nil
 	}
-	var weightBz [SumSize]byte
-	copy(weightBz[:], valueHash[len(valueHash)-SumSize:])
+	var weightBz [sumSize]byte
+	copy(weightBz[:], valueHash[len(valueHash)-sumSize:])
 	weight := binary.BigEndian.Uint64(weightBz[:])
-	return valueHash[:len(valueHash)-SumSize], weight, nil
+	return valueHash[:len(valueHash)-sumSize], weight, nil
 }
 
 // Update sets the value for the given key, to the digest of the provided value
 // appended with the binary representation of the weight provided. The weight
 // is used to compute the interim and total sum of the tree.
 func (smst *SMST) Update(key, value []byte, weight uint64) error {
-	valueHash := smst.DigestValue(value)
-	var weightBz [SumSize]byte
+	valueHash := smst.digestValue(value)
+	var weightBz [sumSize]byte
 	binary.BigEndian.PutUint64(weightBz[:], weight)
 	valueHash = append(valueHash, weightBz[:]...)
 	return smst.SMT.Update(key, valueHash)
@@ -105,8 +107,8 @@ func (smst *SMST) Root() []byte {
 
 // Sum returns the uint64 sum of the entire tree
 func (smst *SMST) Sum() uint64 {
-	var sumBz [SumSize]byte
+	var sumBz [sumSize]byte
 	digest := smst.Root()
-	copy(sumBz[:], digest[len(digest)-SumSize:])
+	copy(sumBz[:], digest[len(digest)-sumSize:])
 	return binary.BigEndian.Uint64(sumBz[:])
 }

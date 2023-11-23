@@ -1,4 +1,4 @@
-package smt
+package benchmarks
 
 import (
 	"crypto/sha256"
@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSMT_ProofSizes(t *testing.T) {
-	nodes, err := badger.NewKVStore("")
-	require.NoError(t, err)
+	nodes := simplemap.New()
+
 	testCases := []struct {
 		name     string
 		treeSize int
@@ -94,8 +94,8 @@ func TestSMT_ProofSizes(t *testing.T) {
 }
 
 func TestSMST_ProofSizes(t *testing.T) {
-	nodes, err := badger.NewKVStore("")
-	require.NoError(t, err)
+	nodes := simplemap.New()
+
 	testCases := []struct {
 		name     string
 		treeSize int

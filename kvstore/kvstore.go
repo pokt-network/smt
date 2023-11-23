@@ -1,4 +1,4 @@
-package smt
+package kvstore
 
 import (
 	"errors"
@@ -8,6 +8,12 @@ import (
 var (
 	ErrKVStoreExists    = errors.New("kvstore already exists")
 	ErrKVStoreNotExists = errors.New("kvstore does not exist")
+
+	// ErrKVStoreKeyNotFound is returned when key isn't found.
+	ErrKVStoreKeyNotFound = errors.New("key not found")
+
+	// ErrKVStoreEmptyKey is returned if an empty key is passed on an update function.
+	ErrKVStoreEmptyKey = errors.New("key cannot be empty")
 )
 
 // KVStore is an interface that defines a key-value store
