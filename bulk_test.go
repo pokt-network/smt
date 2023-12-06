@@ -15,7 +15,7 @@ type (
 	bulkop   struct{ key, val []byte }
 )
 
-// Test all tree operations in bulk.
+// Test all trie operations in bulk.
 func TestBulkOperations(t *testing.T) {
 	cases := []opCounts{
 		// Test more inserts/updates than deletions.
@@ -30,7 +30,7 @@ func TestBulkOperations(t *testing.T) {
 	}
 }
 
-// Test all tree operations in bulk, with specified ratio probabilities of insert, update and delete.
+// Test all trie operations in bulk, with specified ratio probabilities of insert, update and delete.
 func bulkOperations(t *testing.T, operations int, insert int, update int, delete int) {
 	smn, err := NewKVStore("")
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func bulkCheckAll(t *testing.T, smt *SMTWithStorage, kv []bulkop) {
 			continue
 		}
 
-		// Check that the key is at the correct height in the tree.
+		// Check that the key is at the correct height in the trie.
 		largestCommonPrefix := 0
 		for ki2 := range kv {
 			k2, v2 := kv[ki2].key, kv[ki2].val

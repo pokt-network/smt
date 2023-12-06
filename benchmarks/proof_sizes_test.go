@@ -3,9 +3,11 @@ package smt
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"github.com/pokt-network/smt"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/smt"
 )
 
 func TestSMT_ProofSizes(t *testing.T) {
@@ -13,51 +15,51 @@ func TestSMT_ProofSizes(t *testing.T) {
 	require.NoError(t, err)
 	testCases := []struct {
 		name     string
-		treeSize int
+		trieSize int
 	}{
 		{
 			name:     "Proof Size (Prefilled: 100000)",
-			treeSize: 100000,
+			trieSize: 100000,
 		},
 		{
 			name:     "Proof Size (Prefilled: 500000)",
-			treeSize: 500000,
+			trieSize: 500000,
 		},
 		{
 			name:     "Proof Size (Prefilled: 1000000)",
-			treeSize: 1000000,
+			trieSize: 1000000,
 		},
 		{
 			name:     "Proof Size (Prefilled: 5000000)",
-			treeSize: 5000000,
+			trieSize: 5000000,
 		},
 		{
 			name:     "Proof Size (Prefilled: 10000000)",
-			treeSize: 10000000,
+			trieSize: 10000000,
 		},
 	}
 	for _, tc := range testCases {
-		tree := smt.NewSparseMerkleTree(nodes, sha256.New())
+		trie := smt.NewSparseMerkleTrie(nodes, sha256.New())
 		t.Run(tc.name, func(t *testing.T) {
-			for i := 0; i < tc.treeSize; i++ {
+			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
 				binary.BigEndian.PutUint64(b, uint64(i))
-				require.NoError(t, tree.Update(b, b))
+				require.NoError(t, trie.Update(b, b))
 			}
-			require.NoError(t, tree.Commit())
+			require.NoError(t, trie.Commit())
 			avgProof := uint64(0)
 			maxProof := uint64(0)
 			minProof := uint64(0)
 			avgCompact := uint64(0)
 			maxCompact := uint64(0)
 			minCompact := uint64(0)
-			for i := 0; i < tc.treeSize; i++ {
+			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
 				binary.BigEndian.PutUint64(b, uint64(i))
-				proof, err := tree.Prove(b)
+				proof, err := trie.Prove(b)
 				require.NoError(t, err)
 				require.NotNil(t, proof)
-				compacted, err := smt.CompactProof(proof, tree.Spec())
+				compacted, err := smt.CompactProof(proof, trie.Spec())
 				require.NoError(t, err)
 				require.NotNil(t, compacted)
 				proofBz, err := proof.Marshal()
@@ -81,10 +83,16 @@ func TestSMT_ProofSizes(t *testing.T) {
 					minCompact = uint64(len(compactedBz))
 				}
 			}
-			avgProof /= uint64(tc.treeSize)
-			avgCompact /= uint64(tc.treeSize)
-			t.Logf("Average Serialised Proof Size: %d bytes [Min: %d || Max: %d] (Prefilled: %d)", avgProof, minProof, maxProof, tc.treeSize)
-			t.Logf("Average Serialised Compacted Proof Size: %d bytes [Min: %d || Max: %d] (Prefilled: %d)", avgCompact, minCompact, maxCompact, tc.treeSize)
+			avgProof /= uint64(tc.trieSize)
+			avgCompact /= uint64(tc.trieSize)
+			t.Logf("Average Serialised Proof Size: %d bytes [Min: %d || Max: %d] (Prefilled: %d)", avgProof, minProof, maxProof, tc.trieSize)
+			t.Logf(
+				"Average Serialised Compacted Proof Size: %d bytes [Min: %d || Max: %d] (Prefilled: %d)",
+				avgCompact,
+				minCompact,
+				maxCompact,
+				tc.trieSize,
+			)
 		})
 		require.NoError(t, nodes.ClearAll())
 	}
@@ -96,51 +104,51 @@ func TestSMST_ProofSizes(t *testing.T) {
 	require.NoError(t, err)
 	testCases := []struct {
 		name     string
-		treeSize int
+		trieSize int
 	}{
 		{
 			name:     "Proof Size (Prefilled: 100000)",
-			treeSize: 100000,
+			trieSize: 100000,
 		},
 		{
 			name:     "Proof Size (Prefilled: 500000)",
-			treeSize: 500000,
+			trieSize: 500000,
 		},
 		{
 			name:     "Proof Size (Prefilled: 1000000)",
-			treeSize: 1000000,
+			trieSize: 1000000,
 		},
 		{
 			name:     "Proof Size (Prefilled: 5000000)",
-			treeSize: 5000000,
+			trieSize: 5000000,
 		},
 		{
 			name:     "Proof Size (Prefilled: 10000000)",
-			treeSize: 10000000,
+			trieSize: 10000000,
 		},
 	}
 	for _, tc := range testCases {
-		tree := smt.NewSparseMerkleSumTree(nodes, sha256.New())
+		trie := smt.NewSparseMerkleSumTrie(nodes, sha256.New())
 		t.Run(tc.name, func(t *testing.T) {
-			for i := 0; i < tc.treeSize; i++ {
+			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
 				binary.BigEndian.PutUint64(b, uint64(i))
-				require.NoError(t, tree.Update(b, b, uint64(i)))
+				require.NoError(t, trie.Update(b, b, uint64(i)))
 			}
-			require.NoError(t, tree.Commit())
+			require.NoError(t, trie.Commit())
 			avgProof := uint64(0)
 			maxProof := uint64(0)
 			minProof := uint64(0)
 			avgCompact := uint64(0)
 			maxCompact := uint64(0)
 			minCompact := uint64(0)
-			for i := 0; i < tc.treeSize; i++ {
+			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
 				binary.BigEndian.PutUint64(b, uint64(i))
-				proof, err := tree.Prove(b)
+				proof, err := trie.Prove(b)
 				require.NoError(t, err)
 				require.NotNil(t, proof)
-				compacted, err := smt.CompactProof(proof, tree.Spec())
+				compacted, err := smt.CompactProof(proof, trie.Spec())
 				require.NoError(t, err)
 				require.NotNil(t, compacted)
 				proofBz, err := proof.Marshal()
@@ -164,10 +172,16 @@ func TestSMST_ProofSizes(t *testing.T) {
 					minCompact = uint64(len(compactedBz))
 				}
 			}
-			avgProof /= uint64(tc.treeSize)
-			avgCompact /= uint64(tc.treeSize)
-			t.Logf("Average Serialised Proof Size: %d bytes [Min: %d || Max: %d] (Prefilled: %d)", avgProof, minProof, maxProof, tc.treeSize)
-			t.Logf("Average Serialised Compacted Proof Size: %d bytes [Min: %d || Max: %d] (Prefilled: %d)", avgCompact, minCompact, maxCompact, tc.treeSize)
+			avgProof /= uint64(tc.trieSize)
+			avgCompact /= uint64(tc.trieSize)
+			t.Logf("Average Serialised Proof Size: %d bytes [Min: %d || Max: %d] (Prefilled: %d)", avgProof, minProof, maxProof, tc.trieSize)
+			t.Logf(
+				"Average Serialised Compacted Proof Size: %d bytes [Min: %d || Max: %d] (Prefilled: %d)",
+				avgCompact,
+				minCompact,
+				maxCompact,
+				tc.trieSize,
+			)
 		})
 		require.NoError(t, nodes.ClearAll())
 	}

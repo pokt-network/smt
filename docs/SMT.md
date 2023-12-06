@@ -10,7 +10,7 @@
   - [Lazy Nodes](#lazy-nodes)
   - [Lazy Loading](#lazy-loading)
   - [Visualisations](#visualisations)
-    - [General Tree Structure](#general-tree-structure)
+    - [General Trie Structure](#general-trie-structure)
     - [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
   - [Visualisation](#visualisation)
@@ -24,15 +24,15 @@
   - [Serialisation](#serialisation)
 - [Database](#database)
   - [Data Loss](#data-loss)
-- [Sparse Merkle Sum Tree](#sparse-merkle-sum-tree)
+- [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 - [Example](#example)
 
 <!-- tocstop -->
 
 ## Overview
 
-Sparse Merkle Trees (SMTs) are efficient and secure data structures for storing
-key-value pairs. They use a hash-based tree structure to represent the data
+Sparse Merkle Tries (SMTs) are efficient and secure data structures for storing
+key-value pairs. They use a hash-based trie structure to represent the data
 sparsely, saving memory. Cryptographic hash functions ensure data integrity and
 authenticity. SMTs enable users to prove the existence or non-existence of
 specific key-value pairs by constructing cryptographic proofs. These properties
@@ -44,7 +44,7 @@ See [smt.go](../smt.go) for more details on the implementation.
 
 ## Implementation
 
-The SMT has 4 node types that are used to construct the tree:
+The SMT has 4 node types that are used to construct the trie:
 
 - Inner Nodes
   - Prefixed `[]byte{1}`
@@ -62,14 +62,14 @@ The SMT has 4 node types that are used to construct the tree:
 
 ### Inner Nodes
 
-Inner nodes represent a branch in the tree with two **non-nil** child nodes.
+Inner nodes represent a branch in the trie with two **non-nil** child nodes.
 The inner node has an internal `digest` which represents the hash of the child
 nodes concatenated hashes.
 
 ### Extension Nodes
 
 Extension nodes represent a singly linked chain of inner nodes, with a single
-child. They are used to represent a common path in the tree and as such contain
+child. They are used to represent a common path in the trie and as such contain
 the path and bounds of the path they represent. The `digest` of an extension
 node is the hash of its path bounds, the path itself and the child nodes digest
 concatenated.
@@ -80,9 +80,9 @@ Leaf nodes store the full path which they represent and also the hash of the
 value they store. The `digest` of a leaf node is the hash of the leaf nodes path
 and value concatenated.
 
-The SMT stores only the hashes of the values in the tree, not the raw values
+The SMT stores only the hashes of the values in the trie, not the raw values
 themselves. In order to store the raw values in the underlying database the
-option `WithValueHasher(nil)` must be passed into the `NewSparseMerkleTree`
+option `WithValueHasher(nil)` must be passed into the `NewSparseMerkleTrie`
 constructor.
 
 ### Lazy Nodes
@@ -94,7 +94,7 @@ such as its children and path.
 
 ### Lazy Loading
 
-This library uses a cached, lazy-loaded tree structure to optimize performance.
+This library uses a cached, lazy-loaded trie structure to optimize performance.
 It optimises performance by not reading from/writing to the underlying database
 on each operation, deferring any underlying changes until the `Commit()`
 function is called.
@@ -102,22 +102,22 @@ function is called.
 All nodes have a `persisted` field which signals whether they have been
 persisted to the underlying database or not. In practice this gives a large
 performance optimisation by working on cached data and not reading from/writing
-to the database on each operation. If a node is deleted from the tree it is
+to the database on each operation. If a node is deleted from the trie it is
 marked as `orphaned` and will be deleted from the database when the `Commit()`
 function is called.
 
-Once the `Commit()` function is called the tree will delete any orphaned nodes
+Once the `Commit()` function is called the trie will delete any orphaned nodes
 from the database and write the key-value pairs of all the unpersisted leaf
 nodes' hashes and their values to the database.
 
 ### Visualisations
 
-The following diagrams are representations of how the tree and its components
+The following diagrams are representations of how the trie and its components
 can be visualised.
 
-#### General Tree Structure
+#### General Trie Structure
 
-The different nodes types described above make the tree have a structure similar
+The different nodes types described above make the trie have a structure similar
 to the following:
 
 ```mermaid
@@ -157,22 +157,22 @@ graph TD
 
 #### Lazy Nodes
 
-When importing a tree via `ImportSparseMerkleTree` the tree will be lazily
-loaded from the root hash provided. As such the initial tree structure would
-contain just a single lazy node, until the tree is used and nodes have to be
-resolved from the database, whose digest is the root hash of the tree.
+When importing a trie via `ImportSparseMerkleTrie` the trie will be lazily
+loaded from the root hash provided. As such the initial trie structure would
+contain just a single lazy node, until the trie is used and nodes have to be
+resolved from the database, whose digest is the root hash of the trie.
 
 ```mermaid
 graph TD
 	subgraph L[Lazy Node]
 		A[rootHash]
 	end
-	subgraph T[Tree]
+	subgraph T[Trie]
 		L
 	end
 ```
 
-If we were to resolve just this root node, we could have the following tree
+If we were to resolve just this root node, we could have the following trie
 structure:
 
 ```mermaid
@@ -186,7 +186,7 @@ graph TD
 	subgraph L2[Lazy Node]
 		C["Hash2"]
 	end
-	subgraph T[Tree]
+	subgraph T[Trie]
 		I --> L1
 		I --> L2
 	end
@@ -203,14 +203,14 @@ Paths are **only** stored in two types of nodes: Leaf nodes and Extension nodes.
 - Leaf nodes contain the full path which they represent, as well as the value
   stored at that path.
 
-Inner nodes do **not** contain a path, as they represent a branch in the tree
+Inner nodes do **not** contain a path, as they represent a branch in the trie
 and not a path. As such their children, _if they are extension nodes or leaf
 nodes_, will hold a path value.
 
 ### Visualisation
 
 The following diagram shows how paths are stored in the different nodes of the
-tree. In the actual SMT paths are not 8 bit binary strings but are instead the
+trie. In the actual SMT paths are not 8 bit binary strings but are instead the
 returned values of the `PathHasher` (discussed below). These are then used to
 calculate the path bit (`0` or `1`) at any index of the path byte slice.
 
@@ -256,8 +256,8 @@ graph LR
 
 ## Values
 
-By default the SMT will use the `hasher` passed into `NewSparseMerkleTree` to
-hash both the keys into their paths in the tree, as well as the values. This
+By default the SMT will use the `hasher` passed into `NewSparseMerkleTrie` to
+hash both the keys into their paths in the trie, as well as the values. This
 means the data stored in a leaf node will be the hash of the value, not the
 value itself.
 
@@ -266,37 +266,37 @@ However, if this is not desired, the two option functions `WithPathHasher` and
 and values respectively.
 
 If `nil` is passed into `WithValueHasher` functions, it will act as identity
-hasher and store the values unaltered in the tree.
+hasher and store the values unaltered in the trie.
 
 ### Nil values
 
 A `nil` value is the same as the placeholder value in the SMT and as such
 inserting a key with a `nil` value has specific behaviours. Although the
 insertion of a key-value pair with a `nil` value will alter the root hash, a
-proof will not recognise the key as being in the tree.
+proof will not recognise the key as being in the trie.
 
 Assume `(key, value)` pairs as follows:
 
 - `(key, nil)` -> DOES modify the `root` hash
-  - Proving this `key` is in the tree will fail
+  - Proving this `key` is in the trie will fail
 - `(key, value)` -> DOES modify the `root` hash
-  - Proving this `key` is in the tree will succeed
+  - Proving this `key` is in the trie will succeed
 
 ## Hashers & Digests
 
 When creating a new SMT or importing one a `hasher` is provided, typically this
 would be `sha256.New()` but could be any hasher implementing the go `hash.Hash`
-interface. By default this hasher, referred to as the `TreeHasher` will be used
+interface. By default this hasher, referred to as the `TrieHasher` will be used
 on both keys (to create paths) and values (to store). But separate hashers can
 be passed in via the option functions mentioned above.
 
-Whenever we do an operation on the tree, the `PathHasher` is used to hash the
+Whenever we do an operation on the trie, the `PathHasher` is used to hash the
 key and return its digest - the path. When we store a value in a leaf node we
 hash it using the `ValueHasher`. These digests are calculated by writing to the
 hasher and then calculating the checksum by calling `Sum(nil)`.
 
 The digests of all nodes, regardless of the `PathHasher` and `ValueHasher`s
-being used, will be the result of writing to the `TreeHasher` and calculating
+being used, will be the result of writing to the `TrieHasher` and calculating
 the `Sum`. The exact data hashed will depend on the type of node, this is
 described in the [implementation](#implementation) section.
 
@@ -323,7 +323,7 @@ graph TD
 		H["Sum(nil)"]
 		G-->H
 	end
-	subgraph TH[Tree Hasher]
+	subgraph TH[Trie Hasher]
 		I["Write([]byte{0}+Path+ValueHash])"]
 		J["Sum(nil)"]
 		I-->J
@@ -342,14 +342,14 @@ graph TD
 ## Proofs
 
 The `SparseMerkleProof` type contains the information required for inclusion
-and exclusion proofs, depending on the key provided to the tree method
+and exclusion proofs, depending on the key provided to the trie method
 `Prove(key []byte)` either an inclusion or exclusion proof will be generated.
 
 _NOTE: The inclusion and exclusion proof are the same type, just constructed
 differently_
 
 The `SparseMerkleProof` type contains the relevant information required to
-rebuild the root hash of the tree from the given key. This information is:
+rebuild the root hash of the trie from the given key. This information is:
 
 - Any side nodes
 - Data of the sibling node
@@ -359,7 +359,7 @@ rebuild the root hash of the tree from the given key. This information is:
 ### Verification
 
 In order to verify a `SparseMerkleProof` the `VerifyProof` method is called with
-the proof, tree spec, root hash as well as the key and value that the proof is
+the proof, trie spec, root hash as well as the key and value that the proof is
 for. When verifying an exclusion proof the value provided should be `nil`.
 
 The verification step simply uses the proof data to recompute the root hash with
@@ -369,9 +369,9 @@ the one provided then the proof is valid, otherwise it is an invalid proof.
 ### Closest Proof
 
 The `SparseMerkleClosestProof` is a novel proof mechanism, which can provide a
-proof of inclusion for a sentinel leaf in the tree with the most bits in common
+proof of inclusion for a sentinel leaf in the trie with the most bits in common
 with the hash provided to the `ProveClosest()` method. This works by traversing
-the tree according to the path of the hash provided and if encountering a `nil`
+the trie according to the path of the hash provided and if encountering a `nil`
 node then backstepping and flipping the path bit for that depth in the path.
 
 This backstepping process allows the traversal to continue until it reaches a
@@ -380,7 +380,7 @@ the provided hash, up to the depth of the leaf found.
 
 This method guarentees a proof of inclusion in all cases and can be verified by
 using the `VerifyClosestProof` function which requires the proof and root hash
-of the tree.
+of the trie.
 
 ### Compression
 
@@ -417,7 +417,7 @@ When changes are committed to the underlying database using `Commit()` the
 digests of the leaf nodes are stored at their respective paths. If retrieved
 manually from the database the returned value will be the digest of the leaf
 node, **not** the leaf node's value, even when `WithValueHasher(nil)` is used.
-The node value can be parsed from this value, as the tree `Get` function does
+The node value can be parsed from this value, as the trie `Get` function does
 by removing the prefix and path bytes from the returned value.
 
 See [KVStore.md](./KVStore.md) for the details of the implementation.
@@ -425,14 +425,14 @@ See [KVStore.md](./KVStore.md) for the details of the implementation.
 ### Data Loss
 
 In the event of a system crash or unexpected failure of the program utilising
-the SMT, if the `Commit()` function has not been called, any changes to the tree
+the SMT, if the `Commit()` function has not been called, any changes to the trie
 will be lost. This is due to the underlying database not being changed **until**
 the `Commit()` function is called and changes are persisted.
 
-## Sparse Merkle Sum Tree
+## Sparse Merkle Sum Trie
 
-This library also implements a Sparse Merkle Sum Tree (SMST), the documentation
-for which can be found [here](./MerkleSumTree.md).
+This library also implements a Sparse Merkle Sum Trie (SMST), the documentation
+for which can be found [here](./MerkleSumTrie.md).
 
 ## Example
 
@@ -447,28 +447,28 @@ import (
 )
 
 func main() {
-  // Initialise a new in-memory key-value store to store the nodes of the tree
-  // (Note: the tree only stores hashed values, not raw value data)
+  // Initialise a new in-memory key-value store to store the nodes of the trie
+  // (Note: the trie only stores hashed values, not raw value data)
   nodeStore := smt.NewKVStore("")
 
   // Ensure the database connection closes
   defer nodeStore.Stop()
 
-  // Initialise the tree
-  tree := smt.NewSparseMerkleTree(nodeStore, sha256.New())
+  // Initialise the trie
+  trie := smt.NewSparseMerkleTrie(nodeStore, sha256.New())
 
   // Update the key "foo" with the value "bar"
-  _ = tree.Update([]byte("foo"), []byte("bar"))
+  _ = trie.Update([]byte("foo"), []byte("bar"))
 
   // Commit the changes to the node store
-  _ = tree.Commit()
+  _ = trie.Commit()
 
   // Generate a Merkle proof for "foo"
-  proof, _ := tree.Prove([]byte("foo"))
-  root := tree.Root() // We also need the current tree root for the proof
+  proof, _ := trie.Prove([]byte("foo"))
+  root := trie.Root() // We also need the current trie root for the proof
 
   // Verify the Merkle proof for "foo"="bar"
-  if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), tree.Spec()) {
+  if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), trie.Spec()) {
     fmt.Println("Proof verification succeeded.")
   } else {
     fmt.Println("Proof verification failed.")

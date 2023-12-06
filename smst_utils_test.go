@@ -16,7 +16,7 @@ type SMSTWithStorage struct {
 	preimages KVStore
 }
 
-// Update updates a key with a new value in the tree and adds the value to the preimages KVStore
+// Update updates a key with a new value in the trie and adds the value to the preimages KVStore
 func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
@@ -31,12 +31,12 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	return nil
 }
 
-// Delete deletes a key from the tree.
+// Delete deletes a key from the trie.
 func (smst *SMSTWithStorage) Delete(key []byte) error {
 	return smst.SMST.Delete(key)
 }
 
-// GetValueSum returns the value and sum of the key stored in the tree, by looking up
+// GetValueSum returns the value and sum of the key stored in the trie, by looking up
 // the value hash in the preimages KVStore and extracting the sum
 func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	valueHash, sum, err := smst.Get(key)
@@ -72,7 +72,7 @@ func (smst *SMSTWithStorage) Has(key []byte) (bool, error) {
 }
 
 // ProveSumCompact generates a compacted Merkle proof for a key against the current root.
-func ProveSumCompact(key []byte, smst SparseMerkleSumTree) (*SparseCompactMerkleProof, error) {
+func ProveSumCompact(key []byte, smst SparseMerkleSumTrie) (*SparseCompactMerkleProof, error) {
 	proof, err := smst.Prove(key)
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-# Sparse Merkle Sum Tree (smst)
+# Sparse Merkle Sum Trie (smst)
 
 <!-- toc -->
 
@@ -7,7 +7,7 @@
   - [Sum Encoding](#sum-encoding)
   - [Digests](#digests)
   - [Visualisations](#visualisations)
-    - [General Tree Structure](#general-tree-structure)
+    - [General Trie Structure](#general-trie-structure)
     - [Binary Sum Digests](#binary-sum-digests)
 - [Sum](#sum)
 - [Nil Values](#nil-values)
@@ -17,15 +17,15 @@
 
 ## Overview
 
-Merkle Sum trees function very similarly to regular Merkle trees, with the
-primary difference being that each leaf node in a Merkle sum tree includes a
-`sum` in addition to its value. This allows for the entire tree's total sum to
+Merkle Sum tries function very similarly to regular Merkle tries, with the
+primary difference being that each leaf node in a Merkle sum trie includes a
+`sum` in addition to its value. This allows for the entire trie's total sum to
 be calculated easily, as the sum of any branch is the sum of its children. Thus
-the sum of the root node is the sum of the entire tree. Like a normal Merkle
-tree, the Merkle sum tree allows for the efficient verification of its members,
+the sum of the root node is the sum of the entire trie. Like a normal Merkle
+trie, the Merkle sum trie allows for the efficient verification of its members,
 proving inclusion/exclusion of certain elements and generally functions the same.
 
-Merkle sum trees can be very useful for blockchain applications in that they can
+Merkle sum tries can be very useful for blockchain applications in that they can
 easily track accounts balances and, thus, the total balance of all accounts.
 They can be very useful in proof of reserve systems whereby one needs to prove
 the inclusion of an element that is a component of the total sum, along with a
@@ -33,19 +33,19 @@ verifiable total sum of all elements.
 
 ## Implementation
 
-The implementation of the Sparse Merkle Sum Tree (SMST) follows, in principle,
-the same implementation as the [Plasma Core Merkle Sum tree][plasma core docs].
+The implementation of the Sparse Merkle Sum Trie (SMST) follows, in principle,
+the same implementation as the [Plasma Core Merkle Sum trie][plasma core docs].
 The main differences with the current SMT implementation are outlined below.
-The primary difference lies in the encoding of node data within the tree to
+The primary difference lies in the encoding of node data within the trie to
 accommodate for the sum.
 
-_NOTE: The Plasma Core Merkle Sum tree uses a 16 byte hex string to encode the
+_NOTE: The Plasma Core Merkle Sum trie uses a 16 byte hex string to encode the
 sum whereas this SMST implementation uses an 8 byte binary representation of the
 `uint64` sum._
 
 In practice the SMST is a wrapper around the SMT with a new field added to the
-`TreeSpec`: `sumTree bool` this determines whether the SMT should follow its
-regular encoding of that of the sum tree.
+`TrieSpec`: `sumTrie bool` this determines whether the SMT should follow its
+regular encoding of that of the sum trie.
 
 See: the [SMT documentation](./SMT.md) for the details on how the SMT works.
 
@@ -130,10 +130,10 @@ This means that with a hasher such as `sha256.New()` whose hash size is
 
 ### Visualisations
 
-The following diagrams are representations of how the tree and its components
+The following diagrams are representations of how the trie and its components
 can be visualised.
 
-#### General Tree Structure
+#### General Trie Structure
 
 None of the nodes have a different structure to the regular SMT, but the digests
 of nodes now include their sum as described above and the sum is included in the
@@ -186,7 +186,7 @@ graph TB
 #### Binary Sum Digests
 
 The following diagram shows the structure of the digests of the nodes within
-the tree in a simplified manner, again none of the nodes have a `sum` field,
+the trie in a simplified manner, again none of the nodes have a `sum` field,
 but for visualisation purposes the sum is included in all nodes with the
 exception of the leaf nodes where the sum is shown as part of its value.
 
@@ -246,7 +246,7 @@ graph TB
 
 ## Sum
 
-The `Sum()` function adds functionality to easily retrieve the tree's current
+The `Sum()` function adds functionality to easily retrieve the trie's current
 sum as a `uint64`.
 
 ## Nil Values
@@ -255,20 +255,20 @@ A `nil` value and `0` weight is the same as the placeholder value and default
 sum in the SMST and as such inserting a key with a `nil` value has specific
 behaviours. Although the insertion of a key-value-weight grouping with a `nil`
 value and `0` weight will alter the root hash, a proof will not recognise the
-key as being in the tree.
+key as being in the trie.
 
 Assume `(key, value, weight)` groupings as follows:
 
 - `(key, nil, 0)` -> DOES modify the `root` hash
-  - Proving this `key` is in the tree will fail
+  - Proving this `key` is in the trie will fail
 - `(key, nil, weight)` -> DOES modify the `root` hash
-  - Proving this `key` is in the tree will succeed
+  - Proving this `key` is in the trie will succeed
 - `(key, value, 0)` -> DOES modify the `root` hash
-  - Proving this `key` is in the tree will succeed
+  - Proving this `key` is in the trie will succeed
 - `(key, value, weight)` -> DOES modify the `root` hash
-  - Proving this `key` is in the tree will succeed
+  - Proving this `key` is in the trie will succeed
 - `(key, value, weight)` -> DOES modify the `root` hash
-  - Proving this `key` is in the tree will succeed
+  - Proving this `key` is in the trie will succeed
 
 ## Example
 
@@ -283,33 +283,33 @@ import (
 )
 
 func main() {
-  // Initialise a new in-memory key-value store to store the nodes of the tree
-  // (Note: the tree only stores hashed values, not raw value data)
+  // Initialise a new in-memory key-value store to store the nodes of the trie
+  // (Note: the trie only stores hashed values, not raw value data)
   nodeStore := smt.NewKVStore("")
 
   // Ensure the database connection closes
   defer nodeStore.Stop()
 
-  // Initialise the tree
-  tree := smt.NewSparseMerkleSumTree(nodeStore, sha256.New())
+  // Initialise the trie
+  trie := smt.NewSparseMerkleSumTrie(nodeStore, sha256.New())
 
-  // Update tree with keys, values and their sums
-  _ = tree.Update([]byte("foo"), []byte("oof"), 10)
-  _ = tree.Update([]byte("baz"), []byte("zab"), 7)
-  _ = tree.Update([]byte("bin"), []byte("nib"), 3)
+  // Update trie with keys, values and their sums
+  _ = trie.Update([]byte("foo"), []byte("oof"), 10)
+  _ = trie.Update([]byte("baz"), []byte("zab"), 7)
+  _ = trie.Update([]byte("bin"), []byte("nib"), 3)
 
   // Commit the changes to the nodeStore
-  _ = tree.Commit()
+  _ = trie.Commit()
 
-  sum := tree.Sum()
+  sum := trie.Sum()
   fmt.Println(sum == 20) // true
 
   // Generate a Merkle proof for "foo"
-  proof, _ := tree.Prove([]byte("foo"))
-  root := tree.Root() // We also need the current tree root for the proof
+  proof, _ := trie.Prove([]byte("foo"))
+  root := trie.Root() // We also need the current trie root for the proof
 
   // Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-  if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, tree.Spec()); valid {
+  if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, trie.Spec()); valid {
     fmt.Println("Proof verification succeeded.")
   } else {
     fmt.Println("Proof verification failed.")
@@ -317,4 +317,4 @@ func main() {
 }
 ```
 
-[plasma core docs]: https://plasma-core.readthedocs.io/en/latest/specs/sum-tree.html
+[plasma core docs]: https://plasma-core.readthedocs.io/en/latest/specs/sum-trie.html
