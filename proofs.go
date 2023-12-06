@@ -167,7 +167,7 @@ type SparseMerkleClosestProof struct {
 	FlippedBits      []int              // the index of the bits flipped in the path during tree traversal
 	Depth            int                // the depth of the tree when tree traversal stopped
 	ClosestPath      []byte             // the path of the leaf closest to the path provided
-	ClosestValueHash []byte             // the value hash of the leaf closest to the path provided
+	ClosestValueHash []byte             // the valueHash of the leaf (or its value if the hasher is nil) from the closest proof
 	ClosestProof     *SparseMerkleProof // the proof of the leaf closest to the path provided
 }
 
