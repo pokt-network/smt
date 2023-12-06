@@ -34,7 +34,7 @@ verifiable total sum of all elements.
 ## Implementation
 
 The implementation of the Sparse Merkle Sum Trie (SMST) follows, in principle,
-the same implementation as the [Plasma Core Merkle Sum trie][plasma core docs].
+the same implementation as the [Plasma Core Merkle Sum Tree][plasma core docs].
 The main differences with the current SMT implementation are outlined below.
 The primary difference lies in the encoding of node data within the trie to
 accommodate for the sum.
@@ -317,4 +317,4 @@ func main() {
 }
 ```
 
-[plasma core docs]: https://plasma-core.readthedocs.io/en/latest/specs/sum-trie.html
+[plasma core docs]: https://plasma-core.readthedocs.io/en/latest/specs/sum-tree.html
