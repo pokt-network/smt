@@ -11,17 +11,17 @@ import (
 
 func NewSMTWithStorage(nodes, preimages KVStore, hasher hash.Hash, options ...Option) *SMTWithStorage {
 	return &SMTWithStorage{
-		SMT:       NewSparseMerkleTree(nodes, hasher, options...),
+		SMT:       NewSparseMerkleTrie(nodes, hasher, options...),
 		preimages: preimages,
 	}
 }
 
-func TestSMT_TreeUpdateBasic(t *testing.T) {
+func TestSMT_TrieUpdateBasic(t *testing.T) {
 	smn, err := NewKVStore("")
 	require.NoError(t, err)
 	smv, err := NewKVStore("")
 	require.NoError(t, err)
-	lazy := NewSparseMerkleTree(smn, sha256.New())
+	lazy := NewSparseMerkleTrie(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
 	var value []byte
 	var has bool
@@ -78,8 +78,8 @@ func TestSMT_TreeUpdateBasic(t *testing.T) {
 
 	require.NoError(t, lazy.Commit())
 
-	// Test that a tree can be imported from a KVStore
-	lazy = ImportSparseMerkleTree(smn, sha256.New(), smt.Root())
+	// Test that a trie can be imported from a KVStore
+	lazy = ImportSparseMerkleTrie(smn, sha256.New(), smt.Root())
 	require.NoError(t, err)
 	smt = &SMTWithStorage{SMT: lazy, preimages: smv}
 
@@ -99,13 +99,13 @@ func TestSMT_TreeUpdateBasic(t *testing.T) {
 	require.NoError(t, smv.Stop())
 }
 
-// Test base case tree delete operations with a few keys.
-func TestSMT_TreeDeleteBasic(t *testing.T) {
+// Test base case trie delete operations with a few keys.
+func TestSMT_TrieDeleteBasic(t *testing.T) {
 	smn, err := NewKVStore("")
 	require.NoError(t, err)
 	smv, err := NewKVStore("")
 	require.NoError(t, err)
-	lazy := NewSparseMerkleTree(smn, sha256.New())
+	lazy := NewSparseMerkleTrie(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
 	rootEmpty := smt.Root()
 
@@ -150,7 +150,7 @@ func TestSMT_TreeDeleteBasic(t *testing.T) {
 	require.Equal(t, root1, smt.Root(), "after deleting second key")
 
 	// Test inserting and deleting a different second key, when the the first 2
-	// bits of the path for the two keys in the tree are the same (when using SHA256).
+	// bits of the path for the two keys in the trie are the same (when using SHA256).
 	err = smt.Update([]byte("foo"), []byte("testValue"))
 	require.NoError(t, err)
 
@@ -177,7 +177,7 @@ func TestSMT_TreeDeleteBasic(t *testing.T) {
 	err = smt.Delete([]byte("testKey"))
 	require.NoError(t, err)
 
-	// Fail to delete an absent key, but leave tree in a valid state
+	// Fail to delete an absent key, but leave trie in a valid state
 	err = smt.Delete([]byte("testKey"))
 	require.Error(t, err)
 
@@ -202,8 +202,8 @@ func TestSMT_TreeDeleteBasic(t *testing.T) {
 	require.NoError(t, smv.Stop())
 }
 
-// Test tree ops with known paths
-func TestSMT_TreeKnownPath(t *testing.T) {
+// Test trie ops with known paths
+func TestSMT_TrieKnownPath(t *testing.T) {
 	ph := dummyPathHasher{32}
 	smn, err := NewKVStore("")
 	require.NoError(t, err)
@@ -278,8 +278,8 @@ func TestSMT_TreeKnownPath(t *testing.T) {
 	require.NoError(t, smv.Stop())
 }
 
-// Test tree operations when two leafs are immediate neighbors.
-func TestSMT_TreeMaxHeightCase(t *testing.T) {
+// Test trie operations when two leafs are immediate neighbors.
+func TestSMT_TrieMaxHeightCase(t *testing.T) {
 	ph := dummyPathHasher{32}
 	smn, err := NewKVStore("")
 	require.NoError(t, err)
@@ -336,7 +336,7 @@ func TestSMT_OrphanRemoval(t *testing.T) {
 		require.NoError(t, err)
 		smv, err = NewKVStore("")
 		require.NoError(t, err)
-		impl = NewSparseMerkleTree(smn, sha256.New())
+		impl = NewSparseMerkleTrie(smn, sha256.New())
 		smt = &SMTWithStorage{SMT: impl, preimages: smv}
 
 		err = smt.Update([]byte("testKey"), []byte("testValue"))

@@ -164,7 +164,11 @@ func TestSMT_Proof_ValidateBasic(t *testing.T) {
 	// Case: incorrect non-nil sibling data
 	proof, _ = smt.Prove([]byte("testKey1"))
 	proof.SiblingData = base.th.digest(proof.SiblingData)
-	require.EqualError(t, proof.validateBasic(base), "invalid sibling data hash: got 187864587bac133246face60f98b8214407aa314f37dfc9ce8e1f5c80284a866 but want 101cb41e8679c5376da9fb4c1e5ad4772876affb74045574cc7c12e4c38975f9")
+	require.EqualError(
+		t,
+		proof.validateBasic(base),
+		"invalid sibling data hash: got 187864587bac133246face60f98b8214407aa314f37dfc9ce8e1f5c80284a866 but want 101cb41e8679c5376da9fb4c1e5ad4772876affb74045574cc7c12e4c38975f9",
+	)
 
 	result, err = VerifyProof(proof, root, []byte("testKey1"), []byte("testValue1"), base)
 	require.ErrorIs(t, err, ErrBadProof)
@@ -179,14 +183,14 @@ func TestSMT_Proof_ValidateBasic(t *testing.T) {
 func TestSMT_ClosestProof_ValidateBasic(t *testing.T) {
 	smn, err := NewKVStore("")
 	require.NoError(t, err)
-	smt := NewSparseMerkleTree(smn, sha256.New())
+	smt := NewSparseMerkleTrie(smn, sha256.New())
 	np := NoPrehashSpec(sha256.New(), false)
 	base := smt.Spec()
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
 	flipPathBit(path[:], 6)
 
-	// insert some unrelated values to populate the tree
+	// insert some unrelated values to populate the trie
 	require.NoError(t, smt.Update([]byte("foo"), []byte("oof")))
 	require.NoError(t, smt.Update([]byte("bar"), []byte("rab")))
 	require.NoError(t, smt.Update([]byte("baz"), []byte("zab")))
@@ -236,7 +240,11 @@ func TestSMT_ClosestProof_ValidateBasic(t *testing.T) {
 	proof, err = smt.ProveClosest(path[:])
 	require.NoError(t, err)
 	flipPathBit(proof.Path, 3)
-	require.EqualError(t, proof.validateBasic(base), "invalid closest path: 8d13809f932d0296b88c1913231ab4b403f05c88363575476204fef6930f22ae (not equal at bit: 3)")
+	require.EqualError(
+		t,
+		proof.validateBasic(base),
+		"invalid closest path: 8d13809f932d0296b88c1913231ab4b403f05c88363575476204fef6930f22ae (not equal at bit: 3)",
+	)
 	result, err = VerifyClosestProof(proof, root, np)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
@@ -244,7 +252,7 @@ func TestSMT_ClosestProof_ValidateBasic(t *testing.T) {
 	require.Error(t, err)
 }
 
-// ProveClosest test against a visual representation of the tree
+// ProveClosest test against a visual representation of the trie
 // See: https://github.com/pokt-network/smt/assets/53987565/2c2ea530-a2e8-49d7-89c2-ca9c615b0c79
 func TestSMT_ProveClosest(t *testing.T) {
 	var smn KVStore
@@ -256,9 +264,9 @@ func TestSMT_ProveClosest(t *testing.T) {
 
 	smn, err = NewKVStore("")
 	require.NoError(t, err)
-	smt = NewSparseMerkleTree(smn, sha256.New(), WithValueHasher(nil))
+	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 
-	// insert some unrelated values to populate the tree
+	// insert some unrelated values to populate the trie
 	require.NoError(t, smt.Update([]byte("foo"), []byte("oof")))
 	require.NoError(t, smt.Update([]byte("bar"), []byte("rab")))
 	require.NoError(t, smt.Update([]byte("baz"), []byte("zab")))
@@ -320,7 +328,7 @@ func TestSMT_ProveClosest_Empty(t *testing.T) {
 
 	smn, err = NewKVStore("")
 	require.NoError(t, err)
-	smt = NewSparseMerkleTree(smn, sha256.New(), WithValueHasher(nil))
+	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
@@ -351,7 +359,7 @@ func TestSMT_ProveClosest_OneNode(t *testing.T) {
 
 	smn, err = NewKVStore("")
 	require.NoError(t, err)
-	smt = NewSparseMerkleTree(smn, sha256.New(), WithValueHasher(nil))
+	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 	require.NoError(t, smt.Update([]byte("foo"), []byte("bar")))
 
 	path := sha256.Sum256([]byte("testKey2"))
@@ -386,18 +394,18 @@ func TestSMT_ProveClosest_Proof(t *testing.T) {
 	var proof512 *SparseMerkleClosestProof
 	var err error
 
-	// setup tree (256+512 path hasher) and nodestore
+	// setup trie (256+512 path hasher) and nodestore
 	smn, err = NewKVStore("")
 	require.NoError(t, err)
-	smt256 = NewSparseMerkleTree(smn, sha256.New())
-	smt512 = NewSparseMerkleTree(smn, sha512.New())
+	smt256 = NewSparseMerkleTrie(smn, sha256.New())
+	smt512 = NewSparseMerkleTrie(smn, sha512.New())
 
 	// insert 100000 key-value-sum triples
 	for i := 0; i < 100000; i++ {
 		s := strconv.Itoa(i)
 		require.NoError(t, smt256.Update([]byte(s), []byte(s)))
 		require.NoError(t, smt512.Update([]byte(s), []byte(s)))
-		// generate proofs for each key in the tree
+		// generate proofs for each key in the trie
 		path256 := sha256.Sum256([]byte(s))
 		path512 := sha512.Sum512([]byte(s))
 		proof256, err = smt256.ProveClosest(path256[:])

@@ -32,10 +32,10 @@ Note: **Requires Go 1.20+**
 
 ## Overview
 
-This is a Go library that implements a Sparse Merkle tree for a key-value map.
-The tree implements the same optimisations specified in the [Libra whitepaper],
-to reduce the number of hash operations required per tree operation to $O(k)$
-where $k$ is the number of non-empty elements in the tree. And is implemented
+This is a Go library that implements a Sparse Merkle Trie for a key-value map.
+The trie implements the same optimisations specified in the [Libra whitepaper],
+to reduce the number of hash operations required per trie operation to $O(k)$
+where $k$ is the number of non-empty elements in the trie. And is implemented
 in a similar way to the [JMT whitepaper], with additional features and proof
 mechanics.
 
@@ -74,8 +74,8 @@ clarification.
 
 #### Commit
 
-- The `Commit` term refers to the `Commit` method of the tree. This takes all
-  changes (which are made in memory) to the tree and writes them to the
+- The `Commit` term refers to the `Commit` method of the trie. This takes all
+  changes (which are made in memory) to the trie and writes them to the
   underlying database.
 
 #### Sizing
@@ -88,11 +88,11 @@ clarification.
   - 5M = 5,000,000 (Five million)
   - 10M = 10,000,000 (Ten million)
 - These sizes refer to the number of key-value pairs or key-value-sum triples
-  inserted into the tree either beforehand or during the benchmark depending on
+  inserted into the trie either beforehand or during the benchmark depending on
   which benchmark it is.
 
 _NOTE: Unless otherwise stated the benchmarks in this document were ran on a
-2023 14-inch Macbook Pro M2 Max with 32GB of RAM. The trees tested are using the
+2023 14-inch Macbook Pro M2 Max with 32GB of RAM. The tries tested are using the
 `sha256.New()` hasher._
 
 _TODO: There is an opportunity to do a fuzz test where we commit every `N`
@@ -110,7 +110,7 @@ make benchmark_smt
 
 The "fill" benchmarks cover the time taken to insert `N` key-value pairs into
 the SMT, as well as how long it takes to do this and commit these changes to
-disk. This gives us an insight into how long it takes to build a tree of a
+disk. This gives us an insight into how long it takes to build a trie of a
 certain size.
 
 In order to run the SMT filling benchmarks use the following command:
@@ -190,7 +190,7 @@ make benchmark_smst
 
 The "fill" benchmarks cover the time taken to insert `N` key-value-sum triples
 into the SMST, as well as how long it takes to do this and commit these changes
-to disk. This gives us an insight into how long it takes to build a tree of a
+to disk. This gives us an insight into how long it takes to build a trie of a
 certain size.
 
 In order to run the SMST filling benchmarks use the following command:
@@ -260,7 +260,7 @@ make benchmark_smst_ops
 
 ### Proofs
 
-To run the tests to average the proof size for numerous prefilled trees use the
+To run the tests to average the proof size for numerous prefilled tries use the
 following command:
 
 ```sh
@@ -287,5 +287,5 @@ make benchmark_proof_sizes
 | 5,000,000      | 1166                                  | 975         | 2123        | 1169                                            | 1018        | 1388        |
 | 10,000,000     | 1207                                  | 1026        | 2123        | 1210                                            | 1059        | 1429        |
 
-[jmt whitepaper]: https://developers.diem.com/papers/jellyfish-merkle-tree/2021-01-14.pdf
+[jmt whitepaper]: https://developers.diem.com/papers/jellyfish-merkle-trie/2021-01-14.pdf
 [libra whitepaper]: https://diem-developers-components.netlify.app/papers/the-diem-blockchain/2020-05-26.pdf

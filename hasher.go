@@ -17,9 +17,9 @@ var (
 	_ ValueHasher = (*valueHasher)(nil)
 )
 
-// PathHasher defines how key inputs are hashed to produce tree paths.
+// PathHasher defines how key inputs are hashed to produce trie paths.
 type PathHasher interface {
-	// Path hashes a key (preimage) and returns a tree path (digest).
+	// Path hashes a key (preimage) and returns a trie path (digest).
 	Path([]byte) []byte
 	// PathSize returns the length (in bytes) of digests produced by this hasher.
 	PathSize() int
@@ -31,19 +31,19 @@ type ValueHasher interface {
 	HashValue([]byte) []byte
 }
 
-type treeHasher struct {
+type trieHasher struct {
 	hasher    hash.Hash
 	zeroValue []byte
 }
 type pathHasher struct {
-	treeHasher
+	trieHasher
 }
 type valueHasher struct {
-	treeHasher
+	trieHasher
 }
 
-func newTreeHasher(hasher hash.Hash) *treeHasher {
-	th := treeHasher{hasher: hasher}
+func newTrieHasher(hasher hash.Hash) *trieHasher {
+	th := trieHasher{hasher: hasher}
 	th.zeroValue = make([]byte, th.hashSize())
 	return &th
 }
@@ -54,7 +54,7 @@ func (ph *pathHasher) Path(key []byte) []byte {
 }
 
 // PathSize returns the length (in bytes) of digests produced by the path hasher
-// which is the length of any path in the tree
+// which is the length of any path in the trie
 func (ph *pathHasher) PathSize() int {
 	return ph.hasher.Size()
 }
@@ -63,51 +63,51 @@ func (vh *valueHasher) HashValue(data []byte) []byte {
 	return vh.digest(data)
 }
 
-func (th *treeHasher) digest(data []byte) []byte {
+func (th *trieHasher) digest(data []byte) []byte {
 	th.hasher.Write(data)
 	sum := th.hasher.Sum(nil)
 	th.hasher.Reset()
 	return sum
 }
 
-func (th *treeHasher) digestLeaf(path []byte, leafData []byte) ([]byte, []byte) {
+func (th *trieHasher) digestLeaf(path []byte, leafData []byte) ([]byte, []byte) {
 	value := encodeLeaf(path, leafData)
 	return th.digest(value), value
 }
 
-func (th *treeHasher) digestSumLeaf(path []byte, leafData []byte) ([]byte, []byte) {
+func (th *trieHasher) digestSumLeaf(path []byte, leafData []byte) ([]byte, []byte) {
 	value := encodeLeaf(path, leafData)
 	digest := th.digest(value)
 	digest = append(digest, value[len(value)-sumSize:]...)
 	return digest, value
 }
 
-func (th *treeHasher) digestNode(leftData []byte, rightData []byte) ([]byte, []byte) {
+func (th *trieHasher) digestNode(leftData []byte, rightData []byte) ([]byte, []byte) {
 	value := encodeInner(leftData, rightData)
 	return th.digest(value), value
 }
 
-func (th *treeHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte) {
+func (th *trieHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte) {
 	value := encodeSumInner(leftData, rightData)
 	digest := th.digest(value)
 	digest = append(digest, value[len(value)-sumSize:]...)
 	return digest, value
 }
 
-func (th *treeHasher) parseNode(data []byte) ([]byte, []byte) {
+func (th *trieHasher) parseNode(data []byte) ([]byte, []byte) {
 	return data[len(innerPrefix) : th.hashSize()+len(innerPrefix)], data[len(innerPrefix)+th.hashSize():]
 }
 
-func (th *treeHasher) parseSumNode(data []byte) ([]byte, []byte) {
+func (th *trieHasher) parseSumNode(data []byte) ([]byte, []byte) {
 	sumless := data[:len(data)-sumSize]
 	return sumless[len(innerPrefix) : th.hashSize()+sumSize+len(innerPrefix)], sumless[len(innerPrefix)+th.hashSize()+sumSize:]
 }
 
-func (th *treeHasher) hashSize() int {
+func (th *trieHasher) hashSize() int {
 	return th.hasher.Size()
 }
 
-func (th *treeHasher) placeholder() []byte {
+func (th *trieHasher) placeholder() []byte {
 	return th.zeroValue
 }
 

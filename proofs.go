@@ -19,7 +19,7 @@ func init() {
 // ErrBadProof is returned when an invalid Merkle proof is supplied.
 var ErrBadProof = errors.New("bad proof")
 
-// SparseMerkleProof is a Merkle proof for an element in a SparseMerkleTree.
+// SparseMerkleProof is a Merkle proof for an element in a SparseMerkleTrie.
 // TODO: Look into whether the SiblingData is required and remove it if not
 type SparseMerkleProof struct {
 	// SideNodes is an array of the sibling nodes leading up to the leaf of the proof.
@@ -52,7 +52,7 @@ func (proof *SparseMerkleProof) Unmarshal(bz []byte) error {
 	return dec.Decode(proof)
 }
 
-func (proof *SparseMerkleProof) validateBasic(spec *TreeSpec) error {
+func (proof *SparseMerkleProof) validateBasic(spec *TrieSpec) error {
 	// Do a basic sanity check on the proof, so that a malicious proof cannot
 	// cause the verifier to fatally exit (e.g. due to an index out-of-range
 	// error) or cause a CPU DoS attack.
@@ -86,7 +86,7 @@ func (proof *SparseMerkleProof) validateBasic(spec *TreeSpec) error {
 	return nil
 }
 
-// SparseCompactMerkleProof is a compact Merkle proof for an element in a SparseMerkleTree.
+// SparseCompactMerkleProof is a compact Merkle proof for an element in a SparseMerkleTrie.
 type SparseCompactMerkleProof struct {
 	// SideNodes is an array of the sibling nodes leading up to the leaf of the proof.
 	SideNodes [][]byte
@@ -127,7 +127,7 @@ func (proof *SparseCompactMerkleProof) Unmarshal(bz []byte) error {
 	return dec.Decode(proof)
 }
 
-func (proof *SparseCompactMerkleProof) validateBasic(spec *TreeSpec) error {
+func (proof *SparseCompactMerkleProof) validateBasic(spec *TrieSpec) error {
 	// Do a basic sanity check on the proof on the fields of the proof specific to
 	// the compact proof only.
 	//
@@ -164,8 +164,8 @@ func (proof *SparseCompactMerkleProof) validateBasic(spec *TreeSpec) error {
 // represents the proof of the leaf with the closest path to the one provided.
 type SparseMerkleClosestProof struct {
 	Path             []byte             // the path provided to the ProveClosest method
-	FlippedBits      []int              // the index of the bits flipped in the path during tree traversal
-	Depth            int                // the depth of the tree when tree traversal stopped
+	FlippedBits      []int              // the index of the bits flipped in the path during trie traversal
+	Depth            int                // the depth of the trie when trie traversal stopped
 	ClosestPath      []byte             // the path of the leaf closest to the path provided
 	ClosestValueHash []byte             // the valueHash of the leaf (or its value if the hasher is nil) from the closest proof
 	ClosestProof     *SparseMerkleProof // the proof of the leaf closest to the path provided
@@ -188,7 +188,7 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 	return dec.Decode(proof)
 }
 
-func (proof *SparseMerkleClosestProof) validateBasic(spec *TreeSpec) error {
+func (proof *SparseMerkleClosestProof) validateBasic(spec *TrieSpec) error {
 	// ensure the depth of the leaf node being proven is within the path size
 	if proof.Depth < 0 || proof.Depth > spec.ph.PathSize()*8 {
 		return fmt.Errorf("invalid depth: got %d, outside of [0, %d]", proof.Depth, spec.ph.PathSize()*8)
@@ -226,14 +226,14 @@ func (proof *SparseMerkleClosestProof) validateBasic(spec *TreeSpec) error {
 // SparseCompactMerkleClosestProof is a compressed representation of the SparseMerkleClosestProof
 type SparseCompactMerkleClosestProof struct {
 	Path             []byte                    // the path provided to the ProveClosest method
-	FlippedBits      [][]byte                  // the index of the bits flipped in the path during tree traversal
-	Depth            []byte                    // the depth of the tree when tree traversal stopped
+	FlippedBits      [][]byte                  // the index of the bits flipped in the path during trie traversal
+	Depth            []byte                    // the depth of the trie when trie traversal stopped
 	ClosestPath      []byte                    // the path of the leaf closest to the path provided
 	ClosestValueHash []byte                    // the value hash of the leaf closest to the path provided
 	ClosestProof     *SparseCompactMerkleProof // the proof of the leaf closest to the path provided
 }
 
-func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TreeSpec) error {
+func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TrieSpec) error {
 	// Do a basic sanity check on the proof on the fields of the proof specific to
 	// the compact proof only.
 	//
@@ -277,13 +277,13 @@ func (proof *SparseCompactMerkleClosestProof) Unmarshal(bz []byte) error {
 }
 
 // VerifyProof verifies a Merkle proof.
-func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TreeSpec) (bool, error) {
+func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TrieSpec) (bool, error) {
 	result, _, err := verifyProofWithUpdates(proof, root, key, value, spec)
 	return result, err
 }
 
-// VerifySumProof verifies a Merkle proof for a sum tree.
-func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint64, spec *TreeSpec) (bool, error) {
+// VerifySumProof verifies a Merkle proof for a sum trie.
+func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
 	var sumBz [sumSize]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	valueHash := spec.digestValue(value)
@@ -291,11 +291,11 @@ func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint6
 	if bytes.Equal(value, defaultValue) && sum == 0 {
 		valueHash = defaultValue
 	}
-	smtSpec := &TreeSpec{
+	smtSpec := &TrieSpec{
 		th:      spec.th,
 		ph:      spec.ph,
 		vh:      spec.vh,
-		sumTree: spec.sumTree,
+		sumTrie: spec.sumTrie,
 	}
 	nvh := WithValueHasher(nil)
 	nvh(smtSpec)
@@ -307,11 +307,11 @@ func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint6
 //
 // TO_AUDITOR: This is akin to an inclusion proof with N (num flipped bits) exclusion
 // proof wrapped into one and needs to be reviewed from an algorithm POV.
-func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *TreeSpec) (bool, error) {
+func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *TrieSpec) (bool, error) {
 	if err := proof.validateBasic(spec); err != nil {
 		return false, errors.Join(ErrBadProof, err)
 	}
-	if !spec.sumTree {
+	if !spec.sumTrie {
 		return VerifyProof(proof.ClosestProof, root, proof.ClosestPath, proof.ClosestValueHash, spec)
 	}
 	if proof.ClosestValueHash == nil {
@@ -323,7 +323,7 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Tree
 	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, spec)
 }
 
-func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, value []byte, spec *TreeSpec) (bool, [][][]byte, error) {
+func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, value []byte, spec *TrieSpec) (bool, [][][]byte, error) {
 	path := spec.ph.Path(key)
 
 	if err := proof.validateBasic(spec); err != nil {
@@ -378,7 +378,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 }
 
 // VerifyCompactProof is similar to VerifyProof but for a compacted Merkle proof.
-func VerifyCompactProof(proof *SparseCompactMerkleProof, root []byte, key, value []byte, spec *TreeSpec) (bool, error) {
+func VerifyCompactProof(proof *SparseCompactMerkleProof, root []byte, key, value []byte, spec *TrieSpec) (bool, error) {
 	decompactedProof, err := DecompactProof(proof, spec)
 	if err != nil {
 		return false, errors.Join(ErrBadProof, err)
@@ -387,7 +387,7 @@ func VerifyCompactProof(proof *SparseCompactMerkleProof, root []byte, key, value
 }
 
 // VerifyCompactSumProof is similar to VerifySumProof but for a compacted Merkle proof.
-func VerifyCompactSumProof(proof *SparseCompactMerkleProof, root []byte, key, value []byte, sum uint64, spec *TreeSpec) (bool, error) {
+func VerifyCompactSumProof(proof *SparseCompactMerkleProof, root []byte, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
 	decompactedProof, err := DecompactProof(proof, spec)
 	if err != nil {
 		return false, errors.Join(ErrBadProof, err)
@@ -396,7 +396,7 @@ func VerifyCompactSumProof(proof *SparseCompactMerkleProof, root []byte, key, va
 }
 
 // VerifyCompactClosestProof is similar to VerifyClosestProof but for a compacted merkle proof
-func VerifyCompactClosestProof(proof *SparseCompactMerkleClosestProof, root []byte, spec *TreeSpec) (bool, error) {
+func VerifyCompactClosestProof(proof *SparseCompactMerkleClosestProof, root []byte, spec *TrieSpec) (bool, error) {
 	decompactedProof, err := DecompactClosestProof(proof, spec)
 	if err != nil {
 		return false, errors.Join(ErrBadProof, err)
@@ -405,7 +405,7 @@ func VerifyCompactClosestProof(proof *SparseCompactMerkleClosestProof, root []by
 }
 
 // CompactProof compacts a proof, to reduce its size.
-func CompactProof(proof *SparseMerkleProof, spec *TreeSpec) (*SparseCompactMerkleProof, error) {
+func CompactProof(proof *SparseMerkleProof, spec *TrieSpec) (*SparseCompactMerkleProof, error) {
 	if err := proof.validateBasic(spec); err != nil {
 		return nil, errors.Join(ErrBadProof, err)
 	}
@@ -432,7 +432,7 @@ func CompactProof(proof *SparseMerkleProof, spec *TreeSpec) (*SparseCompactMerkl
 }
 
 // DecompactProof decompacts a proof, so that it can be used for VerifyProof.
-func DecompactProof(proof *SparseCompactMerkleProof, spec *TreeSpec) (*SparseMerkleProof, error) {
+func DecompactProof(proof *SparseCompactMerkleProof, spec *TrieSpec) (*SparseMerkleProof, error) {
 	if err := proof.validateBasic(spec); err != nil {
 		return nil, errors.Join(ErrBadProof, err)
 	}
@@ -459,7 +459,7 @@ func DecompactProof(proof *SparseCompactMerkleProof, spec *TreeSpec) (*SparseMer
 }
 
 // CompactClosestProof compacts a proof, to reduce its size.
-func CompactClosestProof(proof *SparseMerkleClosestProof, spec *TreeSpec) (*SparseCompactMerkleClosestProof, error) {
+func CompactClosestProof(proof *SparseMerkleClosestProof, spec *TrieSpec) (*SparseCompactMerkleClosestProof, error) {
 	if err := proof.validateBasic(spec); err != nil {
 		return nil, errors.Join(ErrBadProof, err)
 	}
@@ -482,7 +482,7 @@ func CompactClosestProof(proof *SparseMerkleClosestProof, spec *TreeSpec) (*Spar
 }
 
 // DecompactClosestProof decompacts a proof, so that it can be used for VerifyClosestProof.
-func DecompactClosestProof(proof *SparseCompactMerkleClosestProof, spec *TreeSpec) (*SparseMerkleClosestProof, error) {
+func DecompactClosestProof(proof *SparseCompactMerkleClosestProof, spec *TrieSpec) (*SparseMerkleClosestProof, error) {
 	if err := proof.validateBasic(spec); err != nil {
 		return nil, errors.Join(ErrBadProof, err)
 	}
