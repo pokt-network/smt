@@ -11,14 +11,14 @@ const (
 )
 
 var (
-	defaultValue []byte = nil
+	defaultValue []byte
 	defaultSum   [sumSize]byte
 
 	// ErrKeyNotPresent is returned when a key is not present in the trie.
 	ErrKeyNotPresent = errors.New("key already empty")
 )
 
-// SparseMerkleTrie represents a Sparse Merkle trie.
+// SparseMerkleTrie represents a Sparse Merkle Trie.
 type SparseMerkleTrie interface {
 	// Update inserts a value into the SMT.
 	Update(key, value []byte) error
@@ -28,7 +28,7 @@ type SparseMerkleTrie interface {
 	Get(key []byte) ([]byte, error)
 	// Root computes the Merkle root digest.
 	Root() []byte
-	// Prove computes a Merkle proof of membership or non-membership of a key.
+	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
 	// ProveClosest computes a Merkle proof of inclusion for a key in the trie which is
 	// closest to the path provided. It will search for the key with the longest common
@@ -40,7 +40,7 @@ type SparseMerkleTrie interface {
 	Spec() *TrieSpec
 }
 
-// SparseMerkleSumTrie represents a Sparse Merkle sum trie.
+// SparseMerkleSumTrie represents a Sparse Merkle Sum Trie.
 type SparseMerkleSumTrie interface {
 	// Update inserts a value and its sum into the SMST.
 	Update(key, value []byte, sum uint64) error
@@ -52,7 +52,7 @@ type SparseMerkleSumTrie interface {
 	Root() []byte
 	// Sum computes the total sum of the Merkle trie
 	Sum() uint64
-	// Prove computes a Merkle proof of membership or non-membership of a key.
+	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
 	// ProveClosest computes a Merkle proof of inclusion for a key in the trie which is
 	// closest to the path provided. It will search for the key with the longest common
@@ -64,8 +64,8 @@ type SparseMerkleSumTrie interface {
 	Spec() *TrieSpec
 }
 
-// TrieSpec specifies the hashing functions used by a trie instance to encode leaf paths
-// and stored values, and the corresponding maximum trie depth.
+// TrieSpec specifies the hashing functions used by a trie instance to encode
+// leaf paths and stored values, and the corresponding maximum trie depth.
 type TrieSpec struct {
 	th      trieHasher
 	ph      PathHasher
@@ -81,6 +81,7 @@ func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
 	return spec
 }
 
+// Spec returns the TrieSpec associated with the given trie
 func (spec *TrieSpec) Spec() *TrieSpec { return spec }
 
 func (spec *TrieSpec) depth() int { return spec.ph.PathSize() * 8 }

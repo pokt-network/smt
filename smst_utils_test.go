@@ -25,10 +25,7 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	var sumBz [sumSize]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	value = append(value, sumBz[:]...)
-	if err := smst.preimages.Set(valueHash, value); err != nil {
-		return err
-	}
-	return nil
+	return smst.preimages.Set(valueHash, value)
 }
 
 // Delete deletes a key from the trie.
@@ -51,10 +48,9 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			// If key isn't found, return default value and sum
 			return defaultValue, 0, nil
-		} else {
-			// Otherwise percolate up any other error
-			return nil, 0, err
 		}
+		// Otherwise percolate up any other error
+		return nil, 0, err
 	}
 	var sumBz [sumSize]byte
 	copy(sumBz[:], value[len(value)-sumSize:])

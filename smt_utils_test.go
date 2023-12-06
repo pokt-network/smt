@@ -20,10 +20,7 @@ func (smt *SMTWithStorage) Update(key, value []byte) error {
 		return err
 	}
 	valueHash := smt.digestValue(value)
-	if err := smt.preimages.Set(valueHash, value); err != nil {
-		return err
-	}
-	return nil
+	return smt.preimages.Set(valueHash, value)
 }
 
 // Delete deletes a key from the trie.

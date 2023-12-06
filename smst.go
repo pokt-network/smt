@@ -8,7 +8,7 @@ import (
 
 var _ SparseMerkleSumTrie = (*SMST)(nil)
 
-// Sparse Merkle Sum Trie object wrapping a Sparse Merkle Trie for custom encoding
+// SMST is an object wrapping a Sparse Merkle Trie for custom encoding
 type SMST struct {
 	TrieSpec
 	*SMT
@@ -99,6 +99,7 @@ func (smst *SMST) Commit() error {
 	return smst.SMT.Commit()
 }
 
+// Root returns the root hash of the trie with the total sum bytes appended
 func (smst *SMST) Root() []byte {
 	return smst.SMT.Root() // [digest]+[binary sum]
 }
