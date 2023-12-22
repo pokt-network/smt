@@ -382,17 +382,23 @@ This method guarantees a proof of inclusion in all cases and can be verified by
 using the `VerifyClosestProof` function which requires the proof and root hash
 of the trie.
 
-NB: If the hash provided to the `ClosestProof` function is known prior to the
-tree being filled and closed there is the possibility of placing a leaf where
-the hash will lead. If used **as intended**, the hash provided should **not** be
-known prior to calling the method; therefore, the tree should not be updateable
-after the fact. If the hash were known by the caller of the method, after the
-last update but prior to closing the trie a leaf could be inserted into the tree
-in such a way that it would always be produced from the `ClosestProof` method
-(as it is deterministic). When used as a pseudo-random challenge this is a
-vulnerability and, if used in this manner, care should be taken around how the
-hash used in the proof is decided upon and when it is provided to the caller of
-the method.
+As the `ClosestProof` method takes a hash as input it is possible to place a
+leaf in the trie according to the hash's path if it is known. Depending on
+the use case of this function this may expose a vulnerability. _It is not
+intendend to be used as a general purpose proof mechanism_. Given two parties:
+the prover and the verifier, the verifier should supply the prover with a hash
+after the trie has been "closed" and is no longer being updated. The prover
+will then generate a `ClosestProof` for a leaf using the corresponding method.
+The verifier can subsequently verify that proof for its validity. If however,
+the prover were to know the hash prior to "closing" the trie, they could place
+a leaf where the method would always guarantee it existence. This form of attack
+can only happen due to the method's deterministic behaviour and the prover
+knowing the hash before they have "closed" the trie. The intended use of this
+method is that the verifier gives the hash only after the prover has closed their
+trie and submitted the closed trie's root hash. This enables the verifier to
+verify the integrity of the proof (if the trie was changed the root hash would
+be different) and also guarantees the pseudo-random proof of inclusion was not
+a maliciously placed leaf.
 
 ### Compression
 
