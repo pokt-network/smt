@@ -384,14 +384,15 @@ of the trie.
 
 NB: If the hash provided to the `ClosestProof` function is known prior to the
 tree being filled and closed there is the possibility of placing a leaf where
-the hash will lead. If used **as intended** the hash provided should **not** be
-known prior to calling the method and the tree should not be updateable after
-the fact. If the hash were known prior to closing the tree and not inserting
-into it anymore a leaf could be inserted into the tree in such a way that it
-would always be produced from the `ClosestProof` method (as it is deterministic).
-When used as a pseudo-random challenge this is a vulnerability and if used in
-this manner care should be taken when and how the hash used in the proof is
-decided upon and when it is provided to the caller of the method.
+the hash will lead. If used **as intended**, the hash provided should **not** be
+known prior to calling the method; therefore, the tree should not be updateable
+after the fact. If the hash were known by the caller of the method, after the
+last update but prior to closing the trie a leaf could be inserted into the tree
+in such a way that it would always be produced from the `ClosestProof` method
+(as it is deterministic). When used as a pseudo-random challenge this is a
+vulnerability and, if used in this manner, care should be taken around how the
+hash used in the proof is decided upon and when it is provided to the caller of
+the method.
 
 ### Compression
 
