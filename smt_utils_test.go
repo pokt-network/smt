@@ -14,24 +14,21 @@ type SMTWithStorage struct {
 	preimages kvstore.KVStore
 }
 
-// Update updates a key with a new value in the tree and adds the value to the preimages KVStore
+// Update updates a key with a new value in the trie and adds the value to the preimages KVStore
 func (smt *SMTWithStorage) Update(key, value []byte) error {
 	if err := smt.SMT.Update(key, value); err != nil {
 		return err
 	}
 	valueHash := smt.digestValue(value)
-	if err := smt.preimages.Set(valueHash, value); err != nil {
-		return err
-	}
-	return nil
+	return smt.preimages.Set(valueHash, value)
 }
 
-// Delete deletes a key from the tree.
+// Delete deletes a key from the trie.
 func (smt *SMTWithStorage) Delete(key []byte) error {
 	return smt.SMT.Delete(key)
 }
 
-// Get gets the value of a key from the tree.
+// Get gets the value of a key from the trie.
 func (smt *SMTWithStorage) GetValue(key []byte) ([]byte, error) {
 	valueHash, err := smt.Get(key)
 	if err != nil {
@@ -61,7 +58,7 @@ func (smt *SMTWithStorage) Has(key []byte) (bool, error) {
 }
 
 // ProveCompact generates a compacted Merkle proof for a key against the current root.
-func ProveCompact(key []byte, smt SparseMerkleTree) (*SparseCompactMerkleProof, error) {
+func ProveCompact(key []byte, smt SparseMerkleTrie) (*SparseCompactMerkleProof, error) {
 	proof, err := smt.Prove(key)
 	if err != nil {
 		return nil, err

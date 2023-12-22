@@ -10,16 +10,16 @@ import (
 )
 
 func TestSparseMerkleProof_Marshal(t *testing.T) {
-	tree := setupTree(t)
+	trie := setupTrie(t)
 
-	proof, err := tree.Prove([]byte("key"))
+	proof, err := trie.Prove([]byte("key"))
 	require.NoError(t, err)
 	bz, err := proof.Marshal()
 	require.NoError(t, err)
 	require.NotNil(t, bz)
 	require.Greater(t, len(bz), 0)
 
-	proof2, err := tree.Prove([]byte("key2"))
+	proof2, err := trie.Prove([]byte("key2"))
 	require.NoError(t, err)
 	bz2, err := proof2.Marshal()
 	require.NoError(t, err)
@@ -36,9 +36,9 @@ func TestSparseMerkleProof_Marshal(t *testing.T) {
 }
 
 func TestSparseMerkleProof_Unmarshal(t *testing.T) {
-	tree := setupTree(t)
+	trie := setupTrie(t)
 
-	proof, err := tree.Prove([]byte("key"))
+	proof, err := trie.Prove([]byte("key"))
 	require.NoError(t, err)
 	bz, err := proof.Marshal()
 	require.NoError(t, err)
@@ -48,7 +48,7 @@ func TestSparseMerkleProof_Unmarshal(t *testing.T) {
 	require.NoError(t, uproof.Unmarshal(bz))
 	require.Equal(t, proof, uproof)
 
-	proof2, err := tree.Prove([]byte("key2"))
+	proof2, err := trie.Prove([]byte("key2"))
 	require.NoError(t, err)
 	bz2, err := proof2.Marshal()
 	require.NoError(t, err)
@@ -69,20 +69,20 @@ func TestSparseMerkleProof_Unmarshal(t *testing.T) {
 }
 
 func TestSparseCompactMerkleProof_Marshal(t *testing.T) {
-	tree := setupTree(t)
+	trie := setupTrie(t)
 
-	proof, err := tree.Prove([]byte("key"))
+	proof, err := trie.Prove([]byte("key"))
 	require.NoError(t, err)
-	compactProof, err := CompactProof(proof, tree.Spec())
+	compactProof, err := CompactProof(proof, trie.Spec())
 	require.NoError(t, err)
 	bz, err := compactProof.Marshal()
 	require.NoError(t, err)
 	require.NotNil(t, bz)
 	require.Greater(t, len(bz), 0)
 
-	proof2, err := tree.Prove([]byte("key2"))
+	proof2, err := trie.Prove([]byte("key2"))
 	require.NoError(t, err)
-	compactProof2, err := CompactProof(proof2, tree.Spec())
+	compactProof2, err := CompactProof(proof2, trie.Spec())
 	require.NoError(t, err)
 	bz2, err := compactProof2.Marshal()
 	require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestSparseCompactMerkleProof_Marshal(t *testing.T) {
 	require.NotEqual(t, bz, bz2)
 
 	proof3 := randomiseProof(proof)
-	compactProof3, err := CompactProof(proof3, tree.Spec())
+	compactProof3, err := CompactProof(proof3, trie.Spec())
 	require.NoError(t, err)
 	bz3, err := compactProof3.Marshal()
 	require.NoError(t, err)
@@ -101,11 +101,11 @@ func TestSparseCompactMerkleProof_Marshal(t *testing.T) {
 }
 
 func TestSparseCompactMerkleProof_Unmarshal(t *testing.T) {
-	tree := setupTree(t)
+	trie := setupTrie(t)
 
-	proof, err := tree.Prove([]byte("key"))
+	proof, err := trie.Prove([]byte("key"))
 	require.NoError(t, err)
-	compactProof, err := CompactProof(proof, tree.Spec())
+	compactProof, err := CompactProof(proof, trie.Spec())
 	require.NoError(t, err)
 	bz, err := compactProof.Marshal()
 	require.NoError(t, err)
@@ -114,13 +114,13 @@ func TestSparseCompactMerkleProof_Unmarshal(t *testing.T) {
 	uCproof := new(SparseCompactMerkleProof)
 	require.NoError(t, uCproof.Unmarshal(bz))
 	require.Equal(t, compactProof, uCproof)
-	uproof, err := DecompactProof(uCproof, tree.Spec())
+	uproof, err := DecompactProof(uCproof, trie.Spec())
 	require.NoError(t, err)
 	require.Equal(t, proof, uproof)
 
-	proof2, err := tree.Prove([]byte("key2"))
+	proof2, err := trie.Prove([]byte("key2"))
 	require.NoError(t, err)
-	compactProof2, err := CompactProof(proof2, tree.Spec())
+	compactProof2, err := CompactProof(proof2, trie.Spec())
 	require.NoError(t, err)
 	bz2, err := compactProof2.Marshal()
 	require.NoError(t, err)
@@ -129,12 +129,12 @@ func TestSparseCompactMerkleProof_Unmarshal(t *testing.T) {
 	uCproof2 := new(SparseCompactMerkleProof)
 	require.NoError(t, uCproof2.Unmarshal(bz2))
 	require.Equal(t, compactProof2, uCproof2)
-	uproof2, err := DecompactProof(uCproof2, tree.Spec())
+	uproof2, err := DecompactProof(uCproof2, trie.Spec())
 	require.NoError(t, err)
 	require.Equal(t, proof2, uproof2)
 
 	proof3 := randomiseProof(proof)
-	compactProof3, err := CompactProof(proof3, tree.Spec())
+	compactProof3, err := CompactProof(proof3, trie.Spec())
 	require.NoError(t, err)
 	bz3, err := compactProof3.Marshal()
 	require.NoError(t, err)
@@ -143,12 +143,12 @@ func TestSparseCompactMerkleProof_Unmarshal(t *testing.T) {
 	uCproof3 := new(SparseCompactMerkleProof)
 	require.NoError(t, uCproof3.Unmarshal(bz3))
 	require.Equal(t, compactProof3, uCproof3)
-	uproof3, err := DecompactProof(uCproof3, tree.Spec())
+	uproof3, err := DecompactProof(uCproof3, trie.Spec())
 	require.NoError(t, err)
 	require.Equal(t, proof3, uproof3)
 }
 
-func setupTree(t *testing.T) *SMT {
+func setupTrie(t *testing.T) *SMT {
 	t.Helper()
 	db := simplemap.New()
 
@@ -156,12 +156,12 @@ func setupTree(t *testing.T) *SMT {
 		require.NoError(t, db.Stop())
 	})
 
-	tree := NewSparseMerkleTree(db, sha256.New())
-	require.NoError(t, tree.Update([]byte("key"), []byte("value")))
-	require.NoError(t, tree.Update([]byte("key2"), []byte("value2")))
-	require.NoError(t, tree.Update([]byte("key3"), []byte("value3")))
+	trie := NewSparseMerkleTrie(db, sha256.New())
+	require.NoError(t, trie.Update([]byte("key"), []byte("value")))
+	require.NoError(t, trie.Update([]byte("key2"), []byte("value2")))
+	require.NoError(t, trie.Update([]byte("key3"), []byte("value3")))
 
-	return tree
+	return trie
 }
 
 func randomiseProof(proof *SparseMerkleProof) *SparseMerkleProof {
@@ -190,7 +190,7 @@ func randomiseSumProof(proof *SparseMerkleProof) *SparseMerkleProof {
 }
 
 // Check that a non-compact proof is equivalent to the proof returned when it is compacted and de-compacted.
-func checkCompactEquivalence(t *testing.T, proof *SparseMerkleProof, base *TreeSpec) {
+func checkCompactEquivalence(t *testing.T, proof *SparseMerkleProof, base *TrieSpec) {
 	t.Helper()
 	compactedProof, err := CompactProof(proof, base)
 	if err != nil {
@@ -204,7 +204,7 @@ func checkCompactEquivalence(t *testing.T, proof *SparseMerkleProof, base *TreeS
 }
 
 // Check that a non-compact proof is equivalent to the proof returned when it is compacted and de-compacted.
-func checkClosestCompactEquivalence(t *testing.T, proof *SparseMerkleClosestProof, spec *TreeSpec) {
+func checkClosestCompactEquivalence(t *testing.T, proof *SparseMerkleClosestProof, spec *TrieSpec) {
 	t.Helper()
 	compactedProof, err := CompactClosestProof(proof, spec)
 	if err != nil {

@@ -2,38 +2,40 @@
 name: Issue
 about: General purpose issue for the SMT libarary
 title: "[REPLACE ME] With a descriptive title"
-labels: ''
-assignees: ''
-
+labels: ""
+assignees: ""
 ---
 
-<!-- DELETE ME after following these instructions
- 1. Make sure to update the _Assigness_, _Labels_, _Projects_, _Milestone_ before submitting the issue\_
- 2. Make sure to add labels for the purpose (e.g. `enhancement`, `bug`) and priority (e.g. `low`) of this PR\_
+<!-- DELETE THIS COMMENT BLOCK
+  After completing the following:
+    1. Update _Assignee(s)_
+    2. Add _Label(s)_
 -->
 
 ## Objective
 
-[ What? Issue description]
+[ What? Describe the issue in 1-2 sentences]
 
 ## Origin Document
 
-[ Why? Issue justification and/or link to another document]
+[ Why? Justify the issue in 1-2 sentences. Consider adding a link or a screenshot.]
 
 ## Goals
 
-<!-- REMOVE this comment block after following the instructions
-  Make a list of high level tasks, ideas or goals driving the task. These should not be actionable deliverables.
+<!-- DELETE THIS COMMENT BLOCK
+  Provide a list of goals (not tasks) driving this issue.
+  These should not be actionable but guide the overarching goals we're aiming to achieve.
 -->
 
 - Goal #1
 - Goal #2
 - ...
 
-## Deliverable
+## Deliverables
 
-<!-- REMOVE this comment block after following the instructions
-  Make a list of deliverables that are expected outputs of this task. These should be concrete and tangible.
+<!-- DELETE THIS COMMENT BLOCK
+  Make a list of deliverables that must be done to consider this task/issue resolved.
+  These should be very actionable, concrete and tangible.
 -->
 
 - [ ] Deliverable #1
@@ -42,34 +44,31 @@ assignees: ''
 
 ## Non-goals / Non-deliverables
 
-<!-- REMOVE this comment block after following the instructions
-  Make a list goals and deliverables the assignee of the issue should not attempt to do so the scope does not become too large.
+<!-- DELETE THIS COMMENT BLOCK
+  Make a list of action items that are out of scope for this issue.
+  These should explicitly not be delivered as part of this issue and should be considered scope creep.
 -->
 
-- Nongoal #1
-- Nongoal #2
+- Non-goal #1
+- Non-deliverable #2
 - ...
 
-## General issue deliverables
+## General deliverables
 
-<!-- REMOVE this comment block after following the instructions
-  Remove any items that are not applicable and add additional ones, if applicable, that are not listed below.
+<!-- DELETE THIS COMMENT BLOCK
+  Remove sections that are not applicable to this PR.
 -->
 
-- [ ] Update any relevant README(s)
-- [ ] Add or update any relevant or supporting [mermaid](https://mermaid-js.github.io/mermaid/) diagrams
-
-## Testing Methodology
-
-<!-- REMOVE this comment block after following the instructions
-  Remove this section if not applicable. Otherwise, update (add/remove) the list below as deemed necessary.
--->
-
-- [ ] **Task specific tests or benchmarks**: `go test ...`
-- [ ] **New tests or benchmarks**: `go test ...`
-- [ ] **All tests**: `go test -v`
+- [ ] **Comments**: Add/update TODOs and comments alongside the source code so it is easier to follow.
+- [ ] **Testing**: Add new tests (unit/fuzz/benchmarks) to the test suite.
+- [ ] **Makefile**: Add new targets to the Makefile to make the new functionality easier to use.
+- [ ] **Documentation**: Update architectural or development READMEs; use [mermaid](https://mermaid-js.github.io/mermaid/) diagrams where appropriate.
 
 ---
 
-**Creator**: [github username of the creator]
-**Co-Owners**: [optional - github usernames of the co-owner(s)]
+<!-- DELETE THIS COMMENT BLOCK
+  Remove `Co-Owners` if not applicable.
+-->
+
+**Creator**: [GitHub handle of issue owner]
+**Co-Owners**: [OPTIONAL - GitHub handle of co-owner(s)]

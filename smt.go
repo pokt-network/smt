@@ -8,20 +8,20 @@ import (
 )
 
 var (
-	_ treeNode         = (*innerNode)(nil)
-	_ treeNode         = (*leafNode)(nil)
-	_ SparseMerkleTree = (*SMT)(nil)
+	_ trieNode         = (*innerNode)(nil)
+	_ trieNode         = (*leafNode)(nil)
+	_ SparseMerkleTrie = (*SMT)(nil)
 )
 
-type treeNode interface {
+type trieNode interface {
 	Persisted() bool // when a node is being commited to disk, if already persisted it is skipped
 	CachedDigest() []byte
 }
 
-// A branch within the tree
+// A branch within the trie
 type innerNode struct {
 	// Both child nodes are always non-nil
-	leftChild, rightChild treeNode
+	leftChild, rightChild trieNode
 	persisted             bool
 	digest                []byte
 }
@@ -41,7 +41,7 @@ type extensionNode struct {
 	// Note: assumes path is <=256 bits
 	pathBounds [2]byte
 	// Child is always an inner node, or lazy.
-	child     treeNode
+	child     trieNode
 	persisted bool
 	digest    []byte
 }
@@ -51,36 +51,37 @@ type lazyNode struct {
 	digest []byte
 }
 
+// SMT is a Sparse Merkle Trie object that implements the SparseMerkleTrie interface
 type SMT struct {
-	TreeSpec
+	TrieSpec
 	nodes kvstore.KVStore
 	// Last persisted root hash
 	savedRoot []byte
-	// Current state of tree
-	tree treeNode
+	// Current state of trie
+	trie trieNode
 	// Lists of per-operation orphan sets
 	orphans []orphanNodes
 }
 
-// Hashes of persisted nodes deleted from tree
+// Hashes of persisted nodes deleted from trie
 type orphanNodes = [][]byte
 
-// NewSparseMerkleTree returns a new pointer to an SMT struct, and applys any options provided
-func NewSparseMerkleTree(nodes kvstore.KVStore, hasher hash.Hash, options ...Option) *SMT {
+// NewSparseMerkleTrie returns a new pointer to an SMT struct, and applys any options provided
+func NewSparseMerkleTrie(nodes kvstore.KVStore, hasher hash.Hash, options ...Option) *SMT {
 	smt := SMT{
-		TreeSpec: newTreeSpec(hasher, false),
+		TrieSpec: newTrieSpec(hasher, false),
 		nodes:    nodes,
 	}
 	for _, option := range options {
-		option(&smt.TreeSpec)
+		option(&smt.TrieSpec)
 	}
 	return &smt
 }
 
-// ImportSparseMerkleTree returns a pointer to an SMT struct with the provided root hash
-func ImportSparseMerkleTree(nodes kvstore.KVStore, hasher hash.Hash, root []byte, options ...Option) *SMT {
-	smt := NewSparseMerkleTree(nodes, hasher, options...)
-	smt.tree = &lazyNode{root}
+// ImportSparseMerkleTrie returns a pointer to an SMT struct with the provided root hash
+func ImportSparseMerkleTrie(nodes kvstore.KVStore, hasher hash.Hash, root []byte, options ...Option) *SMT {
+	smt := NewSparseMerkleTrie(nodes, hasher, options...)
+	smt.trie = &lazyNode{root}
 	smt.savedRoot = root
 	return smt
 }
@@ -90,7 +91,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
 	var leaf *leafNode
 	var err error
-	for node, depth := &smt.tree, 0; ; depth++ {
+	for node, depth := &smt.trie, 0; ; depth++ {
 		*node, err = smt.resolveLazy(*node)
 		if err != nil {
 			return nil, err
@@ -133,11 +134,11 @@ func (smt *SMT) Update(key []byte, value []byte) error {
 	path := smt.ph.Path(key)
 	valueHash := smt.digestValue(value)
 	var orphans orphanNodes
-	tree, err := smt.update(smt.tree, 0, path, valueHash, &orphans)
+	trie, err := smt.update(smt.trie, 0, path, valueHash, &orphans)
 	if err != nil {
 		return err
 	}
-	smt.tree = tree
+	smt.trie = trie
 	if len(orphans) > 0 {
 		smt.orphans = append(smt.orphans, orphans)
 	}
@@ -145,15 +146,15 @@ func (smt *SMT) Update(key []byte, value []byte) error {
 }
 
 func (smt *SMT) update(
-	node treeNode, depth int, path, value []byte, orphans *orphanNodes,
-) (treeNode, error) {
+	node trieNode, depth int, path, value []byte, orphans *orphanNodes,
+) (trieNode, error) {
 	node, err := smt.resolveLazy(node)
 	if err != nil {
 		return node, err
 	}
 
 	newLeaf := &leafNode{path: path, valueHash: value}
-	// Empty subtree is always replaced by a single leaf
+	// Empty subtrie is always replaced by a single leaf
 	if node == nil {
 		return newLeaf, nil
 	}
@@ -185,7 +186,7 @@ func (smt *SMT) update(
 	smt.addOrphan(orphans, node)
 
 	if ext, ok := node.(*extensionNode); ok {
-		var branch *treeNode
+		var branch *trieNode
 		node, branch, depth = ext.split(path, depth)
 		*branch, err = smt.update(*branch, depth, path, value, orphans)
 		if err != nil {
@@ -196,7 +197,7 @@ func (smt *SMT) update(
 	}
 
 	inner := node.(*innerNode)
-	var child *treeNode
+	var child *trieNode
 	if getPathBit(path, depth) == left {
 		child = &inner.leftChild
 	} else {
@@ -214,19 +215,19 @@ func (smt *SMT) update(
 func (smt *SMT) Delete(key []byte) error {
 	path := smt.ph.Path(key)
 	var orphans orphanNodes
-	tree, err := smt.delete(smt.tree, 0, path, &orphans)
+	trie, err := smt.delete(smt.trie, 0, path, &orphans)
 	if err != nil {
 		return err
 	}
-	smt.tree = tree
+	smt.trie = trie
 	if len(orphans) > 0 {
 		smt.orphans = append(smt.orphans, orphans)
 	}
 	return nil
 }
 
-func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNodes,
-) (treeNode, error) {
+func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNodes,
+) (trieNode, error) {
 	node, err := smt.resolveLazy(node)
 	if err != nil {
 		return node, err
@@ -267,7 +268,7 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 	}
 
 	inner := node.(*innerNode)
-	var child, sib *treeNode
+	var child, sib *trieNode
 	if getPathBit(path, depth) == left {
 		child, sib = &inner.leftChild, &inner.rightChild
 	} else {
@@ -283,7 +284,7 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 	}
 	// Handle replacement of this node, depending on the new child states.
 	// Note that inner nodes exist at a fixed depth, and can't be moved.
-	children := [2]*treeNode{child, sib}
+	children := [2]*trieNode{child, sib}
 	for i := 0; i < 2; i++ {
 		if *children[i] == nil {
 			switch n := (*children[1-i]).(type) {
@@ -305,10 +306,10 @@ func (smt *SMT) delete(node treeNode, depth int, path []byte, orphans *orphanNod
 // Prove generates a SparseMerkleProof for the given key
 func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	path := smt.ph.Path(key)
-	var siblings []treeNode
-	var sib treeNode
+	var siblings []trieNode
+	var sib trieNode
 
-	node := smt.tree
+	node := smt.trie
 	for depth := 0; depth < smt.depth(); depth++ {
 		node, err = smt.resolveLazy(node)
 		if err != nil {
@@ -385,7 +386,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 // This method will follow the path provided until it hits a leaf node and then
 // exit. If the leaf is along the path it will produce an inclusion proof for
 // the key (and return the key-value internal pair) as they share a common
-// prefix. If however, during the tree traversal according to the path, a nil
+// prefix. If however, during the trie traversal according to the path, a nil
 // node is encountered, the traversal backsteps and flips the path bit for that
 // depth (ie tries left if it tried right and vice versa). This guarentees that
 // a proof of inclusion is found that has the most common bits with the path
@@ -396,21 +397,21 @@ func (smt *SMT) ProveClosest(path []byte) (
 ) {
 	workingPath := make([]byte, len(path))
 	copy(workingPath, path)
-	var siblings []treeNode
-	var sib treeNode
-	var parent treeNode
-	// depthDelta is used to track the depth increase when traversing down the tree
+	var siblings []trieNode
+	var sib trieNode
+	var parent trieNode
+	// depthDelta is used to track the depth increase when traversing down the trie
 	// it is used when back-stepping to go back to the correct depth in the path
-	// if we hit a nil node during tree traversal
+	// if we hit a nil node during trie traversal
 	var depthDelta int
 	proof = &SparseMerkleClosestProof{
 		Path:        path,
 		FlippedBits: make([]int, 0),
 	}
 
-	node := smt.tree
+	node := smt.trie
 	depth := 0
-	// continuously traverse the tree until we hit a leaf node
+	// continuously traverse the trie until we hit a leaf node
 	for depth < smt.depth() {
 		// save current node information as "parent" info
 		if node != nil {
@@ -470,7 +471,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			}
 		}
 		inner, ok := node.(*innerNode)
-		if !ok { // this can only happen for an empty tree
+		if !ok { // this can only happen for an empty trie
 			proof.Depth = depth
 			break
 		}
@@ -480,19 +481,19 @@ func (smt *SMT) ProveClosest(path []byte) (
 			node, sib = inner.rightChild, inner.leftChild
 		}
 		siblings = append(siblings, sib)
-		depth += 1
-		depthDelta += 1
+		depth++
+		depthDelta++
 	}
 
 	// Retrieve the closest path and value hash if found
-	if node == nil { // tree was empty
+	if node == nil { // trie was empty
 		proof.ClosestPath, proof.ClosestValueHash = placeholder(smt.Spec()), nil
 		proof.ClosestProof = &SparseMerkleProof{}
 		return proof, nil
 	}
 	leaf, ok := node.(*leafNode)
 	if !ok {
-		// if no leaf was found and the tree is not empty something went wrong
+		// if no leaf was found and the trie is not empty something went wrong
 		panic("expected leaf node")
 	}
 	proof.ClosestPath, proof.ClosestValueHash = leaf.path, leaf.valueHash
@@ -519,17 +520,17 @@ func (smt *SMT) ProveClosest(path []byte) (
 }
 
 //nolint:unused
-func (smt *SMT) recursiveLoad(hash []byte) (treeNode, error) {
+func (smt *SMT) recursiveLoad(hash []byte) (trieNode, error) {
 	return smt.resolve(hash, smt.recursiveLoad)
 }
 
 // resolves a stub into a cached node
-func (smt *SMT) resolveLazy(node treeNode) (treeNode, error) {
+func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	stub, ok := node.(*lazyNode)
 	if !ok {
 		return node, nil
 	}
-	resolver := func(hash []byte) (treeNode, error) {
+	resolver := func(hash []byte) (trieNode, error) {
 		return &lazyNode{hash}, nil
 	}
 	ret, err := resolve(smt, stub.digest, resolver)
@@ -539,8 +540,8 @@ func (smt *SMT) resolveLazy(node treeNode) (treeNode, error) {
 	return ret, nil
 }
 
-func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
-) (ret treeNode, err error) {
+func (smt *SMT) resolve(hash []byte, resolver func([]byte) (trieNode, error),
+) (ret trieNode, err error) {
 	if bytes.Equal(smt.th.placeholder(), hash) {
 		return
 	}
@@ -577,8 +578,8 @@ func (smt *SMT) resolve(hash []byte, resolver func([]byte) (treeNode, error),
 	return &inner, nil
 }
 
-func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (treeNode, error),
-) (ret treeNode, err error) {
+func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (trieNode, error),
+) (ret trieNode, err error) {
 	if bytes.Equal(placeholder(smt.Spec()), hash) {
 		return
 	}
@@ -615,7 +616,7 @@ func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (treeNode, error),
 	return &inner, nil
 }
 
-// Commit persists all dirty nodes in the tree, deletes all orphaned
+// Commit persists all dirty nodes in the trie, deletes all orphaned
 // nodes from the database and then computes and saves the root hash
 func (smt *SMT) Commit() (err error) {
 	// All orphans are persisted and have cached digests, so we don't need to check for null
@@ -627,14 +628,14 @@ func (smt *SMT) Commit() (err error) {
 		}
 	}
 	smt.orphans = nil
-	if err = smt.commit(smt.tree); err != nil {
+	if err = smt.commit(smt.trie); err != nil {
 		return
 	}
 	smt.savedRoot = smt.Root()
 	return
 }
 
-func (smt *SMT) commit(node treeNode) error {
+func (smt *SMT) commit(node trieNode) error {
 	if node != nil && node.Persisted() {
 		return nil
 	}
@@ -661,11 +662,12 @@ func (smt *SMT) commit(node treeNode) error {
 	return smt.nodes.Set(hashNode(smt.Spec(), node), preimage)
 }
 
+// Root returns the root hash of the trie
 func (smt *SMT) Root() []byte {
-	return hashNode(smt.Spec(), smt.tree)
+	return hashNode(smt.Spec(), smt.trie)
 }
 
-func (smt *SMT) addOrphan(orphans *[][]byte, node treeNode) {
+func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {
 	if node.Persisted() {
 		*orphans = append(*orphans, node.CachedDigest())
 	}
@@ -722,7 +724,7 @@ func (ext *extensionNode) pathStart() int { return int(ext.pathBounds[0]) }
 func (ext *extensionNode) pathEnd() int   { return int(ext.pathBounds[1]) }
 
 // Splits the node in-place; returns replacement node, child node at the split, and split depth
-func (ext *extensionNode) split(path []byte, depth int) (treeNode, *treeNode, int) {
+func (ext *extensionNode) split(path []byte, depth int) (trieNode, *trieNode, int) {
 	if depth != ext.pathStart() {
 		panic("depth != path_begin")
 	}
@@ -741,8 +743,8 @@ func (ext *extensionNode) split(path []byte, depth int) (treeNode, *treeNode, in
 
 	child := ext.child
 	var branch innerNode
-	var head treeNode
-	var tail *treeNode
+	var head trieNode
+	var tail *trieNode
 	if myBit == left {
 		tail = &branch.leftChild
 	} else {
@@ -773,13 +775,13 @@ func (ext *extensionNode) split(path []byte, depth int) (treeNode, *treeNode, in
 		}
 		ext.pathBounds[1] = byte(index)
 	}
-	var b treeNode = &branch
+	var b trieNode = &branch
 	return head, &b, index
 }
 
 // expand returns the inner node that represents the start of the singly
 // linked list that this extension node represents
-func (ext *extensionNode) expand() treeNode {
+func (ext *extensionNode) expand() trieNode {
 	last := ext.child
 	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {
 		var next innerNode

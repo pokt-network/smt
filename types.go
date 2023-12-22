@@ -11,87 +11,88 @@ const (
 )
 
 var (
-	defaultValue []byte = nil
+	defaultValue []byte
 	defaultSum   [sumSize]byte
 
-	// ErrKeyNotPresent is returned when a key is not present in the tree.
+	// ErrKeyNotPresent is returned when a key is not present in the trie.
 	ErrKeyNotPresent = errors.New("key already empty")
 )
 
-// SparseMerkleTree represents a Sparse Merkle tree.
-type SparseMerkleTree interface {
+// SparseMerkleTrie represents a Sparse Merkle Trie.
+type SparseMerkleTrie interface {
 	// Update inserts a value into the SMT.
 	Update(key, value []byte) error
 	// Delete deletes a value from the SMT. Raises an error if the key is not present.
 	Delete(key []byte) error
-	// Get descends the tree to access a value. Returns nil if key is not present.
+	// Get descends the trie to access a value. Returns nil if key is not present.
 	Get(key []byte) ([]byte, error)
 	// Root computes the Merkle root digest.
 	Root() []byte
-	// Prove computes a Merkle proof of membership or non-membership of a key.
+	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
-	// ProveClosest computes a Merkle proof of inclusion for a key in the tree which is
+	// ProveClosest computes a Merkle proof of inclusion for a key in the trie which is
 	// closest to the path provided. It will search for the key with the longest common
 	// prefix before finding the key with the most common bits as the path provided.
 	ProveClosest([]byte) (proof *SparseMerkleClosestProof, err error)
-	// Commit saves the tree's state to its persistent storage.
+	// Commit saves the trie's state to its persistent storage.
 	Commit() error
-	// Spec returns the TreeSpec for the tree
-	Spec() *TreeSpec
+	// Spec returns the TrieSpec for the trie
+	Spec() *TrieSpec
 }
 
-// SparseMerkleSumTree represents a Sparse Merkle sum tree.
-type SparseMerkleSumTree interface {
+// SparseMerkleSumTrie represents a Sparse Merkle Sum Trie.
+type SparseMerkleSumTrie interface {
 	// Update inserts a value and its sum into the SMST.
 	Update(key, value []byte, sum uint64) error
 	// Delete deletes a value from the SMST. Raises an error if the key is not present.
 	Delete(key []byte) error
-	// Get descends the tree to access a value. Returns nil if key is not present.
+	// Get descends the trie to access a value. Returns nil if key is not present.
 	Get(key []byte) ([]byte, uint64, error)
 	// Root computes the Merkle root digest.
 	Root() []byte
-	// Sum computes the total sum of the Merkle tree
+	// Sum computes the total sum of the Merkle trie
 	Sum() uint64
-	// Prove computes a Merkle proof of membership or non-membership of a key.
+	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
-	// ProveClosest computes a Merkle proof of inclusion for a key in the tree which is
+	// ProveClosest computes a Merkle proof of inclusion for a key in the trie which is
 	// closest to the path provided. It will search for the key with the longest common
 	// prefix before finding the key with the most common bits as the path provided.
 	ProveClosest([]byte) (proof *SparseMerkleClosestProof, err error)
-	// Commit saves the tree's state to its persistent storage.
+	// Commit saves the trie's state to its persistent storage.
 	Commit() error
-	// Spec returns the TreeSpec for the tree
-	Spec() *TreeSpec
+	// Spec returns the TrieSpec for the trie
+	Spec() *TrieSpec
 }
 
-// TreeSpec specifies the hashing functions used by a tree instance to encode leaf paths
-// and stored values, and the corresponding maximum tree depth.
-type TreeSpec struct {
-	th      treeHasher
+// TrieSpec specifies the hashing functions used by a trie instance to encode
+// leaf paths and stored values, and the corresponding maximum trie depth.
+type TrieSpec struct {
+	th      trieHasher
 	ph      PathHasher
 	vh      ValueHasher
-	sumTree bool
+	sumTrie bool
 }
 
-func newTreeSpec(hasher hash.Hash, sumTree bool) TreeSpec {
-	spec := TreeSpec{th: *newTreeHasher(hasher)}
+func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
+	spec := TrieSpec{th: *newTrieHasher(hasher)}
 	spec.ph = &pathHasher{spec.th}
 	spec.vh = &valueHasher{spec.th}
-	spec.sumTree = sumTree
+	spec.sumTrie = sumTrie
 	return spec
 }
 
-func (spec *TreeSpec) Spec() *TreeSpec { return spec }
+// Spec returns the TrieSpec associated with the given trie
+func (spec *TrieSpec) Spec() *TrieSpec { return spec }
 
-func (spec *TreeSpec) depth() int { return spec.ph.PathSize() * 8 }
-func (spec *TreeSpec) digestValue(data []byte) []byte {
+func (spec *TrieSpec) depth() int { return spec.ph.PathSize() * 8 }
+func (spec *TrieSpec) digestValue(data []byte) []byte {
 	if spec.vh == nil {
 		return data
 	}
 	return spec.vh.HashValue(data)
 }
 
-func (spec *TreeSpec) serialize(node treeNode) (data []byte) {
+func (spec *TrieSpec) serialize(node trieNode) (data []byte) {
 	switch n := node.(type) {
 	case *lazyNode:
 		panic("serialize(lazyNode)")
@@ -108,7 +109,7 @@ func (spec *TreeSpec) serialize(node treeNode) (data []byte) {
 	return nil
 }
 
-func (spec *TreeSpec) hashNode(node treeNode) []byte {
+func (spec *TrieSpec) hashNode(node trieNode) []byte {
 	if node == nil {
 		return spec.th.placeholder()
 	}
@@ -133,7 +134,7 @@ func (spec *TreeSpec) hashNode(node treeNode) []byte {
 }
 
 // sumSerialize serializes a node returning the preimage hash, its sum and any errors encountered
-func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte) {
+func (spec *TrieSpec) sumSerialize(node trieNode) (preimage []byte) {
 	switch n := node.(type) {
 	case *lazyNode:
 		panic("serialize(lazyNode)")
@@ -153,7 +154,7 @@ func (spec *TreeSpec) sumSerialize(node treeNode) (preimage []byte) {
 
 // hashSumNode hashes a node returning its digest in the following form
 // digest = [node hash]+[8 byte sum]
-func (spec *TreeSpec) hashSumNode(node treeNode) []byte {
+func (spec *TrieSpec) hashSumNode(node trieNode) []byte {
 	if node == nil {
 		return placeholder(spec)
 	}

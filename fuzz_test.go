@@ -27,7 +27,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, input []byte) {
 		smn := simplemap.New()
-		tree := NewSparseMerkleTree(smn, sha256.New())
+		trie := NewSparseMerkleTrie(smn, sha256.New())
 
 		r := bytes.NewReader(input)
 		var keys [][]byte
@@ -54,7 +54,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 
 		// `i` is the loop counter but also used as the input value to `Update` operations
 		for i := 0; r.Len() != 0; i++ {
-			originalRoot := tree.Root()
+			originalRoot := trie.Root()
 			b, err := r.ReadByte()
 			if err != nil {
 				continue
@@ -64,38 +64,38 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			op := op(int(b) % int(NumOps))
 			switch op {
 			case Get:
-				_, err := tree.Get(key())
+				_, err := trie.Get(key())
 				if err != nil {
 					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while getting")
 				}
-				newRoot := tree.Root()
+				newRoot := trie.Root()
 				require.Equal(t, originalRoot, newRoot, "root changed while getting")
 			case Update:
 				value := make([]byte, 32)
 				binary.BigEndian.PutUint64(value, uint64(i))
-				err := tree.Update(key(), value)
+				err := trie.Update(key(), value)
 				require.NoErrorf(t, err, "unknown error occured while updating")
-				newRoot := tree.Root()
+				newRoot := trie.Root()
 				require.NotEqual(t, originalRoot, newRoot, "root unchanged while updating")
 			case Delete:
-				err := tree.Delete(key())
+				err := trie.Delete(key())
 				if err != nil {
 					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while deleting")
 					continue
 				}
 				// If the key was present check root has changed
-				newRoot := tree.Root()
+				newRoot := trie.Root()
 				require.NotEqual(t, originalRoot, newRoot, "root unchanged while deleting")
 			case Prove:
-				_, err := tree.Prove(key())
+				_, err := trie.Prove(key())
 				if err != nil {
 					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while proving")
 				}
-				newRoot := tree.Root()
+				newRoot := trie.Root()
 				require.Equal(t, originalRoot, newRoot, "root changed while proving")
 			}
 
-			newRoot := tree.Root()
+			newRoot := trie.Root()
 			require.Greater(t, len(newRoot), 0, "new root is empty while err is nil")
 		}
 

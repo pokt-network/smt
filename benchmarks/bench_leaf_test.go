@@ -12,26 +12,26 @@ import (
 )
 
 func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
-	treeSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
+	trieSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
 	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
 	nodes := simplemap.New()
 
-	for _, treeSize := range treeSizes {
+	for _, trieSize := range trieSizes {
 		for _, leafSize := range leafSizes {
 			leaf := make([]byte, leafSize)
 			for _, operation := range []string{"Fill", "Fill & Commit"} {
-				tree := smt.NewSparseMerkleTree(nodes, sha256.New(), smt.WithValueHasher(nil))
+				trie := smt.NewSparseMerkleTrie(nodes, sha256.New(), smt.WithValueHasher(nil))
 				b.ResetTimer()
 				b.Run(
-					fmt.Sprintf("%s [Leaf Size: %d bytes] (%d)", operation, leafSize, treeSize),
+					fmt.Sprintf("%s [Leaf Size: %d bytes] (%d)", operation, leafSize, trieSize),
 					func(b *testing.B) {
 						b.ResetTimer()
 						b.ReportAllocs()
-						for i := 0; i < treeSize; i++ {
-							require.NoError(b, tree.Update([]byte(strconv.Itoa(i)), leaf))
+						for i := 0; i < trieSize; i++ {
+							require.NoError(b, trie.Update([]byte(strconv.Itoa(i)), leaf))
 						}
 						if operation == "Fill & Commit" {
-							require.NoError(b, tree.Commit())
+							require.NoError(b, trie.Commit())
 						}
 					},
 				)
@@ -43,26 +43,26 @@ func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 }
 
 func BenchmarkSMSTLeafSizes_Fill(b *testing.B) {
-	treeSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
+	trieSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
 	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
 	nodes := simplemap.New()
 
-	for _, treeSize := range treeSizes {
+	for _, trieSize := range trieSizes {
 		for _, leafSize := range leafSizes {
 			leaf := make([]byte, leafSize)
 			for _, operation := range []string{"Fill", "Fill & Commit"} {
-				tree := smt.NewSparseMerkleSumTree(nodes, sha256.New(), smt.WithValueHasher(nil))
+				trie := smt.NewSparseMerkleSumTrie(nodes, sha256.New(), smt.WithValueHasher(nil))
 				b.ResetTimer()
 				b.Run(
-					fmt.Sprintf("%s [Leaf Size: %d bytes] (%d)", operation, leafSize, treeSize),
+					fmt.Sprintf("%s [Leaf Size: %d bytes] (%d)", operation, leafSize, trieSize),
 					func(b *testing.B) {
 						b.ResetTimer()
 						b.ReportAllocs()
-						for i := 0; i < treeSize; i++ {
-							require.NoError(b, tree.Update([]byte(strconv.Itoa(i)), leaf, uint64(i)))
+						for i := 0; i < trieSize; i++ {
+							require.NoError(b, trie.Update([]byte(strconv.Itoa(i)), leaf, uint64(i)))
 						}
 						if operation == "Fill & Commit" {
-							require.NoError(b, tree.Commit())
+							require.NoError(b, trie.Commit())
 						}
 					},
 				)

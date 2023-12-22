@@ -60,12 +60,12 @@ func setupSMT(b *testing.B, persistent bool, numLeaves int) *smt.SMT {
 	}
 	nodes := simplemap.New()
 
-	tree := smt.NewSparseMerkleTree(nodes, sha256.New())
+	trie := smt.NewSparseMerkleTrie(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)
-		require.NoError(b, tree.Update([]byte(s), []byte(s)))
+		require.NoError(b, trie.Update([]byte(s), []byte(s)))
 	}
-	require.NoError(b, tree.Commit())
+	require.NoError(b, trie.Commit())
 	b.Cleanup(func() {
 		require.NoError(b, nodes.ClearAll())
 		require.NoError(b, nodes.Stop())
@@ -73,19 +73,19 @@ func setupSMT(b *testing.B, persistent bool, numLeaves int) *smt.SMT {
 			require.NoError(b, os.RemoveAll(path))
 		}
 	})
-	return tree
+	return trie
 }
 
-func benchmarkSMT(b *testing.B, tree *smt.SMT, commit bool, fn func(*smt.SMT, []byte) error) {
+func benchmarkSMT(b *testing.B, trie *smt.SMT, commit bool, fn func(*smt.SMT, []byte) error) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		s := strconv.Itoa(i)
-		_ = fn(tree, []byte(s))
+		_ = fn(trie, []byte(s))
 	}
 	if commit {
-		require.NoError(b, tree.Commit())
+		require.NoError(b, trie.Commit())
 	}
 	b.StopTimer()
 }
@@ -98,12 +98,12 @@ func setupSMST(b *testing.B, persistent bool, numLeaves int) *smt.SMST {
 	}
 	nodes := simplemap.New()
 
-	tree := smt.NewSparseMerkleSumTree(nodes, sha256.New())
+	trie := smt.NewSparseMerkleSumTrie(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)
-		require.NoError(b, tree.Update([]byte(s), []byte(s), uint64(i)))
+		require.NoError(b, trie.Update([]byte(s), []byte(s), uint64(i)))
 	}
-	require.NoError(b, tree.Commit())
+	require.NoError(b, trie.Commit())
 	b.Cleanup(func() {
 		require.NoError(b, nodes.ClearAll())
 		require.NoError(b, nodes.Stop())
@@ -111,18 +111,18 @@ func setupSMST(b *testing.B, persistent bool, numLeaves int) *smt.SMST {
 			require.NoError(b, os.RemoveAll(path))
 		}
 	})
-	return tree
+	return trie
 }
 
-func benchmarkSMST(b *testing.B, tree *smt.SMST, commit bool, fn func(*smt.SMST, uint64) error) {
+func benchmarkSMST(b *testing.B, trie *smt.SMST, commit bool, fn func(*smt.SMST, uint64) error) {
 	b.ResetTimer()
 	b.StartTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_ = fn(tree, uint64(i))
+		_ = fn(trie, uint64(i))
 	}
 	if commit {
-		require.NoError(b, tree.Commit())
+		require.NoError(b, trie.Commit())
 	}
 	b.StopTimer()
 }

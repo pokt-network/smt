@@ -1,4 +1,4 @@
-# smt <!-- omit in toc -->
+# smt
 
 [![Tag](https://img.shields.io/github/v/tag/pokt-network/smt.svg?sort=semver)](https://img.shields.io/github/v/tag/pokt-network/smt.svg?sort=semver)
 [![GoDoc](https://godoc.org/github.com/pokt-network/smt?status.svg)](https://godoc.org/github.com/pokt-network/smt)
@@ -8,27 +8,56 @@
 
 Note: **Requires Go 1.20+**
 
+<!-- toc -->
+
 - [Overview](#overview)
 - [Documentation](#documentation)
+- [Tests](#tests)
 - [Benchmarks](#benchmarks)
+  - [Definitions](#definitions)
+    - [Bytes/Operation (B/op)](#bytesoperation-bop)
+    - [Commit](#commit)
+    - [Sizing](#sizing)
   - [SMT](#smt)
     - [Fill](#fill)
     - [Operations](#operations)
   - [SMST](#smst)
     - [Fill](#fill-1)
     - [Operations](#operations-1)
+  - [Proofs](#proofs)
+    - [SMT](#smt-1)
+    - [SMST](#smst-1)
+
+<!-- tocstop -->
 
 ## Overview
 
-This is a Go library that implements a Sparse Merkle tree for a key-value map. The tree implements the same optimisations specified in the [Libra whitepaper][libra whitepaper], to reduce the number of hash operations required per tree operation to O(k) where k is the number of non-empty elements in the tree.
+This is a Go library that implements a Sparse Merkle Trie for a key-value map.
+The trie implements the same optimisations specified in the [Libra whitepaper],
+to reduce the number of hash operations required per trie operation to $O(k)$
+where $k$ is the number of non-empty elements in the trie. And is implemented
+in a similar way to the [JMT whitepaper], with additional features and proof
+mechanics.
 
 ## Documentation
 
-Documentation for the different aspects of this library can be found in the [docs](./docs/) directory.
+Documentation for the different aspects of this library can be found in the
+[docs](./docs/) directory.
+
+## Tests
+
+To run all the unit tests in the repo (excluding fuzz tests and benchmarks)
+simply run the following command:
+
+```sh
+make test_all
+```
 
 ## Benchmarks
 
-Benchmarks for the different aspects of this SMT library can be found in [benchmarks](./benchmarks/). In order to run the entire benchmarking suite use the following command:
+Benchmarks for the different aspects of this SMT library can be found in
+[benchmarks](./benchmarks/). In order to run the entire benchmarking suite use
+the following command:
 
 ```sh
 make benchmark_all
@@ -36,26 +65,38 @@ make benchmark_all
 
 ### Definitions
 
-Below is a list of terms used in the benchmarks' results that may need clarification.
+Below is a list of terms used in the benchmarks' results that may need
+clarification.
 
 #### Bytes/Operation (B/op)
- - This refers to the number of bytes allocated for each operation.
+
+- This refers to the number of bytes allocated for each operation.
 
 #### Commit
- - The `Commit` term refers to the `Commit` method of the tree. This takes all changes (which are made in memory) to the tree and writes them to the underlying database.
+
+- The `Commit` term refers to the `Commit` method of the trie. This takes all
+  changes (which are made in memory) to the trie and writes them to the
+  underlying database.
 
 #### Sizing
- - The tests use the following sizes: 0.1M, 0.5M, 1M, 5M, 10M. The `M` refers to millions hence:
-   - 0.1M = 100,000 (One hundred thousand)
-   - 0.5M = 500,000 (Five hundred thousand)
-   - 1M = 1,000,000 (One million)
-   - 5M = 5,000,000 (Five million)
-   - 10M = 10,000,000 (Ten million)
- - These sizes refer to the number of key-value pairs or key-value-sum triples inserted into the tree either beforehand or during the benchmark depending on which benchmark it is.
 
-_NOTE: Unless otherwise stated the benchmarks in this document were ran on a 2023 14-inch Macbook Pro M2 Max with 32GB of RAM. The trees tested are using the `sha256.New()` hasher._
+- The tests use the following sizes: 0.1M, 0.5M, 1M, 5M, 10M. The `M` refers to
+  millions hence:
+  - 0.1M = 100,000 (One hundred thousand)
+  - 0.5M = 500,000 (Five hundred thousand)
+  - 1M = 1,000,000 (One million)
+  - 5M = 5,000,000 (Five million)
+  - 10M = 10,000,000 (Ten million)
+- These sizes refer to the number of key-value pairs or key-value-sum triples
+  inserted into the trie either beforehand or during the benchmark depending on
+  which benchmark it is.
 
-_TODO: There is an opportunity to do a fuzz test where we commit every `N` updates, if this ever becomes a bottlneck_
+_NOTE: Unless otherwise stated the benchmarks in this document were ran on a
+2023 14-inch Macbook Pro M2 Max with 32GB of RAM. The tries tested are using the
+`sha256.New()` hasher._
+
+_TODO: There is an opportunity to do a fuzz test where we commit every `N`
+updates, if this ever becomes a bottlneck_
 
 ### SMT
 
@@ -67,7 +108,10 @@ make benchmark_smt
 
 #### Fill
 
-The "fill" benchmarks cover the time taken to insert `N` key-value pairs into the SMT, as well as how long it takes to do this and commit these changes to disk. This gives us an insight into how long it takes to build a tree of a certain size.
+The "fill" benchmarks cover the time taken to insert `N` key-value pairs into
+the SMT, as well as how long it takes to do this and commit these changes to
+disk. This gives us an insight into how long it takes to build a trie of a
+certain size.
 
 In order to run the SMT filling benchmarks use the following command:
 
@@ -75,22 +119,25 @@ In order to run the SMT filling benchmarks use the following command:
 make benchmark_smt_fill
 ```
 
-| Benchmark       | # Values | Iterations | Time (s/op)     | Bytes (B/op)    | Allocations (allocs/op) |
-| --------------- |----------| ---------- | --------------- | --------------- | ----------------------- |
-| Fill            | 0.1M     | 10         | 0.162967196     | 159,479,499     | 2,371,598               |
-| Fill & Commit   | 0.1M     | 10         | 2.877307858     | 972,961,486     | 15,992,605              |
-| Fill            | 0.5M     | 10         | 0.926864771     | 890,408,326     | 13,021,258              |
-| Fill & Commit   | 0.5M     | 10         | 16.043430012    | 5,640,034,396   | 82,075,720              |
-| Fill            | 1M       | 10         | 2.033616088     | 1,860,523,968   | 27,041,639              |
-| Fill & Commit   | 1M       | 10         | 32.617249642    | 12,655,347,004  | 166,879,661             |
-| Fill            | 5M       | 10         | 12.502309738    | 10,229,139,731  | 146,821,675             |
-| Fill & Commit   | 5M       | 10         | 175.421250979   | 78,981,342,709  | 870,235,579             |
-| Fill            | 10M      | 10         | 29.718092496    | 21,255,245,031  | 303,637,210             |
-| Fill & Commit   | 10M      | 10         | 396.142675962   | 173,053,933,624 | 1,775,304,977           |
+| Benchmark     | # Values | Iterations | Time (s/op)   | Bytes (B/op)    | Allocations (allocs/op) |
+| ------------- | -------- | ---------- | ------------- | --------------- | ----------------------- |
+| Fill          | 0.1M     | 10         | 0.162967196   | 159,479,499     | 2,371,598               |
+| Fill & Commit | 0.1M     | 10         | 2.877307858   | 972,961,486     | 15,992,605              |
+| Fill          | 0.5M     | 10         | 0.926864771   | 890,408,326     | 13,021,258              |
+| Fill & Commit | 0.5M     | 10         | 16.043430012  | 5,640,034,396   | 82,075,720              |
+| Fill          | 1M       | 10         | 2.033616088   | 1,860,523,968   | 27,041,639              |
+| Fill & Commit | 1M       | 10         | 32.617249642  | 12,655,347,004  | 166,879,661             |
+| Fill          | 5M       | 10         | 12.502309738  | 10,229,139,731  | 146,821,675             |
+| Fill & Commit | 5M       | 10         | 175.421250979 | 78,981,342,709  | 870,235,579             |
+| Fill          | 10M      | 10         | 29.718092496  | 21,255,245,031  | 303,637,210             |
+| Fill & Commit | 10M      | 10         | 396.142675962 | 173,053,933,624 | 1,775,304,977           |
 
 #### Operations
 
-The "operations" benchmarks cover the time taken to perform a single operation on an SMT of a given size, and also how long doing this operation followed by a commit would take. This gives us insight into how the SMT operates when filled to differing degrees.
+The "operations" benchmarks cover the time taken to perform a single operation
+on an SMT of a given size, and also how long doing this operation followed by a
+commit would take. This gives us insight into how the SMT operates when filled
+to differing degrees.
 
 In order to run the SMT operation benchmarks use the following command:
 
@@ -99,7 +146,7 @@ make benchmark_smt_ops
 ```
 
 | Benchmark       | Prefilled Values | Iterations | Time (ns/op) | Bytes (B/op) | Allocations (allocs/op) |
-| --------------- |------------------| ---------- | ------------ | ------------ | ----------------------- |
+| --------------- | ---------------- | ---------- | ------------ | ------------ | ----------------------- |
 | Update          | 0.1M             | 740,618    | 1,350        | 1,753        | 25                      |
 | Update & Commit | 0.1M             | 21,022     | 54,665       | 13,110       | 281                     |
 | Update          | 0.5M             | 605,348    | 1,682        | 1,957        | 26                      |
@@ -141,7 +188,10 @@ make benchmark_smst
 
 #### Fill
 
-The "fill" benchmarks cover the time taken to insert `N` key-value-sum triples into the SMST, as well as how long it takes to do this and commit these changes to disk. This gives us an insight into how long it takes to build a tree of a certain size.
+The "fill" benchmarks cover the time taken to insert `N` key-value-sum triples
+into the SMST, as well as how long it takes to do this and commit these changes
+to disk. This gives us an insight into how long it takes to build a trie of a
+certain size.
 
 In order to run the SMST filling benchmarks use the following command:
 
@@ -149,22 +199,25 @@ In order to run the SMST filling benchmarks use the following command:
 make benchmark_smst_fill
 ```
 
-| Benchmark       | # Values | Iterations | Time (s/op)     | Bytes (B/op)    | Allocations (allocs/op) |
-| --------------- |----------| ---------- | --------------- | --------------- | ----------------------- |
-| Fill            | 0.1M     | 10         | 0.157951888     | 165,878,234     | 2,471,593               |
-| Fill & Commit   | 0.1M     | 10         | 3.011097462     | 1,058,069,050   | 16,664,811              |
-| Fill            | 0.5M     | 10         | 0.927521862     | 922,408,350     | 13,521,259              |
-| Fill & Commit   | 0.5M     | 10         | 15.338199979    | 6,533,439,773   | 85,880,046              |
-| Fill            | 1M       | 10         | 1.982756162     | 1,924,516,467   | 28,041,610              |
-| Fill & Commit   | 1M       | 10         | 31.197517821    | 14,874,342,889  | 175,474,251             |
-| Fill            | 5M       | 10         | 12.054370871    | 10,549,075,488  | 151,821,423             |
-| Fill & Commit   | 5M       | 10         | 176.912009238   | 89,667,234,678  | 914,653,740             |
-| Fill            | 10M      | 10         | 26.859672362    | 21,894,837,504  | 313,635,611             |
-| Fill & Commit   | 10M      | 10         | 490.805535617   | 197,997,807,905 | 1,865,882,489           |
+| Benchmark     | # Values | Iterations | Time (s/op)   | Bytes (B/op)    | Allocations (allocs/op) |
+| ------------- | -------- | ---------- | ------------- | --------------- | ----------------------- |
+| Fill          | 0.1M     | 10         | 0.157951888   | 165,878,234     | 2,471,593               |
+| Fill & Commit | 0.1M     | 10         | 3.011097462   | 1,058,069,050   | 16,664,811              |
+| Fill          | 0.5M     | 10         | 0.927521862   | 922,408,350     | 13,521,259              |
+| Fill & Commit | 0.5M     | 10         | 15.338199979  | 6,533,439,773   | 85,880,046              |
+| Fill          | 1M       | 10         | 1.982756162   | 1,924,516,467   | 28,041,610              |
+| Fill & Commit | 1M       | 10         | 31.197517821  | 14,874,342,889  | 175,474,251             |
+| Fill          | 5M       | 10         | 12.054370871  | 10,549,075,488  | 151,821,423             |
+| Fill & Commit | 5M       | 10         | 176.912009238 | 89,667,234,678  | 914,653,740             |
+| Fill          | 10M      | 10         | 26.859672362  | 21,894,837,504  | 313,635,611             |
+| Fill & Commit | 10M      | 10         | 490.805535617 | 197,997,807,905 | 1,865,882,489           |
 
 #### Operations
 
-The "operations" benchmarks cover the time taken to perform a single operation on an SMST of a given size, and also how long doing this operation followed by a commit would take. This gives us insight into how the SMST operates when filled to differing degrees.
+The "operations" benchmarks cover the time taken to perform a single operation
+on an SMST of a given size, and also how long doing this operation followed by
+a commit would take. This gives us insight into how the SMST operates when
+filled to differing degrees.
 
 In order to run the SMST operation benchmarks use the following command:
 
@@ -207,7 +260,8 @@ make benchmark_smst_ops
 
 ### Proofs
 
-To run the tests to average the proof size for numerous prefilled trees use the following command:
+To run the tests to average the proof size for numerous prefilled tries use the
+following command:
 
 ```sh
 make benchmark_proof_sizes
@@ -216,7 +270,7 @@ make benchmark_proof_sizes
 #### SMT
 
 | Prefilled Size | Average Serialised Proof Size (bytes) | Min (bytes) | Max (bytes) | Average Serialised Compacted Proof Size (bytes) | Min (bytes) | Max (bytes) |
-|----------------|---------------------------------------|-------------|-------------|-------------------------------------------------|-------------|-------------|
+| -------------- | ------------------------------------- | ----------- | ----------- | ----------------------------------------------- | ----------- | ----------- |
 | 100,000        | 780                                   | 650         | 1310        | 790                                             | 692         | 925         |
 | 500,000        | 856                                   | 716         | 1475        | 866                                             | 758         | 1024        |
 | 1,000,000      | 890                                   | 716         | 1475        | 900                                             | 758         | 1057        |
@@ -226,11 +280,12 @@ make benchmark_proof_sizes
 #### SMST
 
 | Prefilled Size | Average Serialised Proof Size (bytes) | Min (bytes) | Max (bytes) | Average Serialised Compacted Proof Size (bytes) | Min (bytes) | Max (bytes) |
-|----------------|---------------------------------------|-------------|-------------|-------------------------------------------------|-------------|-------------|
+| -------------- | ------------------------------------- | ----------- | ----------- | ----------------------------------------------- | ----------- | ----------- |
 | 100,000        | 935                                   | 780         | 1590        | 937                                             | 822         | 1101        |
 | 500,000        | 1030                                  | 862         | 1795        | 1032                                            | 904         | 1224        |
 | 1,000,000      | 1071                                  | 868         | 1795        | 1073                                            | 910         | 1265        |
 | 5,000,000      | 1166                                  | 975         | 2123        | 1169                                            | 1018        | 1388        |
 | 10,000,000     | 1207                                  | 1026        | 2123        | 1210                                            | 1059        | 1429        |
 
+[jmt whitepaper]: https://developers.diem.com/papers/jellyfish-merkle-trie/2021-01-14.pdf
 [libra whitepaper]: https://diem-developers-components.netlify.app/papers/the-diem-blockchain/2020-05-26.pdf

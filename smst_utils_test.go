@@ -16,7 +16,7 @@ type SMSTWithStorage struct {
 	preimages kvstore.KVStore
 }
 
-// Update updates a key with a new value in the tree and adds the value to the preimages KVStore
+// Update updates a key with a new value in the trie and adds the value to the preimages KVStore
 func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
@@ -25,18 +25,15 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	var sumBz [sumSize]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	value = append(value, sumBz[:]...)
-	if err := smst.preimages.Set(valueHash, value); err != nil {
-		return err
-	}
-	return nil
+	return smst.preimages.Set(valueHash, value)
 }
 
-// Delete deletes a key from the tree.
+// Delete deletes a key from the trie.
 func (smst *SMSTWithStorage) Delete(key []byte) error {
 	return smst.SMST.Delete(key)
 }
 
-// GetValueSum returns the value and sum of the key stored in the tree, by looking up
+// GetValueSum returns the value and sum of the key stored in the trie, by looking up
 // the value hash in the preimages KVStore and extracting the sum
 func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	valueHash, sum, err := smst.Get(key)
@@ -51,10 +48,9 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 		if errors.Is(err, kvstore.ErrKVStoreKeyNotFound) {
 			// If key isn't found, return default value and sum
 			return defaultValue, 0, nil
-		} else {
-			// Otherwise percolate up any other error
-			return nil, 0, err
 		}
+		// Otherwise percolate up any other error
+		return nil, 0, err
 	}
 	var sumBz [sumSize]byte
 	copy(sumBz[:], value[len(value)-sumSize:])
@@ -72,7 +68,7 @@ func (smst *SMSTWithStorage) Has(key []byte) (bool, error) {
 }
 
 // ProveSumCompact generates a compacted Merkle proof for a key against the current root.
-func ProveSumCompact(key []byte, smst SparseMerkleSumTree) (*SparseCompactMerkleProof, error) {
+func ProveSumCompact(key []byte, smst SparseMerkleSumTrie) (*SparseCompactMerkleProof, error) {
 	proof, err := smst.Prove(key)
 	if err != nil {
 		return nil, err
