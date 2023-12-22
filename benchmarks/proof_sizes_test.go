@@ -1,3 +1,5 @@
+//go:build benchmarks
+
 package smt
 
 import (
@@ -8,11 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore"
 )
 
 func TestSMT_ProofSizes(t *testing.T) {
-	nodes, err := smt.NewKVStore("")
-	require.NoError(t, err)
+	nodes := kvstore.NewSimpleMap()
 	testCases := []struct {
 		name     string
 		trieSize int
@@ -96,12 +98,10 @@ func TestSMT_ProofSizes(t *testing.T) {
 		})
 		require.NoError(t, nodes.ClearAll())
 	}
-	require.NoError(t, nodes.Stop())
 }
 
 func TestSMST_ProofSizes(t *testing.T) {
-	nodes, err := smt.NewKVStore("")
-	require.NoError(t, err)
+	nodes := kvstore.NewSimpleMap()
 	testCases := []struct {
 		name     string
 		trieSize int
@@ -185,5 +185,4 @@ func TestSMST_ProofSizes(t *testing.T) {
 		})
 		require.NoError(t, nodes.ClearAll())
 	}
-	require.NoError(t, nodes.Stop())
 }

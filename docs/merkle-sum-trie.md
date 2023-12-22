@@ -280,15 +280,13 @@ import (
   "fmt"
 
   "github.com/pokt-network/smt"
+  "github.com/pokt-network/smt/kvstore"
 )
 
 func main() {
   // Initialise a new in-memory key-value store to store the nodes of the trie
   // (Note: the trie only stores hashed values, not raw value data)
-  nodeStore := smt.NewKVStore("")
-
-  // Ensure the database connection closes
-  defer nodeStore.Stop()
+  nodeStore := kvstore.NewSimpleMap()
 
   // Initialise the trie
   trie := smt.NewSparseMerkleSumTrie(nodeStore, sha256.New())

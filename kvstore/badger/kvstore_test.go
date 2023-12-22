@@ -1,4 +1,4 @@
-package smt
+package badger_test
 
 import (
 	"bytes"
@@ -7,116 +7,118 @@ import (
 	"strings"
 	"testing"
 
-	badger "github.com/dgraph-io/badger/v4"
+	v4 "github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/smt/badger"
 )
 
-func TestKVStore_BasicOperations(t *testing.T) {
-	store, err := NewKVStore("")
+func TestBadger_KVStore_BasicOperations(t *testing.T) {
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
 	invalidKey := [65001]byte{}
 	testCases := []struct {
-		name     string
-		op       string
-		key      []byte
-		value    []byte
-		fail     bool
-		expected error
+		desc        string
+		op          string
+		key         []byte
+		value       []byte
+		fail        bool
+		expectedErr error
 	}{
 		{
-			name:     "Successfully sets a value in the store",
-			op:       "set",
-			key:      []byte("testKey"),
-			value:    []byte("testValue"),
-			fail:     false,
-			expected: nil,
+			desc:        "Successfully sets a value in the store",
+			op:          "set",
+			key:         []byte("testKey"),
+			value:       []byte("testValue"),
+			fail:        false,
+			expectedErr: nil,
 		},
 		{
-			name:     "Successfully updates a value in the store",
-			op:       "set",
-			key:      []byte("foo"),
-			value:    []byte("new value"),
-			fail:     false,
-			expected: nil,
+			desc:        "Successfully updates a value in the store",
+			op:          "set",
+			key:         []byte("foo"),
+			value:       []byte("new value"),
+			fail:        false,
+			expectedErr: nil,
 		},
 		{
-			name:     "Fails to set value to nil key",
-			op:       "set",
-			key:      nil,
-			value:    []byte("bar"),
-			fail:     true,
-			expected: badger.ErrEmptyKey,
+			desc:        "Fails to set value to nil key",
+			op:          "set",
+			key:         nil,
+			value:       []byte("bar"),
+			fail:        true,
+			expectedErr: v4.ErrEmptyKey,
 		},
 		{
-			name:     "Fails to set a value to a key that is too large",
-			op:       "set",
-			key:      invalidKey[:],
-			value:    []byte("bar"),
-			fail:     true,
-			expected: fmt.Errorf("Key with size 65001 exceeded 65000 limit. Key:\n%s", hex.Dump(invalidKey[:1<<10])),
+			desc:        "Fails to set a value to a key that is too large",
+			op:          "set",
+			key:         invalidKey[:],
+			value:       []byte("bar"),
+			fail:        true,
+			expectedErr: fmt.Errorf("Key with size 65001 exceeded 65000 limit. Key:\n%s", hex.Dump(invalidKey[:1<<10])),
 		},
 		{
-			name:     "Successfully retrieve a value from the store",
-			op:       "get",
-			key:      []byte("foo"),
-			value:    []byte("bar"),
-			fail:     false,
-			expected: nil,
+			desc:        "Successfully retrieve a value from the store",
+			op:          "get",
+			key:         []byte("foo"),
+			value:       []byte("bar"),
+			fail:        false,
+			expectedErr: nil,
 		},
 		{
-			name:     "Fails to get a value that is not stored",
-			op:       "get",
-			key:      []byte("bar"),
-			value:    nil,
-			fail:     true,
-			expected: badger.ErrKeyNotFound,
+			desc:        "Fails to get a value that is not stored",
+			op:          "get",
+			key:         []byte("bar"),
+			value:       nil,
+			fail:        true,
+			expectedErr: v4.ErrKeyNotFound,
 		},
 		{
-			name:     "Fails when the key is empty",
-			op:       "get",
-			key:      nil,
-			value:    nil,
-			fail:     true,
-			expected: badger.ErrEmptyKey,
+			desc:        "Fails when the key is empty",
+			op:          "get",
+			key:         nil,
+			value:       nil,
+			fail:        true,
+			expectedErr: v4.ErrEmptyKey,
 		},
 		{
-			name:     "Successfully deletes a value in the store",
-			op:       "delete",
-			key:      []byte("foo"),
-			value:    nil,
-			fail:     false,
-			expected: nil,
+			desc:        "Successfully deletes a value in the store",
+			op:          "delete",
+			key:         []byte("foo"),
+			value:       nil,
+			fail:        false,
+			expectedErr: nil,
 		},
 		{
-			name:     "Fails to delete a value not in the store",
-			op:       "delete",
-			key:      []byte("bar"),
-			value:    nil,
-			fail:     false,
-			expected: nil,
+			desc:        "Fails to delete a value not in the store",
+			op:          "delete",
+			key:         []byte("bar"),
+			value:       nil,
+			fail:        false,
+			expectedErr: nil,
 		},
 		{
-			name:     "Fails to set value to nil key",
-			op:       "delete",
-			key:      nil,
-			value:    nil,
-			fail:     true,
-			expected: badger.ErrEmptyKey,
+			desc:        "Fails to set value to nil key",
+			op:          "delete",
+			key:         nil,
+			value:       nil,
+			fail:        true,
+			expectedErr: v4.ErrEmptyKey,
 		},
 		{
-			name:     "Fails to set a value to a key that is too large",
-			op:       "delete",
-			key:      invalidKey[:],
-			value:    nil,
-			fail:     true,
-			expected: fmt.Errorf("Key with size 65001 exceeded 65000 limit. Key:\n%s", hex.Dump(invalidKey[:1<<10])),
+			desc:        "Fails to set a value to a key that is too large",
+			op:          "delete",
+			key:         invalidKey[:],
+			value:       nil,
+			fail:        true,
+			expectedErr: fmt.Errorf("Key with size 65001 exceeded 65000 limit. Key:\n%s", hex.Dump(invalidKey[:1<<10])),
 		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.desc, func(t *testing.T) {
 			err := store.ClearAll()
 			require.NoError(t, err)
 			setupStore(t, store)
@@ -125,7 +127,7 @@ func TestKVStore_BasicOperations(t *testing.T) {
 				err := store.Set(tc.key, tc.value)
 				if tc.fail {
 					require.Error(t, err)
-					require.EqualError(t, tc.expected, err.Error())
+					require.EqualError(t, tc.expectedErr, err.Error())
 				} else {
 					require.NoError(t, err)
 					got, err := store.Get(tc.key)
@@ -136,7 +138,7 @@ func TestKVStore_BasicOperations(t *testing.T) {
 				got, err := store.Get(tc.key)
 				if tc.fail {
 					require.Error(t, err)
-					require.EqualError(t, tc.expected, err.Error())
+					require.EqualError(t, tc.expectedErr, err.Error())
 				} else {
 					require.NoError(t, err)
 					require.Equal(t, tc.value, got)
@@ -145,11 +147,11 @@ func TestKVStore_BasicOperations(t *testing.T) {
 				err := store.Delete(tc.key)
 				if tc.fail {
 					require.Error(t, err)
-					require.EqualError(t, tc.expected, err.Error())
+					require.EqualError(t, tc.expectedErr, err.Error())
 				} else {
 					require.NoError(t, err)
 					_, err := store.Get(tc.key)
-					require.EqualError(t, err, badger.ErrKeyNotFound.Error())
+					require.EqualError(t, err, v4.ErrKeyNotFound.Error())
 				}
 			}
 		})
@@ -159,8 +161,8 @@ func TestKVStore_BasicOperations(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestKVStore_GetAllBasic(t *testing.T) {
-	store, err := NewKVStore("")
+func TestBadger_KVStore_GetAllBasic(t *testing.T) {
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -196,8 +198,8 @@ func TestKVStore_GetAllBasic(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestKVStore_GetAllPrefixed(t *testing.T) {
-	store, err := NewKVStore("")
+func TestBadger_KVStore_GetAllPrefixed(t *testing.T) {
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -246,8 +248,8 @@ func TestKVStore_GetAllPrefixed(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestKVStore_Exists(t *testing.T) {
-	store, err := NewKVStore("")
+func TestBadger_KVStore_Exists(t *testing.T) {
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -281,15 +283,15 @@ func TestKVStore_Exists(t *testing.T) {
 
 	// Key does not exist
 	exists, err = store.Exists([]byte("oof"))
-	require.EqualError(t, err, badger.ErrKeyNotFound.Error())
+	require.EqualError(t, err, v4.ErrKeyNotFound.Error())
 	require.False(t, exists)
 
 	err = store.Stop()
 	require.NoError(t, err)
 }
 
-func TestKVStore_ClearAll(t *testing.T) {
-	store, err := NewKVStore("")
+func TestBadger_KVStore_ClearAll(t *testing.T) {
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -336,8 +338,8 @@ func TestKVStore_ClearAll(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestKVStore_BackupAndRestore(t *testing.T) {
-	store, err := NewKVStore("")
+func TestBadger_KVStore_BackupAndRestore(t *testing.T) {
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -361,8 +363,8 @@ func TestKVStore_BackupAndRestore(t *testing.T) {
 	require.Equal(t, values, newValues)
 }
 
-func TestKVStore_Len(t *testing.T) {
-	store, err := NewKVStore("")
+func TestBadger_KVStore_Len(t *testing.T) {
+	store, err := badger.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -394,7 +396,7 @@ func TestKVStore_Len(t *testing.T) {
 	}
 }
 
-func setupStore(t *testing.T, store KVStore) {
+func setupStore(t *testing.T, store badger.KVStore) {
 	t.Helper()
 	err := store.Set([]byte("foo"), []byte("bar"))
 	require.NoError(t, err)

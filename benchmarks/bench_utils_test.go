@@ -1,15 +1,17 @@
+//go:build benchmarks
+
 package smt
 
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"os"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore"
 )
 
 var (
@@ -52,14 +54,9 @@ var (
 	}
 )
 
-func setupSMT(b *testing.B, persistent bool, numLeaves int) *smt.SMT {
+func setupSMT(b *testing.B, numLeaves int) *smt.SMT {
 	b.Helper()
-	path := ""
-	if persistent {
-		path = b.TempDir()
-	}
-	nodes, err := smt.NewKVStore(path)
-	require.NoError(b, err)
+	nodes := kvstore.NewSimpleMap()
 	trie := smt.NewSparseMerkleTrie(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)
@@ -68,10 +65,6 @@ func setupSMT(b *testing.B, persistent bool, numLeaves int) *smt.SMT {
 	require.NoError(b, trie.Commit())
 	b.Cleanup(func() {
 		require.NoError(b, nodes.ClearAll())
-		require.NoError(b, nodes.Stop())
-		if path != "" {
-			require.NoError(b, os.RemoveAll(path))
-		}
 	})
 	return trie
 }
@@ -90,14 +83,9 @@ func benchmarkSMT(b *testing.B, trie *smt.SMT, commit bool, fn func(*smt.SMT, []
 	b.StopTimer()
 }
 
-func setupSMST(b *testing.B, persistent bool, numLeaves int) *smt.SMST {
+func setupSMST(b *testing.B, numLeaves int) *smt.SMST {
 	b.Helper()
-	path := ""
-	if persistent {
-		path = b.TempDir()
-	}
-	nodes, err := smt.NewKVStore(path)
-	require.NoError(b, err)
+	nodes := kvstore.NewSimpleMap()
 	trie := smt.NewSparseMerkleSumTrie(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)
@@ -106,10 +94,6 @@ func setupSMST(b *testing.B, persistent bool, numLeaves int) *smt.SMST {
 	require.NoError(b, trie.Commit())
 	b.Cleanup(func() {
 		require.NoError(b, nodes.ClearAll())
-		require.NoError(b, nodes.Stop())
-		if path != "" {
-			require.NoError(b, os.RemoveAll(path))
-		}
 	})
 	return trie
 }

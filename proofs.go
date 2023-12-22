@@ -16,9 +16,6 @@ func init() {
 	gob.Register(SparseCompactMerkleClosestProof{})
 }
 
-// ErrBadProof is returned when an invalid Merkle proof is supplied.
-var ErrBadProof = errors.New("bad proof")
-
 // SparseMerkleProof is a Merkle proof for an element in a SparseMerkleTrie.
 // TODO: Look into whether the SiblingData is required and remove it if not
 type SparseMerkleProof struct {

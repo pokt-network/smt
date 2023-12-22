@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/smt/kvstore"
 )
 
 type (
@@ -32,10 +34,8 @@ func TestBulkOperations(t *testing.T) {
 
 // Test all trie operations in bulk, with specified ratio probabilities of insert, update and delete.
 func bulkOperations(t *testing.T, operations int, insert int, update int, delete int) {
-	smn, err := NewKVStore("")
-	require.NoError(t, err)
-	smv, err := NewKVStore("")
-	require.NoError(t, err)
+	smn := kvstore.NewSimpleMap()
+	smv := kvstore.NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 
 	max := insert + update + delete
@@ -82,7 +82,7 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			ki := r.Intn(len(kv))
 
 			err := smt.Delete(kv[ki].key)
-			if err != nil && err != ErrKeyNotPresent {
+			if err != nil && err != kvstore.ErrKVStoreKeyNotFound {
 				t.Fatalf("error: %v", err)
 			}
 			kv[ki].val = defaultValue
@@ -90,8 +90,6 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 	}
 
 	bulkCheckAll(t, smt, kv)
-	require.NoError(t, smn.Stop())
-	require.NoError(t, smv.Stop())
 }
 
 func bulkCheckAll(t *testing.T, smt *SMTWithStorage, kv []bulkop) {

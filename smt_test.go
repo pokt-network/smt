@@ -7,9 +7,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/smt/kvstore"
 )
 
-func NewSMTWithStorage(nodes, preimages KVStore, hasher hash.Hash, options ...Option) *SMTWithStorage {
+func NewSMTWithStorage(
+	nodes, preimages kvstore.MapStore,
+	hasher hash.Hash,
+	options ...Option,
+) *SMTWithStorage {
 	return &SMTWithStorage{
 		SMT:       NewSparseMerkleTrie(nodes, hasher, options...),
 		preimages: preimages,
@@ -17,17 +23,15 @@ func NewSMTWithStorage(nodes, preimages KVStore, hasher hash.Hash, options ...Op
 }
 
 func TestSMT_TrieUpdateBasic(t *testing.T) {
-	smn, err := NewKVStore("")
-	require.NoError(t, err)
-	smv, err := NewKVStore("")
-	require.NoError(t, err)
+	smn := kvstore.NewSimpleMap()
+	smv := kvstore.NewSimpleMap()
 	lazy := NewSparseMerkleTrie(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
 	var value []byte
 	var has bool
 
 	// Test getting an empty key.
-	value, err = smt.GetValue([]byte("testKey"))
+	value, err := smt.GetValue([]byte("testKey"))
 	require.NoError(t, err)
 	require.Equal(t, defaultValue, value)
 
@@ -94,23 +98,18 @@ func TestSMT_TrieUpdateBasic(t *testing.T) {
 	value, err = smt.GetValue([]byte("testKey2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
-
-	require.NoError(t, smn.Stop())
-	require.NoError(t, smv.Stop())
 }
 
 // Test base case trie delete operations with a few keys.
 func TestSMT_TrieDeleteBasic(t *testing.T) {
-	smn, err := NewKVStore("")
-	require.NoError(t, err)
-	smv, err := NewKVStore("")
-	require.NoError(t, err)
+	smn := kvstore.NewSimpleMap()
+	smv := kvstore.NewSimpleMap()
 	lazy := NewSparseMerkleTrie(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
 	rootEmpty := smt.Root()
 
 	// Testing inserting, deleting a key, and inserting it again.
-	err = smt.Update([]byte("testKey"), []byte("testValue"))
+	err := smt.Update([]byte("testKey"), []byte("testValue"))
 	require.NoError(t, err)
 
 	root1 := smt.Root()
@@ -197,18 +196,13 @@ func TestSMT_TrieDeleteBasic(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue"), value)
 	require.Equal(t, root1, smt.Root(), "re-inserting key after deletion")
-
-	require.NoError(t, smn.Stop())
-	require.NoError(t, smv.Stop())
 }
 
 // Test trie ops with known paths
 func TestSMT_TrieKnownPath(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn, err := NewKVStore("")
-	require.NoError(t, err)
-	smv, err := NewKVStore("")
-	require.NoError(t, err)
+	smn := kvstore.NewSimpleMap()
+	smv := kvstore.NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
 	var value []byte
 
@@ -226,7 +220,7 @@ func TestSMT_TrieKnownPath(t *testing.T) {
 	keys[5][0] = byte(0b11100000)
 	keys[6][0] = byte(0b11110000)
 
-	err = smt.Update(keys[0], []byte("testValue1"))
+	err := smt.Update(keys[0], []byte("testValue1"))
 	require.NoError(t, err)
 	err = smt.Update(keys[1], []byte("testValue2"))
 	require.NoError(t, err)
@@ -273,18 +267,13 @@ func TestSMT_TrieKnownPath(t *testing.T) {
 	value, err = smt.GetValue(keys[5])
 	require.NoError(t, err)
 	require.Equal(t, []byte("testValue6"), value)
-
-	require.NoError(t, smn.Stop())
-	require.NoError(t, smv.Stop())
 }
 
 // Test trie operations when two leafs are immediate neighbors.
 func TestSMT_TrieMaxHeightCase(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn, err := NewKVStore("")
-	require.NoError(t, err)
-	smv, err := NewKVStore("")
-	require.NoError(t, err)
+	smn := kvstore.NewSimpleMap()
+	smv := kvstore.NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
 	var value []byte
 
@@ -292,7 +281,7 @@ func TestSMT_TrieMaxHeightCase(t *testing.T) {
 	// The dummy hash function will return the preimage itself as the digest.
 	key1 := make([]byte, ph.PathSize())
 	key2 := make([]byte, ph.PathSize())
-	_, err = rand.Read(key1)
+	_, err := rand.Read(key1)
 	require.NoError(t, err)
 	copy(key2, key1)
 	// We make key2's least significant bit different than key1's
@@ -316,13 +305,10 @@ func TestSMT_TrieMaxHeightCase(t *testing.T) {
 	proof, err := smt.Prove(key1)
 	require.NoError(t, err)
 	require.Equal(t, 256, len(proof.SideNodes), "unexpected proof size")
-
-	require.NoError(t, smn.Stop())
-	require.NoError(t, smv.Stop())
 }
 
 func TestSMT_OrphanRemoval(t *testing.T) {
-	var smn, smv KVStore
+	var smn, smv kvstore.MapStore
 	var impl *SMT
 	var smt *SMTWithStorage
 	var err error
@@ -332,9 +318,8 @@ func TestSMT_OrphanRemoval(t *testing.T) {
 		return smn.Len()
 	}
 	setup := func() {
-		smn, err = NewKVStore("")
-		require.NoError(t, err)
-		smv, err = NewKVStore("")
+		smn = kvstore.NewSimpleMap()
+		smv = kvstore.NewSimpleMap()
 		require.NoError(t, err)
 		impl = NewSparseMerkleTrie(smn, sha256.New())
 		smt = &SMTWithStorage{SMT: impl, preimages: smv}
@@ -410,7 +395,4 @@ func TestSMT_OrphanRemoval(t *testing.T) {
 			require.Equal(t, 1, nodeCount(t), tci)
 		}
 	})
-
-	require.NoError(t, smn.Stop())
-	require.NoError(t, smv.Stop())
 }

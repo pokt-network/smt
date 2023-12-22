@@ -4,17 +4,20 @@ import (
 	"bytes"
 	"errors"
 
-	badger "github.com/dgraph-io/badger/v4"
+	"github.com/pokt-network/smt/kvstore"
 )
 
-// SMTWithStorage wraps an SMT with a mapping of value hashes to values (preimages), for use in tests.
-// Note: this doesn't delete from preimages (inputs to hashing functions), since there could be duplicate stored values.
+// SMTWithStorage wraps an SMT with a mapping of value hashes to values
+// (preimages), for use in tests.
+// Note: this doesn't delete from preimages (inputs to hashing functions),
+// since there could be duplicate stored values.
 type SMTWithStorage struct {
 	*SMT
-	preimages KVStore
+	preimages kvstore.MapStore
 }
 
-// Update updates a key with a new value in the trie and adds the value to the preimages KVStore
+// Update updates a key with a new value in the trie and adds the value to
+// the preimages KVStore
 func (smt *SMTWithStorage) Update(key, value []byte) error {
 	if err := smt.SMT.Update(key, value); err != nil {
 		return err
@@ -39,7 +42,7 @@ func (smt *SMTWithStorage) GetValue(key []byte) ([]byte, error) {
 	}
 	value, err := smt.preimages.Get(valueHash)
 	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
+		if errors.Is(err, kvstore.ErrKVStoreKeyNotFound) {
 			// If key isn't found, return default value
 			value = defaultValue
 		} else {
@@ -57,7 +60,8 @@ func (smt *SMTWithStorage) Has(key []byte) (bool, error) {
 	return !bytes.Equal(defaultValue, val), err
 }
 
-// ProveCompact generates a compacted Merkle proof for a key against the current root.
+// ProveCompact generates a compacted Merkle proof for a key against the
+// current root.
 func ProveCompact(key []byte, smt SparseMerkleTrie) (*SparseCompactMerkleProof, error) {
 	proof, err := smt.Prove(key)
 	if err != nil {
@@ -66,7 +70,8 @@ func ProveCompact(key []byte, smt SparseMerkleTrie) (*SparseCompactMerkleProof, 
 	return CompactProof(proof, smt.Spec())
 }
 
-// dummyHasher is a dummy hasher for tests, where the digest of keys is equivalent to the preimage.
+// dummyHasher is a dummy hasher for tests, where the digest of keys is
+// equivalent to the preimage.
 type dummyPathHasher struct {
 	size int
 }

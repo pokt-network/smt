@@ -3,6 +3,8 @@ package smt
 import (
 	"bytes"
 	"hash"
+
+	"github.com/pokt-network/smt/kvstore"
 )
 
 var (
@@ -12,7 +14,8 @@ var (
 )
 
 type trieNode interface {
-	Persisted() bool // when a node is being commited to disk, if already persisted it is skipped
+	// when committing a node to disk, if already persisted it is skipped
+	Persisted() bool
 	CachedDigest() []byte
 }
 
@@ -52,7 +55,7 @@ type lazyNode struct {
 // SMT is a Sparse Merkle Trie object that implements the SparseMerkleTrie interface
 type SMT struct {
 	TrieSpec
-	nodes KVStore
+	nodes kvstore.MapStore
 	// Last persisted root hash
 	savedRoot []byte
 	// Current state of trie
@@ -64,8 +67,13 @@ type SMT struct {
 // Hashes of persisted nodes deleted from trie
 type orphanNodes = [][]byte
 
-// NewSparseMerkleTrie returns a new pointer to an SMT struct, and applys any options provided
-func NewSparseMerkleTrie(nodes KVStore, hasher hash.Hash, options ...Option) *SMT {
+// NewSparseMerkleTrie returns a new pointer to an SMT struct, and applies any
+// options provided
+func NewSparseMerkleTrie(
+	nodes kvstore.MapStore,
+	hasher hash.Hash,
+	options ...Option,
+) *SMT {
 	smt := SMT{
 		TrieSpec: newTrieSpec(hasher, false),
 		nodes:    nodes,
@@ -76,8 +84,14 @@ func NewSparseMerkleTrie(nodes KVStore, hasher hash.Hash, options ...Option) *SM
 	return &smt
 }
 
-// ImportSparseMerkleTrie returns a pointer to an SMT struct with the provided root hash
-func ImportSparseMerkleTrie(nodes KVStore, hasher hash.Hash, root []byte, options ...Option) *SMT {
+// ImportSparseMerkleTrie returns a pointer to an SMT struct with the provided
+// root hash
+func ImportSparseMerkleTrie(
+	nodes kvstore.MapStore,
+	hasher hash.Hash,
+	root []byte,
+	options ...Option,
+) *SMT {
 	smt := NewSparseMerkleTrie(nodes, hasher, options...)
 	smt.trie = &lazyNode{root}
 	smt.savedRoot = root
@@ -232,11 +246,11 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 	}
 
 	if node == nil {
-		return node, ErrKeyNotPresent
+		return node, kvstore.ErrKVStoreKeyNotFound
 	}
 	if leaf, ok := node.(*leafNode); ok {
 		if !bytes.Equal(path, leaf.path) {
-			return node, ErrKeyNotPresent
+			return node, kvstore.ErrKVStoreKeyNotFound
 		}
 		smt.addOrphan(orphans, node)
 		return nil, nil
@@ -246,7 +260,7 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 
 	if ext, ok := node.(*extensionNode); ok {
 		if _, match := ext.match(path, depth); !match {
-			return node, ErrKeyNotPresent
+			return node, kvstore.ErrKVStoreKeyNotFound
 		}
 		ext.child, err = smt.delete(ext.child, depth+ext.length(), path, orphans)
 		if err != nil {
@@ -386,7 +400,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 // the key (and return the key-value internal pair) as they share a common
 // prefix. If however, during the trie traversal according to the path, a nil
 // node is encountered, the traversal backsteps and flips the path bit for that
-// depth (ie tries left if it tried right and vice versa). This guarentees that
+// depth (ie tries left if it tried right and vice versa). This guarantees that
 // a proof of inclusion is found that has the most common bits with the path
 // provided, biased to the longest common prefix
 func (smt *SMT) ProveClosest(path []byte) (

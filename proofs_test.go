@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/smt/kvstore"
 )
 
 func TestSparseMerkleProof_Marshal(t *testing.T) {
@@ -150,11 +152,7 @@ func TestSparseCompactMerkleProof_Unmarshal(t *testing.T) {
 func setupTrie(t *testing.T) *SMT {
 	t.Helper()
 
-	db, err := NewKVStore("")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, db.Stop())
-	})
+	db := kvstore.NewSimpleMap()
 
 	trie := NewSparseMerkleTrie(db, sha256.New())
 	require.NoError(t, trie.Update([]byte("key"), []byte("value")))

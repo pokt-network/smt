@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"hash"
+
+	"github.com/pokt-network/smt/kvstore"
 )
 
 var _ SparseMerkleSumTrie = (*SMST)(nil)
@@ -15,7 +17,11 @@ type SMST struct {
 }
 
 // NewSparseMerkleSumTrie returns a pointer to an SMST struct
-func NewSparseMerkleSumTrie(nodes KVStore, hasher hash.Hash, options ...Option) *SMST {
+func NewSparseMerkleSumTrie(
+	nodes kvstore.MapStore,
+	hasher hash.Hash,
+	options ...Option,
+) *SMST {
 	smt := &SMT{
 		TrieSpec: newTrieSpec(hasher, true),
 		nodes:    nodes,
@@ -36,7 +42,12 @@ func NewSparseMerkleSumTrie(nodes KVStore, hasher hash.Hash, options ...Option) 
 }
 
 // ImportSparseMerkleSumTrie returns a pointer to an SMST struct with the root hash provided
-func ImportSparseMerkleSumTrie(nodes KVStore, hasher hash.Hash, root []byte, options ...Option) *SMST {
+func ImportSparseMerkleSumTrie(
+	nodes kvstore.MapStore,
+	hasher hash.Hash,
+	root []byte,
+	options ...Option,
+) *SMST {
 	smst := NewSparseMerkleSumTrie(nodes, hasher, options...)
 	smst.trie = &lazyNode{root}
 	smst.savedRoot = root
@@ -48,7 +59,8 @@ func (smst *SMST) Spec() *TrieSpec {
 	return &smst.TrieSpec
 }
 
-// Get returns the digest of the value stored at the given key and the weight of the leaf node
+// Get returns the digest of the value stored at the given key and the weight
+// of the leaf node
 func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	valueHash, err := smst.SMT.Get(key)
 	if err != nil {

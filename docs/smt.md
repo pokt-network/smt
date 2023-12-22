@@ -24,6 +24,8 @@
   * [Compression](#compression)
   * [Serialisation](#serialisation)
 - [Database](#database)
+  * [Database Submodules](#database-submodules)
+    + [Badger](#badger)
   * [Data Loss](#data-loss)
 - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 - [Example](#example)
@@ -445,20 +447,31 @@ schemes.
 
 ## Database
 
-This library defines the `KVStore` interface which by default is implemented
-using [BadgerDB](https://github.com/dgraph-io/badger), however any database that
-implements this interface can be used as a drop in replacement. The `KVStore`
-allows for both in memory and persisted databases to be used to store the nodes
-for the SMT.
+By default this library provides a simple interface (`MapStore`) and a simple
+in-memory key-value database found in [`simplemap.go`](../kvstore/simplemap.go).
+However, any key-value store that implements this interface can be used as the
+node store to back the trie.
 
-When changes are committed to the underlying database using `Commit()` the
-digests of the leaf nodes are stored at their respective paths. If retrieved
-manually from the database the returned value will be the digest of the leaf
-node, **not** the leaf node's value, even when `WithValueHasher(nil)` is used.
-The node value can be parsed from this value, as the trie `Get` function does
-by removing the prefix and path bytes from the returned value.
+See: [`kvstore/simplemap.go`](../kvstore/simplemap.go) for the `MapStore`
+interface and simple key-value map implementation.
 
-See [kvstore.md](./kvstore.md) for the details of the implementation.
+### Database Submodules
+
+In addition to providing the `MapStore` and `SimpleMap` the `smt` library also
+provides wrappers around other key-value databases as submodules with more
+fully featured interfaces that can be used as outside of being a node store for
+the tries. These submodules can be found in the [`kvstore`](../kvstore/)
+directory.
+
+#### Badger
+
+This library defines the `BadgerStore` interface which is implemented as a
+wrapper around the [BadgerDB](https://github.com/dgraph-io/badger) v4 key-value
+database. It's interface exposes numerous extra methods not used by the trie,
+However it can still be used as a node-store with both in-memory and persistent
+options.
+
+See [badger-store.md](./badger-store.md.md) for the details of the implementation.
 
 ### Data Loss
 
@@ -482,15 +495,13 @@ import (
   "fmt"
 
   "github.com/pokt-network/smt"
+  "github.com/pokt-network/smt/kvstore"
 )
 
 func main() {
   // Initialise a new in-memory key-value store to store the nodes of the trie
   // (Note: the trie only stores hashed values, not raw value data)
-  nodeStore := smt.NewKVStore("")
-
-  // Ensure the database connection closes
-  defer nodeStore.Stop()
+  nodeStore := kvstore.NewSimpleMap()
 
   // Update the key "foo" with the value "bar"
   _ = trie.Update([]byte("foo"), []byte("bar"))

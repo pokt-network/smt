@@ -7,20 +7,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/smt/kvstore"
 )
 
 // Test base case Merkle proof operations.
 func TestSMT_Proof_Operations(t *testing.T) {
-	var smn, smv KVStore
+	var smn, smv kvstore.MapStore
 	var smt *SMTWithStorage
 	var proof *SparseMerkleProof
 	var result bool
 	var root []byte
 	var err error
 
-	smn, err = NewKVStore("")
+	smn = kvstore.NewSimpleMap()
 	require.NoError(t, err)
-	smv, err = NewKVStore("")
+	smv = kvstore.NewSimpleMap()
 	require.NoError(t, err)
 	smt = NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()
@@ -103,21 +105,16 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	result, err = VerifyProof(randomiseProof(proof), root, []byte("testKey3"), defaultValue, base)
 	require.NoError(t, err)
 	require.False(t, result)
-
-	require.NoError(t, smn.Stop())
-	require.NoError(t, smv.Stop())
 }
 
 // Test sanity check cases for non-compact proofs.
 func TestSMT_Proof_ValidateBasic(t *testing.T) {
-	smn, err := NewKVStore("")
-	require.NoError(t, err)
-	smv, err := NewKVStore("")
-	require.NoError(t, err)
+	smn := kvstore.NewSimpleMap()
+	smv := kvstore.NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()
 
-	err = smt.Update([]byte("testKey1"), []byte("testValue1"))
+	err := smt.Update([]byte("testKey1"), []byte("testValue1"))
 	require.NoError(t, err)
 	err = smt.Update([]byte("testKey2"), []byte("testValue2"))
 	require.NoError(t, err)
@@ -175,14 +172,10 @@ func TestSMT_Proof_ValidateBasic(t *testing.T) {
 	require.False(t, result)
 	_, err = CompactProof(proof, base)
 	require.Error(t, err)
-
-	require.NoError(t, smn.Stop())
-	require.NoError(t, smv.Stop())
 }
 
 func TestSMT_ClosestProof_ValidateBasic(t *testing.T) {
-	smn, err := NewKVStore("")
-	require.NoError(t, err)
+	smn := kvstore.NewSimpleMap()
 	smt := NewSparseMerkleTrie(smn, sha256.New())
 	np := NoPrehashSpec(sha256.New(), false)
 	base := smt.Spec()
@@ -255,14 +248,14 @@ func TestSMT_ClosestProof_ValidateBasic(t *testing.T) {
 // ProveClosest test against a visual representation of the trie
 // See: https://github.com/pokt-network/smt/assets/53987565/2c2ea530-a2e8-49d7-89c2-ca9c615b0c79
 func TestSMT_ProveClosest(t *testing.T) {
-	var smn KVStore
+	var smn kvstore.MapStore
 	var smt *SMT
 	var proof *SparseMerkleClosestProof
 	var result bool
 	var root []byte
 	var err error
 
-	smn, err = NewKVStore("")
+	smn = kvstore.NewSimpleMap()
 	require.NoError(t, err)
 	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 
@@ -316,17 +309,15 @@ func TestSMT_ProveClosest(t *testing.T) {
 	closestPath = sha256.Sum256([]byte("testKey4"))
 	require.Equal(t, closestPath[:], proof.ClosestPath)
 	require.Equal(t, []byte("testValue4"), proof.ClosestValueHash)
-
-	require.NoError(t, smn.Stop())
 }
 
 func TestSMT_ProveClosest_Empty(t *testing.T) {
-	var smn KVStore
+	var smn kvstore.MapStore
 	var smt *SMT
 	var proof *SparseMerkleClosestProof
 	var err error
 
-	smn, err = NewKVStore("")
+	smn = kvstore.NewSimpleMap()
 	require.NoError(t, err)
 	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 
@@ -347,18 +338,15 @@ func TestSMT_ProveClosest_Empty(t *testing.T) {
 	result, err := VerifyClosestProof(proof, smt.Root(), NoPrehashSpec(sha256.New(), false))
 	require.NoError(t, err)
 	require.True(t, result)
-
-	require.NoError(t, smn.Stop())
 }
 
 func TestSMT_ProveClosest_OneNode(t *testing.T) {
-	var smn KVStore
+	var smn kvstore.MapStore
 	var smt *SMT
 	var proof *SparseMerkleClosestProof
 	var err error
 
-	smn, err = NewKVStore("")
-	require.NoError(t, err)
+	smn = kvstore.NewSimpleMap()
 	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 	require.NoError(t, smt.Update([]byte("foo"), []byte("bar")))
 
@@ -382,12 +370,10 @@ func TestSMT_ProveClosest_OneNode(t *testing.T) {
 	result, err := VerifyClosestProof(proof, smt.Root(), NoPrehashSpec(sha256.New(), false))
 	require.NoError(t, err)
 	require.True(t, result)
-
-	require.NoError(t, smn.Stop())
 }
 
 func TestSMT_ProveClosest_Proof(t *testing.T) {
-	var smn KVStore
+	var smn kvstore.MapStore
 	var smt256 *SMT
 	var smt512 *SMT
 	var proof256 *SparseMerkleClosestProof
@@ -395,7 +381,7 @@ func TestSMT_ProveClosest_Proof(t *testing.T) {
 	var err error
 
 	// setup trie (256+512 path hasher) and nodestore
-	smn, err = NewKVStore("")
+	smn = kvstore.NewSimpleMap()
 	require.NoError(t, err)
 	smt256 = NewSparseMerkleTrie(smn, sha256.New())
 	smt512 = NewSparseMerkleTrie(smn, sha512.New())
@@ -416,6 +402,4 @@ func TestSMT_ProveClosest_Proof(t *testing.T) {
 		checkClosestCompactEquivalence(t, proof256, smt256.Spec())
 		checkClosestCompactEquivalence(t, proof512, smt512.Spec())
 	}
-
-	require.NoError(t, smn.Stop())
 }

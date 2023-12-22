@@ -41,7 +41,11 @@ go_docs: check_godoc ## Generate documentation for the project
 
 .PHONY: test_all
 test_all:  ## runs the test suite
-	go test -v -p 1 ./ -mod=readonly -race
+	go test -v -p 1 ./... -mod=readonly -race
+
+.PHONY: test_badger
+test_badger: ## runs the badger KVStore submodule's test suite
+	go test -v -p 1 ./kvstore/badger/... -mod=readonly -race
 
 #####################
 ###   Benchmark   ###

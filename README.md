@@ -40,6 +40,13 @@ To run all tests (excluding benchmarks) run the following command:
 make test_all
 ```
 
+To test the `badger` submodule that provides a more fully featured key-value
+store run the following command:
+
+```sh
+make test_badger
+```
+
 ## Benchmarks
 
 To run the full suite of benchmarks simply run the following command:

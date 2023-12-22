@@ -1,4 +1,4 @@
-# KVStore
+# BadgerStore
 
 <!-- toc -->
 
@@ -19,27 +19,30 @@
 
 ## Overview
 
-The `KVStore` interface is a key-value store that is used by the `SMT` and
-`SMST` as its underlying database for its nodes. However, it is an independent
-key-value store that can be used for any purpose.
+The `bagder` submodule provides a `BadgerStore` interface that can be used with
+the `SM(S)T` as both an in-memory and persistent DB backend for the trie. It also
+exposes numerous methods not needed by the `SM(S)T` for use as a general purpose
+key-value store.
+
+_NOTE: The `MapStore` interface used by the SM(S)T is implemented by the badger
+`BadgerStore` interface and can be used as the database for the trie. It's
+interface also has other features making it useful for uses outside of the
+SM(S)T itself._
 
 ## Implementation
 
-The `KVStore` is implemented in [`kvstore.go`](../kvstore.go) and is a wrapper
-around the [BadgerDB](https://github.com/dgraph-io/badger) key-value database.
+The `BadgerStore` is implemented in [`kvstore.go`](../kvstore/badger/kvstore.go)
+and is a wrapper around the [BadgerDB](https://github.com/dgraph-io/badger) v4
+key-value database.
 
 The interface defines simple key-value store accessor methods as well as other
 methods desired from a key-value database in general, this can be found in
-[`kvstore.go`](../kvstore.go).
-
-_NOTE: The `KVStore` interface can be implemented by any key-value store that
-satisfies the interface and used as the underlying database store for the
-`SM(S)T`_
+[`kvstore.go`](../kvstore/badger/interface.go).
 
 ### In-Memory and Persistent
 
-The `KVStore` implementation can be used as an in-memory or persistent key-value
-store. The `NewKVStore` function takes a `path` argument that can be used to
+The `BadgerStore` implementation can be used as an in-memory or persistent key-value
+store. The `NewBadgerStore` function takes a `path` argument that can be used to
 specify a path to a directory to store the database files. If the `path` is an
 empty string, the database will be stored in-memory.
 
@@ -48,25 +51,25 @@ and be writeable by the user running the application._
 
 ### Store methods
 
-As a key-value store the `KVStore` interface defines the simple `Get`, `Set` and
-`Delete` methods to access and modify the underlying database.
+As a key-value store the `BadgerStore` interface defines the simple `Get`, `Set`
+and `Delete` methods to access and modify the underlying database.
 
 ### Lifecycle Methods
 
-The `Stop` method **must** be called when the `KVStore` is no longer needed.
+The `Stop` method **must** be called when the `BadgerStore` is no longer needed.
 This method closes the underlying database and frees up any resources used by
-the `KVStore`.
+the `BadgerStore`.
 
 For persistent databases, the `Stop` method should be called when the
 application no longer needs to access the database. For in-memory databases, the
-`Stop` method should be called when the `KVStore` is no longer needed.
+`Stop` method should be called when the `BadgerStore` is no longer needed.
 
-_NOTE: A persistent `KVStore` that is not stopped will stop another `KVStore`
-from opening the database._
+_NOTE: A persistent `BadgerStore` that is not stopped will stop another
+`BadgerStore` from opening the database._
 
 ### Data Methods
 
-The `KVStore` interface provides two methods to allow backups and restorations.
+The `BadgerStore` interface provides two methods to allow backups and restorations.
 
 #### Backups
 
@@ -77,7 +80,7 @@ this purpose.
 
 When the `incremental` bool is `false` a full backup will be performed,
 otherwise an incremental backup will be performed. This is enabled by the
-`KVStore` keeping the timestamp of its last backup and only backing up data that
+`BadgerStore` keeping the timestamp of its last backup and only backing up data that
 has been modified since the last backup.
 
 #### Restorations
@@ -85,10 +88,10 @@ has been modified since the last backup.
 The `Restore` method takes an `io.Reader` and restores the database from this
 reader.
 
-The `KVStore` calling the `Restore` method is expected to be initialised and
+The `BadgerStore` calling the `Restore` method is expected to be initialised and
 open, otherwise the restore will fail.
 
-_NOTE: Any data contained in the `KVStore` when calling restore will be
+_NOTE: Any data contained in the `BadgerStore` when calling restore will be
 overwritten._
 
 ### Accessor Methods
@@ -102,8 +105,8 @@ The `GetAll` method supports the retrieval of all keys and values, where the key
 has a specific prefix. The `descending` bool indicates whether the keys should
 be returned in descending order or not.
 
-_NOTE: In order to retrieve all keys and values the empty prefix `[]byte{}`
-should be used to match all keys_
+_NOTE: In order to retrieve all keys and values the empty prefix `[]byte{}` or
+nil should be used to match all keys_
 
 #### Clear All Key-Value Pairs
 
