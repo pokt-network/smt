@@ -1,5 +1,3 @@
-//go:build benchmarks
-
 package smt
 
 import (
