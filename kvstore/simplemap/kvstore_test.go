@@ -330,32 +330,6 @@ func TestKVStore_ClearAll(t *testing.T) {
 	require.NoError(t, err)
 }
 
-/*
-func TestKVStore_BackupAndRestore(t *testing.T) {
-	store := New()
-	require.NotNil(t, store)
-
-	setupStore(t, store)
-
-	keys, values, err := store.GetAll([]byte{}, false)
-	require.NoError(t, err)
-
-	buf := bytes.NewBuffer(nil)
-	err = store.Backup(buf, false)
-	require.NoError(t, err)
-
-	require.NoError(t, store.ClearAll())
-	err = store.Restore(buf)
-	require.NoError(t, err)
-
-	newKeys, newValues, err := store.GetAll([]byte{}, false)
-	require.NoError(t, err)
-
-	require.Equal(t, keys, newKeys)
-	require.Equal(t, values, newValues)
-}
-*/
-
 func TestKVStore_Len(t *testing.T) {
 	store := New()
 	require.NotNil(t, store)
