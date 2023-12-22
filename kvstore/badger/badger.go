@@ -20,11 +20,15 @@ type badgerKVStore struct {
 	last_backup uint64 // timestamp of the most recent backup
 }
 
+// badgerToSMTErrorsMap maps badger errors to smt kvstore errors.
+// This is necessary to achieve a consistent error interface
+// across all kvstore implementations.
 var badgerToSMTErrorsMap = map[error]error{
 	badger.ErrKeyNotFound: kvstore.ErrKVStoreKeyNotFound,
 	badger.ErrEmptyKey:    kvstore.ErrKVStoreEmptyKey,
 }
 
+// badgerToKVStoreError converts a badger error to a kvstore error
 func badgerToKVStoreError(err error) error {
 	for badgerError, smtError := range badgerToSMTErrorsMap {
 		if errors.Is(err, badgerError) {

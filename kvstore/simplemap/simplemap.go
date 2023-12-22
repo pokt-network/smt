@@ -34,7 +34,7 @@ func New() *SimpleMap {
 	}
 }
 
-// Get gets the value for a key.
+// Get returns the value for a given key
 func (sm *SimpleMap) Get(key []byte) ([]byte, error) {
 	if len(key) == 0 {
 		return nil, kvstore.ErrKVStoreEmptyKey
@@ -47,12 +47,12 @@ func (sm *SimpleMap) Get(key []byte) ([]byte, error) {
 	return nil, kvstore.ErrKVStoreKeyNotFound
 }
 
-// mimics badger's exceedsSize function (why don't they have sentinel errors? :/)
+// exceedsSize mimics badger's exceedsSize function (why don't they have sentinel errors? :/)
 func exceedsSize(prefix string, max int64, key []byte) error {
 	return fmt.Errorf("%s with size %d exceeded %d limit. %s:\n%s", prefix, len(key), max, prefix, hex.Dump(key[:1<<10]))
 }
 
-// Set updates the value for a key.
+// Set sets/updates the value for a given key
 func (sm *SimpleMap) Set(key []byte, value []byte) error {
 	if len(key) == 0 {
 		return kvstore.ErrKVStoreEmptyKey
@@ -67,7 +67,7 @@ func (sm *SimpleMap) Set(key []byte, value []byte) error {
 	return nil
 }
 
-// Delete deletes a key.
+// Delete removes a key and its value from the store
 func (sm *SimpleMap) Delete(key []byte) error {
 	if len(key) == 0 {
 		return kvstore.ErrKVStoreEmptyKey
@@ -87,18 +87,26 @@ func (sm *SimpleMap) Delete(key []byte) error {
 	return nil
 }
 
+// Stop does nothing in SimpleMap.
+// It is here to satisfy the KVStore interface.
 func (sm *SimpleMap) Stop() error {
 	return nil
 }
 
+// Backup is not implemented in SimpleMap.
+// It is here to satisfy the KVStore interface.
 func (sm *SimpleMap) Backup(writer io.Writer, incremental bool) error {
 	return fmt.Errorf("backup functionality is not implemented in %T", sm)
 }
 
+// Restore is not implemented in SimpleMap.
+// It is here to satisfy the KVStore interface.
 func (sm *SimpleMap) Restore(io.Reader) error {
 	return fmt.Errorf("restore functionality is not implemented in %T", sm)
 }
 
+// GetAll returns all keys and values with the given prefix in the specified order
+// if the prefix []byte{} is given then all key-value pairs are returned
 func (sm *SimpleMap) GetAll(prefixKey []byte, descending bool) (keys, values [][]byte, err error) {
 	matchingKeys := make([]string, 0)
 
@@ -126,6 +134,7 @@ func (sm *SimpleMap) GetAll(prefixKey []byte, descending bool) (keys, values [][
 	return keys, values, nil
 }
 
+// Exists checks whether the key exists in the store
 func (sm *SimpleMap) Exists(key []byte) (bool, error) {
 	if len(key) == 0 {
 		return false, kvstore.ErrKVStoreEmptyKey
@@ -138,11 +147,13 @@ func (sm *SimpleMap) Exists(key []byte) (bool, error) {
 	return exists && value != nil, nil
 }
 
+// ClearAll deletes all key-value pairs in the store
 func (sm *SimpleMap) ClearAll() error {
 	sm.m = make(map[string][]byte)
 	return nil
 }
 
+// Len gives the number of keys in the store
 func (sm *SimpleMap) Len() int {
 	return len(sm.m)
 }
