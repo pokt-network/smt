@@ -382,8 +382,8 @@ This method guarantees a proof of inclusion in all cases and can be verified by
 using the `VerifyClosestProof` function which requires the proof and root hash
 of the trie.
 
-As the `ClosestProof` method takes a hash as input it is possible to place a
-leaf in the trie according to the hash's path if it is known. Depending on
+Since the `ClosestProof` method takes a hash as input, it is possible to place a
+leaf in the trie according to the hash's path, if it is known. Depending on
 the use case of this function this may expose a vulnerability. _It is not
 intendend to be used as a general purpose proof mechanism_. Given two parties:
 the prover and the verifier, the verifier should supply the prover with a hash
