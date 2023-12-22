@@ -4,26 +4,26 @@
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  - [Inner Nodes](#inner-nodes)
-  - [Extension Nodes](#extension-nodes)
-  - [Leaf Nodes](#leaf-nodes)
-  - [Lazy Nodes](#lazy-nodes)
-  - [Lazy Loading](#lazy-loading)
-  - [Visualisations](#visualisations)
-    - [General Trie Structure](#general-trie-structure)
-    - [Lazy Nodes](#lazy-nodes-1)
+  * [Inner Nodes](#inner-nodes)
+  * [Extension Nodes](#extension-nodes)
+  * [Leaf Nodes](#leaf-nodes)
+  * [Lazy Nodes](#lazy-nodes)
+  * [Lazy Loading](#lazy-loading)
+  * [Visualisations](#visualisations)
+    + [General Trie Structure](#general-trie-structure)
+    + [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
-  - [Visualisation](#visualisation)
+  * [Visualisation](#visualisation)
 - [Values](#values)
-  - [Nil values](#nil-values)
+  * [Nil values](#nil-values)
 - [Hashers & Digests](#hashers--digests)
 - [Proofs](#proofs)
-  - [Verification](#verification)
-  - [Closest Proof](#closest-proof)
-  - [Compression](#compression)
-  - [Serialisation](#serialisation)
+  * [Verification](#verification)
+  * [Closest Proof](#closest-proof)
+  * [Compression](#compression)
+  * [Serialisation](#serialisation)
 - [Database](#database)
-  - [Data Loss](#data-loss)
+  * [Data Loss](#data-loss)
 - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 - [Example](#example)
 
@@ -378,9 +378,15 @@ This backstepping process allows the traversal to continue until it reaches a
 sentinel leaf that has the longest common prefix and most bits in common with
 the provided hash, up to the depth of the leaf found.
 
-This method guarentees a proof of inclusion in all cases and can be verified by
+This method guarantees a proof of inclusion in all cases and can be verified by
 using the `VerifyClosestProof` function which requires the proof and root hash
 of the trie.
+
+NB: If the hash provided to the `ClosestProof` function is known prior to the
+tree being filled and closed there is the possibility of placing a leaf where
+the hash will lead. If used **as intended** the hash provided should **not** be
+known prior to calling the method and the tree should not be updateable after
+the fact.
 
 ### Compression
 
