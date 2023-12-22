@@ -13,15 +13,6 @@ var _ kvstore.KVStore = &SimpleMap{}
 
 const maxKeySize = 65000
 
-// InvalidKeyError is thrown when a key that does not exist is being accessed.
-type InvalidKeyError struct {
-	Key []byte
-}
-
-func (e *InvalidKeyError) Error() string {
-	return fmt.Sprintf("invalid key: %x", e.Key)
-}
-
 // SimpleMap is a simple in-memory map.
 type SimpleMap struct {
 	m map[string][]byte
