@@ -1,0 +1,9 @@
+# Only post coverage comments and not pass/fail reports in the CI checks
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
