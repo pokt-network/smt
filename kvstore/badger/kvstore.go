@@ -2,10 +2,9 @@ package badger
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
-	badger "github.com/dgraph-io/badger/v4"
+	v4 "github.com/dgraph-io/badger/v4"
 )
 
 const (
@@ -14,43 +13,42 @@ const (
 
 var _ KVStore = &badgerKVStore{}
 
-var (
-	ErrKVStoreExists    = errors.New("kvstore already exists")
-	ErrKVStoreNotExists = errors.New("kvstore does not exist")
-)
-
 type badgerKVStore struct {
-	db          *badger.DB
-	last_backup uint64 // timestamp of the most recent backup
+	db         *v4.DB
+	lastBackup uint64 // timestamp of the most recent backup
 }
 
 // NewKVStore creates a new KVStore using badger as the underlying database
-// if no path for a peristence database is provided it will create one in-memory
+// if no path for a persistence database is provided it will create one in-memory
 func NewKVStore(path string) (KVStore, error) {
-	var db *badger.DB
+	var db *v4.DB
 	var err error
 	if path == "" {
-		db, err = badger.Open(badgerOptions("").WithInMemory(true))
+		db, err = v4.Open(badgerOptions("").WithInMemory(true))
 	} else {
-		db, err = badger.Open(badgerOptions(path))
+		db, err = v4.Open(badgerOptions(path))
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrBadgerOpeningStore, err)
 	}
 	return &badgerKVStore{db: db}, nil
 }
 
 // Set sets/updates the value for a given key
 func (store *badgerKVStore) Set(key, value []byte) error {
-	return store.db.Update(func(tx *badger.Txn) error {
+	err := store.db.Update(func(tx *v4.Txn) error {
 		return tx.Set(key, value)
 	})
+	if err != nil {
+		return errors.Join(ErrBadgerUnableToSetValue, err)
+	}
+	return nil
 }
 
 // Get returns the value for a given key
 func (store *badgerKVStore) Get(key []byte) ([]byte, error) {
 	var val []byte
-	if err := store.db.View(func(tx *badger.Txn) error {
+	if err := store.db.View(func(tx *v4.Txn) error {
 		item, err := tx.Get(key)
 		if err != nil {
 			return err
@@ -61,23 +59,27 @@ func (store *badgerKVStore) Get(key []byte) ([]byte, error) {
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, errors.Join(ErrBadgerUnableToGetValue, err)
 	}
 	return val, nil
 }
 
 // Delete removes a key and its value from the store
 func (store *badgerKVStore) Delete(key []byte) error {
-	return store.db.Update(func(tx *badger.Txn) error {
+	err := store.db.Update(func(tx *v4.Txn) error {
 		return tx.Delete(key)
 	})
+	if err != nil {
+		return errors.Join(ErrBadgerUnableToDeleteValue, err)
+	}
+	return nil
 }
 
 // GetAll returns all keys and values with the given prefix in the specified order
 // if the prefix []byte{} is given then all key-value pairs are returned
 func (store *badgerKVStore) GetAll(prefix []byte, descending bool) (keys, values [][]byte, err error) {
-	if err := store.db.View(func(tx *badger.Txn) error {
-		opt := badger.DefaultIteratorOptions
+	if err := store.db.View(func(tx *v4.Txn) error {
+		opt := v4.DefaultIteratorOptions
 		opt.Prefix = prefix
 		opt.Reverse = descending
 		if descending {
@@ -102,7 +104,7 @@ func (store *badgerKVStore) GetAll(prefix []byte, descending bool) (keys, values
 		}
 		return nil
 	}); err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(ErrBadgerIteratingStore, err)
 	}
 	return keys, values, nil
 }
@@ -118,7 +120,10 @@ func (store *badgerKVStore) Exists(key []byte) (bool, error) {
 
 // ClearAll deletes all key-value pairs in the store
 func (store *badgerKVStore) ClearAll() error {
-	return store.db.DropAll()
+	if err := store.db.DropAll(); err != nil {
+		return errors.Join(ErrBadgerClearingStore, err)
+	}
+	return nil
 }
 
 // Backup creates a full backup of the store written to the provided writer
@@ -126,32 +131,38 @@ func (store *badgerKVStore) ClearAll() error {
 func (store *badgerKVStore) Backup(w io.Writer, incremental bool) error {
 	version := uint64(0)
 	if incremental {
-		version = store.last_backup
+		version = store.lastBackup
 	}
 	timestamp, err := store.db.Backup(w, version)
 	if err != nil {
-		return err
+		return errors.Join(ErrBadgerUnableToBackup, err)
 	}
-	store.last_backup = timestamp
+	store.lastBackup = timestamp
 	return nil
 }
 
 // Restore loads the store from a backup in the reader provided
 // NOTE: Do not call on a database that is running other concurrent transactions
 func (store *badgerKVStore) Restore(r io.Reader) error {
-	return store.db.Load(r, maxPendingWrites)
+	if err := store.db.Load(r, maxPendingWrites); err != nil {
+		return errors.Join(ErrBadgerUnableToRestore, err)
+	}
+	return nil
 }
 
 // Stop closes the database connection, disabling any access to the store
 func (store *badgerKVStore) Stop() error {
-	return store.db.Close()
+	if err := store.db.Close(); err != nil {
+		return errors.Join(ErrBadgerClosingStore, err)
+	}
+	return nil
 }
 
 // Len gives the number of keys in the store
 func (store *badgerKVStore) Len() int {
 	count := 0
-	if err := store.db.View(func(tx *badger.Txn) error {
-		opt := badger.DefaultIteratorOptions
+	if err := store.db.View(func(tx *v4.Txn) error {
+		opt := v4.DefaultIteratorOptions
 		opt.Prefix = []byte{}
 		opt.Reverse = false
 		it := tx.NewIterator(opt)
@@ -161,7 +172,7 @@ func (store *badgerKVStore) Len() int {
 		}
 		return nil
 	}); err != nil {
-		panic(fmt.Sprintf("error getting key count: %v", err))
+		panic(errors.Join(ErrBadgerGettingStoreLength, err))
 	}
 	return count
 }
@@ -182,8 +193,8 @@ func prefixEndBytes(prefix []byte) []byte {
 }
 
 // badgerOptions returns the badger options for the store being created
-func badgerOptions(path string) badger.Options {
-	opts := badger.DefaultOptions(path)
+func badgerOptions(path string) v4.Options {
+	opts := v4.DefaultOptions(path)
 	opts.Logger = nil // disable badger's logger since it's very noisy
 	return opts
 }
