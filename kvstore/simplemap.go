@@ -15,20 +15,20 @@ type MapStore interface {
 	ClearAll() error
 }
 
-// SimpleMap is a simple in-memory map.
-type SimpleMap struct {
+// simpleMap is a simple in-memory map.
+type simpleMap struct {
 	m map[string][]byte
 }
 
 // NewSimpleMap creates a new SimpleMap instance.
 func NewSimpleMap() MapStore {
-	return &SimpleMap{
+	return &simpleMap{
 		m: make(map[string][]byte),
 	}
 }
 
 // Get gets the value for a key.
-func (sm *SimpleMap) Get(key []byte) ([]byte, error) {
+func (sm *simpleMap) Get(key []byte) ([]byte, error) {
 	if len(key) == 0 {
 		return nil, ErrKVStoreEmptyKey
 	}
@@ -41,7 +41,7 @@ func (sm *SimpleMap) Get(key []byte) ([]byte, error) {
 }
 
 // Set updates the value for a key.
-func (sm *SimpleMap) Set(key []byte, value []byte) error {
+func (sm *simpleMap) Set(key []byte, value []byte) error {
 	if len(key) == 0 {
 		return ErrKVStoreEmptyKey
 	}
@@ -50,7 +50,7 @@ func (sm *SimpleMap) Set(key []byte, value []byte) error {
 }
 
 // Delete deletes a key.
-func (sm *SimpleMap) Delete(key []byte) error {
+func (sm *simpleMap) Delete(key []byte) error {
 	if len(key) == 0 {
 		return ErrKVStoreEmptyKey
 	}
@@ -63,13 +63,13 @@ func (sm *SimpleMap) Delete(key []byte) error {
 }
 
 // Len returns the number of key-value pairs in the store.
-func (sm *SimpleMap) Len() int {
+func (sm *simpleMap) Len() int {
 	return len(sm.m)
 }
 
 // ClearAll clears all key-value pairs
 // NB: This should only be used for testing purposes.
-func (sm *SimpleMap) ClearAll() error {
+func (sm *simpleMap) ClearAll() error {
 	sm.m = make(map[string][]byte)
 	return nil
 }
