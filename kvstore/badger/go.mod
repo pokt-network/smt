@@ -1,6 +1,6 @@
 module github.com/pokt-network/smt/badger
 
-go 1.21.5
+go 1.20
 
 require (
 	github.com/dgraph-io/badger/v4 v4.2.0

@@ -1,6 +1,6 @@
 module github.com/pokt-network/smt
 
-go 1.21.5
+go 1.20
 
 require github.com/stretchr/testify v1.7.1
 
