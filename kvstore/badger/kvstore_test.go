@@ -2,12 +2,9 @@ package badger_test
 
 import (
 	"bytes"
-	"encoding/hex"
-	"fmt"
 	"strings"
 	"testing"
 
-	v4 "github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt/badger"
@@ -49,7 +46,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			key:         nil,
 			value:       []byte("bar"),
 			fail:        true,
-			expectedErr: v4.ErrEmptyKey,
+			expectedErr: badger.ErrBadgerUnableToSetValue,
 		},
 		{
 			desc:        "Fails to set a value to a key that is too large",
@@ -57,7 +54,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			key:         invalidKey[:],
 			value:       []byte("bar"),
 			fail:        true,
-			expectedErr: fmt.Errorf("Key with size 65001 exceeded 65000 limit. Key:\n%s", hex.Dump(invalidKey[:1<<10])),
+			expectedErr: badger.ErrBadgerUnableToSetValue,
 		},
 		{
 			desc:        "Successfully retrieve a value from the store",
@@ -73,7 +70,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			key:         []byte("bar"),
 			value:       nil,
 			fail:        true,
-			expectedErr: v4.ErrKeyNotFound,
+			expectedErr: badger.ErrBadgerUnableToGetValue,
 		},
 		{
 			desc:        "Fails when the key is empty",
@@ -81,7 +78,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			key:         nil,
 			value:       nil,
 			fail:        true,
-			expectedErr: v4.ErrEmptyKey,
+			expectedErr: badger.ErrBadgerUnableToGetValue,
 		},
 		{
 			desc:        "Successfully deletes a value in the store",
@@ -100,20 +97,20 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			desc:        "Fails to set value to nil key",
+			desc:        "Fails to delete a nil key",
 			op:          "delete",
 			key:         nil,
 			value:       nil,
 			fail:        true,
-			expectedErr: v4.ErrEmptyKey,
+			expectedErr: badger.ErrBadgerUnableToDeleteValue,
 		},
 		{
-			desc:        "Fails to set a value to a key that is too large",
+			desc:        "Fails to delete a value for a key that is too large",
 			op:          "delete",
 			key:         invalidKey[:],
 			value:       nil,
 			fail:        true,
-			expectedErr: fmt.Errorf("Key with size 65001 exceeded 65000 limit. Key:\n%s", hex.Dump(invalidKey[:1<<10])),
+			expectedErr: badger.ErrBadgerUnableToDeleteValue,
 		},
 	}
 
@@ -127,7 +124,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 				err := store.Set(tc.key, tc.value)
 				if tc.fail {
 					require.Error(t, err)
-					require.EqualError(t, tc.expectedErr, err.Error())
+					require.ErrorIs(t, err, tc.expectedErr)
 				} else {
 					require.NoError(t, err)
 					got, err := store.Get(tc.key)
@@ -138,7 +135,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 				got, err := store.Get(tc.key)
 				if tc.fail {
 					require.Error(t, err)
-					require.EqualError(t, tc.expectedErr, err.Error())
+					require.ErrorIs(t, err, tc.expectedErr)
 				} else {
 					require.NoError(t, err)
 					require.Equal(t, tc.value, got)
@@ -147,11 +144,11 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 				err := store.Delete(tc.key)
 				if tc.fail {
 					require.Error(t, err)
-					require.EqualError(t, tc.expectedErr, err.Error())
+					require.ErrorIs(t, err, tc.expectedErr)
 				} else {
 					require.NoError(t, err)
 					_, err := store.Get(tc.key)
-					require.EqualError(t, err, v4.ErrKeyNotFound.Error())
+					require.ErrorIs(t, err, badger.ErrBadgerUnableToGetValue)
 				}
 			}
 		})
@@ -283,7 +280,7 @@ func TestBadger_KVStore_Exists(t *testing.T) {
 
 	// Key does not exist
 	exists, err = store.Exists([]byte("oof"))
-	require.EqualError(t, err, v4.ErrKeyNotFound.Error())
+	require.ErrorIs(t, err, badger.ErrBadgerUnableToGetValue)
 	require.False(t, exists)
 
 	err = store.Stop()
