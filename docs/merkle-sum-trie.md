@@ -4,11 +4,11 @@
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  - [Sum Encoding](#sum-encoding)
-  - [Digests](#digests)
-  - [Visualisations](#visualisations)
-    - [General Trie Structure](#general-trie-structure)
-    - [Binary Sum Digests](#binary-sum-digests)
+  * [Sum Encoding](#sum-encoding)
+  * [Digests](#digests)
+  * [Visualisations](#visualisations)
+    + [General Trie Structure](#general-trie-structure)
+    + [Binary Sum Digests](#binary-sum-digests)
 - [Sum](#sum)
 - [Nil Values](#nil-values)
 - [Example](#example)
@@ -47,7 +47,7 @@ In practice the SMST is a wrapper around the SMT with a new field added to the
 `TrieSpec`: `sumTrie bool` this determines whether the SMT should follow its
 regular encoding of that of the sum trie.
 
-See: the [SMT documentation](./SMT.md) for the details on how the SMT works.
+See: the [SMT documentation](./smt.md) for the details on how the SMT works.
 
 The majority of the code relating to the SMST can be found in:
 
