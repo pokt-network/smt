@@ -72,7 +72,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				require.Equal(t, originalRoot, newRoot, "root changed while getting")
 			case Update:
 				value := make([]byte, 32)
-				binary.LittleEndian.PutUint64(value, uint64(i))
+				binary.BigEndian.PutUint64(value, uint64(i))
 				err := trie.Update(key(), value)
 				require.NoErrorf(t, err, "unknown error occured while updating")
 				newRoot := trie.Root()
@@ -93,6 +93,8 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				}
 				newRoot := trie.Root()
 				require.Equal(t, originalRoot, newRoot, "root changed while proving")
+			default:
+				panic("unknown operation")
 			}
 
 			newRoot := trie.Root()

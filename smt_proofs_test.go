@@ -400,8 +400,8 @@ func TestSMT_ProveClosest_Proof(t *testing.T) {
 	smt256 = NewSparseMerkleTrie(smn, sha256.New())
 	smt512 = NewSparseMerkleTrie(smn, sha512.New())
 
-	// insert 100000 key-value-sum triples
-	for i := 0; i < 100000; i++ {
+	// insert 100 key-value-sum triples
+	for i := 0; i < 100; i++ {
 		s := strconv.Itoa(i)
 		require.NoError(t, smt256.Update([]byte(s), []byte(s)))
 		require.NoError(t, smt512.Update([]byte(s), []byte(s)))

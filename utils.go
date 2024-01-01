@@ -103,7 +103,7 @@ func minBytes(i int) int {
 // intToBytes converts an int to a byte slice
 func intToBytes(i int) []byte {
 	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(i))
+	binary.BigEndian.PutUint64(b, uint64(i))
 	d := minBytes(i)
 	return b[8-d:]
 }
@@ -113,7 +113,7 @@ func bytesToInt(bz []byte) int {
 	b := make([]byte, 8) // allocate space for a 64-bit unsigned integer
 	d := 8 - len(bz)     // determine how much padding is necessary
 	copy(b[d:], bz)      // copy over the non-zero bytes
-	u := binary.LittleEndian.Uint64(b)
+	u := binary.BigEndian.Uint64(b)
 	return int(u)
 }
 

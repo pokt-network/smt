@@ -285,7 +285,7 @@ func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TrieSp
 // VerifySumProof verifies a Merkle proof for a sum trie.
 func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
 	var sumBz [sumSize]byte
-	binary.LittleEndian.PutUint64(sumBz[:], sum)
+	binary.BigEndian.PutUint64(sumBz[:], sum)
 	valueHash := spec.digestValue(value)
 	valueHash = append(valueHash, sumBz[:]...)
 	if bytes.Equal(value, defaultValue) && sum == 0 {
@@ -318,7 +318,7 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, spec)
 	}
 	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSize:]
-	sum := binary.LittleEndian.Uint64(sumBz)
+	sum := binary.BigEndian.Uint64(sumBz)
 	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSize]
 	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, spec)
 }

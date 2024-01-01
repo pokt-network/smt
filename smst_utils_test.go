@@ -23,7 +23,7 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	}
 	valueHash := smst.digestValue(value)
 	var sumBz [sumSize]byte
-	binary.LittleEndian.PutUint64(sumBz[:], sum)
+	binary.BigEndian.PutUint64(sumBz[:], sum)
 	value = append(value, sumBz[:]...)
 	return smst.preimages.Set(valueHash, value)
 }
@@ -54,7 +54,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	}
 	var sumBz [sumSize]byte
 	copy(sumBz[:], value[len(value)-sumSize:])
-	storedSum := binary.LittleEndian.Uint64(sumBz[:])
+	storedSum := binary.BigEndian.Uint64(sumBz[:])
 	if storedSum != sum {
 		return nil, 0, fmt.Errorf("sum mismatch for %s: got %d, expected %d", string(key), storedSum, sum)
 	}
@@ -65,13 +65,4 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 func (smst *SMSTWithStorage) Has(key []byte) (bool, error) {
 	val, sum, err := smst.GetValueSum(key)
 	return !bytes.Equal(defaultValue, val) || sum != 0, err
-}
-
-// ProveSumCompact generates a compacted Merkle proof for a key against the current root.
-func ProveSumCompact(key []byte, smst SparseMerkleSumTrie) (*SparseCompactMerkleProof, error) {
-	proof, err := smst.Prove(key)
-	if err != nil {
-		return nil, err
-	}
-	return CompactProof(proof, smst.Spec())
 }
