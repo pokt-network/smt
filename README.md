@@ -287,5 +287,5 @@ make benchmark_proof_sizes
 | 5,000,000      | 1166                                  | 975         | 2123        | 1169                                            | 1018        | 1388        |
 | 10,000,000     | 1207                                  | 1026        | 2123        | 1210                                            | 1059        | 1429        |
 
-[jmt whitepaper]: https://developers.diem.com/papers/jellyfish-merkle-trie/2021-01-14.pdf
+[jmt whitepaper]: https://developers.diem.com/papers/jellyfish-merkle-tree/2021-01-14.pdf
 [libra whitepaper]: https://diem-developers-components.netlify.app/papers/the-diem-blockchain/2020-05-26.pdf
