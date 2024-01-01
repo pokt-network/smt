@@ -101,7 +101,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 
 	// Try proving a default value for a non-default leaf.
 	var sum [sumSize]byte
-	binary.BigEndian.PutUint64(sum[:], 5)
+	binary.LittleEndian.PutUint64(sum[:], 5)
 	tval := base.digestValue([]byte("testValue"))
 	tval = append(tval, sum[:]...)
 	_, leafData := base.th.digestSumLeaf(base.ph.Path([]byte("testKey2")), tval)
@@ -321,7 +321,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	require.NotEqual(t, proof, &SparseMerkleClosestProof{})
 	closestPath := sha256.Sum256([]byte("testKey2"))
 	closestValueHash := []byte("testValue2")
-	binary.BigEndian.PutUint64(sumBz[:], 24)
+	binary.LittleEndian.PutUint64(sumBz[:], 24)
 	closestValueHash = append(closestValueHash, sumBz[:]...)
 	require.Equal(t, proof, &SparseMerkleClosestProof{
 		Path:             path[:],
@@ -347,7 +347,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	require.NotEqual(t, proof, &SparseMerkleClosestProof{})
 	closestPath = sha256.Sum256([]byte("testKey4"))
 	closestValueHash = []byte("testValue4")
-	binary.BigEndian.PutUint64(sumBz[:], 30)
+	binary.LittleEndian.PutUint64(sumBz[:], 30)
 	closestValueHash = append(closestValueHash, sumBz[:]...)
 	require.Equal(t, proof, &SparseMerkleClosestProof{
 		Path:             path2[:],
@@ -418,7 +418,7 @@ func TestSMST_ProveClosest_OneNode(t *testing.T) {
 	closestPath := sha256.Sum256([]byte("foo"))
 	closestValueHash := []byte("bar")
 	var sumBz [sumSize]byte
-	binary.BigEndian.PutUint64(sumBz[:], 5)
+	binary.LittleEndian.PutUint64(sumBz[:], 5)
 	closestValueHash = append(closestValueHash, sumBz[:]...)
 	require.Equal(t, proof, &SparseMerkleClosestProof{
 		Path:             path[:],

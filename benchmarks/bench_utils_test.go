@@ -30,24 +30,24 @@ var (
 
 	updSMST = func(s *smt.SMST, i uint64) error {
 		b := make([]byte, 8)
-		binary.BigEndian.PutUint64(b, i)
+		binary.LittleEndian.PutUint64(b, i)
 		return s.Update(b, b, i)
 	}
 	getSMST = func(s *smt.SMST, i uint64) error {
 		b := make([]byte, 8)
-		binary.BigEndian.PutUint64(b, i)
+		binary.LittleEndian.PutUint64(b, i)
 		_, _, err := s.Get(b)
 		return err
 	}
 	proSMST = func(s *smt.SMST, i uint64) error {
 		b := make([]byte, 8)
-		binary.BigEndian.PutUint64(b, i)
+		binary.LittleEndian.PutUint64(b, i)
 		_, err := s.Prove(b)
 		return err
 	}
 	delSMST = func(s *smt.SMST, i uint64) error {
 		b := make([]byte, 8)
-		binary.BigEndian.PutUint64(b, i)
+		binary.LittleEndian.PutUint64(b, i)
 		return s.Delete(b)
 	}
 )
