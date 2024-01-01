@@ -193,13 +193,9 @@ func randomiseSumProof(proof *SparseMerkleProof) *SparseMerkleProof {
 func checkCompactEquivalence(t *testing.T, proof *SparseMerkleProof, base *TrieSpec) {
 	t.Helper()
 	compactedProof, err := CompactProof(proof, base)
-	if err != nil {
-		t.Fatalf("failed to compact proof: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to compact proof: %v", err)
 	decompactedProof, err := DecompactProof(compactedProof, base)
-	if err != nil {
-		t.Fatalf("failed to decompact proof: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to decompact proof: %v", err)
 	require.Equal(t, proof, decompactedProof)
 }
 
@@ -207,12 +203,8 @@ func checkCompactEquivalence(t *testing.T, proof *SparseMerkleProof, base *TrieS
 func checkClosestCompactEquivalence(t *testing.T, proof *SparseMerkleClosestProof, spec *TrieSpec) {
 	t.Helper()
 	compactedProof, err := CompactClosestProof(proof, spec)
-	if err != nil {
-		t.Fatalf("failed to compact proof: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to compact proof: %v", err)
 	decompactedProof, err := DecompactClosestProof(compactedProof, spec)
-	if err != nil {
-		t.Fatalf("failed to decompact proof: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to decompact proof: %v", err)
 	require.Equal(t, proof, decompactedProof)
 }
