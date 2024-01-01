@@ -167,12 +167,12 @@ func encodeSumInner(leftData []byte, rightData []byte) []byte {
 	leftSumBz := leftData[len(leftData)-sumSize:]
 	rightSumBz := rightData[len(rightData)-sumSize:]
 	if !bytes.Equal(leftSumBz, defaultSum[:]) {
-		leftSum = binary.LittleEndian.Uint64(leftSumBz)
+		leftSum = binary.BigEndian.Uint64(leftSumBz)
 	}
 	if !bytes.Equal(rightSumBz, defaultSum[:]) {
-		rightSum = binary.LittleEndian.Uint64(rightSumBz)
+		rightSum = binary.BigEndian.Uint64(rightSumBz)
 	}
-	binary.LittleEndian.PutUint64(sum[:], leftSum+rightSum)
+	binary.BigEndian.PutUint64(sum[:], leftSum+rightSum)
 	value = append(value, sum[:]...)
 	return value
 }

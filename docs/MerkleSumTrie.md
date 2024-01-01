@@ -61,7 +61,7 @@ The majority of the code relating to the SMST can be found in:
 The sum for any node is encoded in a byte array with a fixed size (`[8]byte`)
 this allows for the sum to fully represent a `uint64` value in binary form.
 The golang `encoding/binary` package is used to encode the sum with
-`binary.LittleEndian.PutUint64(sumBz[:], sum)` into a byte array `sumBz`.
+`binary.BigEndian.PutUint64(sumBz[:], sum)` into a byte array `sumBz`.
 
 In order for the SMST to include the sum into a leaf node the SMT the SMST
 initialises the SMT with the `WithValueHasher(nil)` option so that the SMT does

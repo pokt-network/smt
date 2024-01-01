@@ -43,7 +43,7 @@ func TestSMT_ProofSizes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
-				binary.LittleEndian.PutUint64(b, uint64(i))
+				binary.BigEndian.PutUint64(b, uint64(i))
 				require.NoError(t, trie.Update(b, b))
 			}
 			require.NoError(t, trie.Commit())
@@ -55,7 +55,7 @@ func TestSMT_ProofSizes(t *testing.T) {
 			minCompact := uint64(0)
 			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
-				binary.LittleEndian.PutUint64(b, uint64(i))
+				binary.BigEndian.PutUint64(b, uint64(i))
 				proof, err := trie.Prove(b)
 				require.NoError(t, err)
 				require.NotNil(t, proof)
@@ -132,7 +132,7 @@ func TestSMST_ProofSizes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
-				binary.LittleEndian.PutUint64(b, uint64(i))
+				binary.BigEndian.PutUint64(b, uint64(i))
 				require.NoError(t, trie.Update(b, b, uint64(i)))
 			}
 			require.NoError(t, trie.Commit())
@@ -144,7 +144,7 @@ func TestSMST_ProofSizes(t *testing.T) {
 			minCompact := uint64(0)
 			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
-				binary.LittleEndian.PutUint64(b, uint64(i))
+				binary.BigEndian.PutUint64(b, uint64(i))
 				proof, err := trie.Prove(b)
 				require.NoError(t, err)
 				require.NotNil(t, proof)

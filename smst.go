@@ -59,7 +59,7 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	}
 	var weightBz [sumSize]byte
 	copy(weightBz[:], valueHash[len(valueHash)-sumSize:])
-	weight := binary.LittleEndian.Uint64(weightBz[:])
+	weight := binary.BigEndian.Uint64(weightBz[:])
 	return valueHash[:len(valueHash)-sumSize], weight, nil
 }
 
@@ -69,7 +69,7 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 func (smst *SMST) Update(key, value []byte, weight uint64) error {
 	valueHash := smst.digestValue(value)
 	var weightBz [sumSize]byte
-	binary.LittleEndian.PutUint64(weightBz[:], weight)
+	binary.BigEndian.PutUint64(weightBz[:], weight)
 	valueHash = append(valueHash, weightBz[:]...)
 	return smst.SMT.Update(key, valueHash)
 }
@@ -109,5 +109,5 @@ func (smst *SMST) Sum() uint64 {
 	var sumBz [sumSize]byte
 	digest := smst.Root()
 	copy(sumBz[:], digest[len(digest)-sumSize:])
-	return binary.LittleEndian.Uint64(sumBz[:])
+	return binary.BigEndian.Uint64(sumBz[:])
 }
