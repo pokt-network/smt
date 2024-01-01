@@ -1,1 +1,5 @@
+# macos files
 .DS_Store
+
+# goland
+.idea/
