@@ -16,7 +16,7 @@
 
 <!-- tocstop -->
 
-**NOTE: Requires Go 1.20.12**
+**NOTE: Requires Go 1.20.12+**
 
 ## Overview
 
