@@ -472,7 +472,7 @@ the [`kvstore`](../kvstore/) directory.
 This library defines the `SimpleMap` interface which is implemented as an
 extremely simple in-memory key-value store.
 
-Although it is is a submodule, it is ideal for simple, testing or non-production
+Although it is a submodule, it is ideal for simple, testing or non-production
 use cases. It is used in the tests throughout the library.
 
 See [simplemap.go](../kvstore/simplemap/simplemap.go) for the implementation
