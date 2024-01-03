@@ -40,11 +40,21 @@ go_docs: check_godoc ## Generate documentation for the project
 .PHONY: test_all
 test_all:  ## runs the test suite
 	go test -v -p 1 ./ -mod=readonly -race
-	go test -v -p 1 ./kvstore/... -race
+	go test -v -p 1 ./kvstore/*/... -race
 
 .PHONY: test_badger
 test_badger: ## runs the badger KVStore submodule's test suite
 	go test -v -p 1 ./kvstore/badger/... -mod=readonly -race
+
+
+#####################
+###    go mod     ###
+#####################
+.PHONY: mod_tidy
+mod_tidy:  ## runs go mod tidy for all (sub)modules
+	go mod tidy
+	cd kvstore/simplemap && go mod tidy
+	cd kvstore/badger && go mod tidy
 
 #####################
 ###   Benchmark   ###
