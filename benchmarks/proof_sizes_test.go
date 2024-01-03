@@ -1,3 +1,5 @@
+//go:build bechmark
+
 package smt
 
 import (

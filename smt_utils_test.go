@@ -18,6 +18,8 @@ type SMTWithStorage struct {
 
 // Update updates a key with a new value in the trie and adds the value to
 // the preimages KVStore
+// Preimages are the values prior to them being hashed - they are used to
+// confirm the values are in the trie
 func (smt *SMTWithStorage) Update(key, value []byte) error {
 	if err := smt.SMT.Update(key, value); err != nil {
 		return err

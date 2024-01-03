@@ -20,6 +20,8 @@ type SMSTWithStorage struct {
 
 // Update updates a key with a new value in the trie and adds the value to the
 // preimages KVStore
+// Preimages are the values prior to them being hashed - they are used to
+// confirm the values are in the trie
 func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
