@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 var (
@@ -54,7 +54,7 @@ var (
 
 func setupSMT(b *testing.B, numLeaves int) *smt.SMT {
 	b.Helper()
-	nodes := kvstore.NewSimpleMap()
+	nodes := simplemap.NewSimpleMap()
 	trie := smt.NewSparseMerkleTrie(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)
@@ -83,7 +83,7 @@ func benchmarkSMT(b *testing.B, trie *smt.SMT, commit bool, fn func(*smt.SMT, []
 
 func setupSMST(b *testing.B, numLeaves int) *smt.SMST {
 	b.Helper()
-	nodes := kvstore.NewSimpleMap()
+	nodes := simplemap.NewSimpleMap()
 	trie := smt.NewSparseMerkleSumTrie(nodes, sha256.New())
 	for i := 0; i < numLeaves; i++ {
 		s := strconv.Itoa(i)

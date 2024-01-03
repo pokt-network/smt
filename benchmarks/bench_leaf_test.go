@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 	trieSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
 	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
-	nodes := kvstore.NewSimpleMap()
+	nodes := simplemap.NewSimpleMap()
 	for _, trieSize := range trieSizes {
 		for _, leafSize := range leafSizes {
 			leaf := make([]byte, leafSize)
@@ -44,7 +44,7 @@ func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 func BenchmarkSMSTLeafSizes_Fill(b *testing.B) {
 	trieSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
 	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
-	nodes := kvstore.NewSimpleMap()
+	nodes := simplemap.NewSimpleMap()
 	for _, trieSize := range trieSizes {
 		for _, leafSize := range leafSizes {
 			leaf := make([]byte, leafSize)

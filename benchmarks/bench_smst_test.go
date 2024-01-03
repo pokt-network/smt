@@ -11,57 +11,57 @@ import (
 
 func BenchmarkSparseMerkleSumTrie_Fill(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 	}{
 		{
-			name:     "Fill (100000)",
+			desc:     "Fill (100000)",
 			trieSize: 100000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (100000)",
+			desc:     "Fill & Commit (100000)",
 			trieSize: 100000,
 			commit:   true,
 		},
 		{
-			name:     "Fill (500000)",
+			desc:     "Fill (500000)",
 			trieSize: 500000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (500000)",
+			desc:     "Fill & Commit (500000)",
 			trieSize: 500000,
 			commit:   true,
 		},
 		{
-			name:     "Fill (1000000)",
+			desc:     "Fill (1000000)",
 			trieSize: 1000000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (1000000)",
+			desc:     "Fill & Commit (1000000)",
 			trieSize: 1000000,
 			commit:   true,
 		},
 		{
-			name:     "Fill (5000000)",
+			desc:     "Fill (5000000)",
 			trieSize: 5000000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (5000000)",
+			desc:     "Fill & Commit (5000000)",
 			trieSize: 5000000,
 			commit:   true,
 		},
 		{
-			name:     "Fill (10000000)",
+			desc:     "Fill (10000000)",
 			trieSize: 10000000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (10000000)",
+			desc:     "Fill & Commit (10000000)",
 			trieSize: 10000000,
 			commit:   true,
 		},
@@ -69,7 +69,7 @@ func BenchmarkSparseMerkleSumTrie_Fill(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.ResetTimer()
-		b.Run(tc.name, func(b *testing.B) {
+		b.Run(tc.desc, func(b *testing.B) {
 			trie := setupSMST(b, tc.trieSize)
 			b.ResetTimer()
 			b.StartTimer()
@@ -90,67 +90,67 @@ func BenchmarkSparseMerkleSumTrie_Fill(b *testing.B) {
 
 func BenchmarkSparseMerkleSumTrie_Update(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 		fn       func(*smt.SMST, uint64) error
 	}{
 		{
-			name:     "Update (Prefilled: 100000)",
+			desc:     "Update (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   false,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 100000)",
+			desc:     "Update & Commit (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   true,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update (Prefilled: 500000)",
+			desc:     "Update (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   false,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 500000)",
+			desc:     "Update & Commit (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   true,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update (Prefilled: 1000000)",
+			desc:     "Update (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   false,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 1000000)",
+			desc:     "Update & Commit (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   true,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update (Prefilled: 5000000)",
+			desc:     "Update (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   false,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 5000000)",
+			desc:     "Update & Commit (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   true,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update (Prefilled: 10000000)",
+			desc:     "Update (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   false,
 			fn:       updSMST,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 10000000)",
+			desc:     "Update & Commit (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   true,
 			fn:       updSMST,
@@ -159,7 +159,7 @@ func BenchmarkSparseMerkleSumTrie_Update(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.ResetTimer()
-		b.Run(tc.name, func(b *testing.B) {
+		b.Run(tc.desc, func(b *testing.B) {
 			trie := setupSMST(b, tc.trieSize)
 			benchmarkSMST(b, trie, tc.commit, tc.fn)
 		})
@@ -168,37 +168,37 @@ func BenchmarkSparseMerkleSumTrie_Update(b *testing.B) {
 
 func BenchmarkSparseMerkleSumTrie_Get(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 		fn       func(*smt.SMST, uint64) error
 	}{
 		{
-			name:     "Get (Prefilled: 100000)",
+			desc:     "Get (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   false,
 			fn:       getSMST,
 		},
 		{
-			name:     "Get (Prefilled: 500000)",
+			desc:     "Get (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   false,
 			fn:       getSMST,
 		},
 		{
-			name:     "Get (Prefilled: 1000000)",
+			desc:     "Get (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   false,
 			fn:       getSMST,
 		},
 		{
-			name:     "Get (Prefilled: 5000000)",
+			desc:     "Get (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   false,
 			fn:       getSMST,
 		},
 		{
-			name:     "Get (Prefilled: 10000000)",
+			desc:     "Get (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   false,
 			fn:       getSMST,
@@ -207,7 +207,7 @@ func BenchmarkSparseMerkleSumTrie_Get(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.ResetTimer()
-		b.Run(tc.name, func(b *testing.B) {
+		b.Run(tc.desc, func(b *testing.B) {
 			trie := setupSMST(b, tc.trieSize)
 			benchmarkSMST(b, trie, tc.commit, tc.fn)
 		})
@@ -216,25 +216,25 @@ func BenchmarkSparseMerkleSumTrie_Get(b *testing.B) {
 
 func BenchmarkSparseMerkleSumTrie_Prove(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 		fn       func(*smt.SMST, uint64) error
 	}{
 		{
-			name:     "Prove (Prefilled: 100000)",
+			desc:     "Prove (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   false,
 			fn:       proSMST,
 		},
 		{
-			name:     "Prove (Prefilled: 500000)",
+			desc:     "Prove (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   false,
 			fn:       proSMST,
 		},
 		{
-			name:     "Prove (Prefilled: 1000000)",
+			desc:     "Prove (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   false,
 			fn:       proSMST,

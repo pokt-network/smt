@@ -11,57 +11,57 @@ import (
 
 func BenchmarkSparseMerkleTrie_Fill(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 	}{
 		{
-			name:     "Fill (100000)",
+			desc:     "Fill (100000)",
 			trieSize: 100000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (100000)",
+			desc:     "Fill & Commit (100000)",
 			trieSize: 100000,
 			commit:   true,
 		},
 		{
-			name:     "Fill (500000)",
+			desc:     "Fill (500000)",
 			trieSize: 500000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (500000)",
+			desc:     "Fill & Commit (500000)",
 			trieSize: 500000,
 			commit:   true,
 		},
 		{
-			name:     "Fill (1000000)",
+			desc:     "Fill (1000000)",
 			trieSize: 1000000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (1000000)",
+			desc:     "Fill & Commit (1000000)",
 			trieSize: 1000000,
 			commit:   true,
 		},
 		{
-			name:     "Fill (5000000)",
+			desc:     "Fill (5000000)",
 			trieSize: 5000000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (5000000)",
+			desc:     "Fill & Commit (5000000)",
 			trieSize: 5000000,
 			commit:   true,
 		},
 		{
-			name:     "Fill (10000000)",
+			desc:     "Fill (10000000)",
 			trieSize: 10000000,
 			commit:   false,
 		},
 		{
-			name:     "Fill & Commit (10000000)",
+			desc:     "Fill & Commit (10000000)",
 			trieSize: 10000000,
 			commit:   true,
 		},
@@ -69,7 +69,7 @@ func BenchmarkSparseMerkleTrie_Fill(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.ResetTimer()
-		b.Run(tc.name, func(b *testing.B) {
+		b.Run(tc.desc, func(b *testing.B) {
 			trie := setupSMT(b, tc.trieSize)
 			b.ResetTimer()
 			b.StartTimer()
@@ -90,67 +90,67 @@ func BenchmarkSparseMerkleTrie_Fill(b *testing.B) {
 
 func BenchmarkSparseMerkleTrie_Update(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 		fn       func(*smt.SMT, []byte) error
 	}{
 		{
-			name:     "Update (Prefilled: 100000)",
+			desc:     "Update (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   false,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 100000)",
+			desc:     "Update & Commit (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   true,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update (Prefilled: 500000)",
+			desc:     "Update (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   false,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 500000)",
+			desc:     "Update & Commit (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   true,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update (Prefilled: 1000000)",
+			desc:     "Update (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   false,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 1000000)",
+			desc:     "Update & Commit (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   true,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update (Prefilled: 5000000)",
+			desc:     "Update (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   false,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 5000000)",
+			desc:     "Update & Commit (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   true,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update (Prefilled: 10000000)",
+			desc:     "Update (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   false,
 			fn:       updSMT,
 		},
 		{
-			name:     "Update & Commit (Prefilled: 10000000)",
+			desc:     "Update & Commit (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   true,
 			fn:       updSMT,
@@ -159,7 +159,7 @@ func BenchmarkSparseMerkleTrie_Update(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.ResetTimer()
-		b.Run(tc.name, func(b *testing.B) {
+		b.Run(tc.desc, func(b *testing.B) {
 			trie := setupSMT(b, tc.trieSize)
 			benchmarkSMT(b, trie, tc.commit, tc.fn)
 		})
@@ -168,37 +168,37 @@ func BenchmarkSparseMerkleTrie_Update(b *testing.B) {
 
 func BenchmarkSparseMerkleTrie_Get(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 		fn       func(*smt.SMT, []byte) error
 	}{
 		{
-			name:     "Get (Prefilled: 100000)",
+			desc:     "Get (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   false,
 			fn:       getSMT,
 		},
 		{
-			name:     "Get (Prefilled: 500000)",
+			desc:     "Get (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   false,
 			fn:       getSMT,
 		},
 		{
-			name:     "Get (Prefilled: 1000000)",
+			desc:     "Get (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   false,
 			fn:       getSMT,
 		},
 		{
-			name:     "Get (Prefilled: 5000000)",
+			desc:     "Get (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   false,
 			fn:       getSMT,
 		},
 		{
-			name:     "Get (Prefilled: 10000000)",
+			desc:     "Get (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   false,
 			fn:       getSMT,
@@ -207,7 +207,7 @@ func BenchmarkSparseMerkleTrie_Get(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.ResetTimer()
-		b.Run(tc.name, func(b *testing.B) {
+		b.Run(tc.desc, func(b *testing.B) {
 			trie := setupSMT(b, tc.trieSize)
 			benchmarkSMT(b, trie, tc.commit, tc.fn)
 		})
@@ -216,19 +216,19 @@ func BenchmarkSparseMerkleTrie_Get(b *testing.B) {
 
 func BenchmarkSparseMerkleTrie_Prove(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 		fn       func(*smt.SMT, []byte) error
 	}{
 		{
-			name:     "Prove (Prefilled: 100000)",
+			desc:     "Prove (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   false,
 			fn:       proSMT,
 		},
 		{
-			name:     "Prove (Prefilled: 500000)",
+			desc:     "Prove (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   false,
 			fn:       proSMT,
