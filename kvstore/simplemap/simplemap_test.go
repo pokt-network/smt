@@ -1,9 +1,11 @@
-package kvstore
+package simplemap
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/smt/kvstore"
 )
 
 func TestSimpleMap_Get(t *testing.T) {
@@ -135,17 +137,17 @@ func TestSimpleMap_Len(t *testing.T) {
 
 	tests := []struct {
 		desc        string
-		setup       func(MapStore)
+		setup       func(kvstore.MapStore)
 		expectedLen int
 	}{
 		{
 			desc:        "Length of empty map",
-			setup:       func(store MapStore) {},
+			setup:       func(store kvstore.MapStore) {},
 			expectedLen: 0,
 		},
 		{
 			desc: "Length after adding items",
-			setup: func(sm MapStore) {
+			setup: func(sm kvstore.MapStore) {
 				require.NoError(t, sm.Set([]byte("key1"), []byte("value1")))
 				require.NoError(t, sm.Set([]byte("key2"), []byte("value2")))
 			},

@@ -1,19 +1,8 @@
-package kvstore
+package simplemap
 
-// MapStore defines an interface that represents a key-value store that backs
-// the SM(S)T. It is a subset of the full functionality of a key-value store
-// needed for the SM(S)T to function. By using a simplified interface any
-// key-value store that implements these methods can be used with the SM(S)T.
-type MapStore interface {
-	// Accessors
-	Get(key []byte) ([]byte, error)
-	Set(key, value []byte) error
-	Delete(key []byte) error
-	Len() int
-
-	// Debug
-	ClearAll() error
-}
+import (
+	"github.com/pokt-network/smt/kvstore"
+)
 
 // simpleMap is a simple in-memory map.
 type simpleMap struct {
@@ -21,7 +10,7 @@ type simpleMap struct {
 }
 
 // NewSimpleMap creates a new SimpleMap instance.
-func NewSimpleMap() MapStore {
+func NewSimpleMap() kvstore.MapStore {
 	return &simpleMap{
 		m: make(map[string][]byte),
 	}

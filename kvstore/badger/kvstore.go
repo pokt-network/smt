@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	v4 "github.com/dgraph-io/badger/v4"
+	badgerv4 "github.com/dgraph-io/badger/v4"
 )
 
 const (
@@ -14,19 +14,19 @@ const (
 var _ KVStore = &badgerKVStore{}
 
 type badgerKVStore struct {
-	db         *v4.DB
+	db         *badgerv4.DB
 	lastBackup uint64 // timestamp of the most recent backup
 }
 
 // NewKVStore creates a new KVStore using badger as the underlying database
 // if no path for a persistence database is provided it will create one in-memory
 func NewKVStore(path string) (KVStore, error) {
-	var db *v4.DB
+	var db *badgerv4.DB
 	var err error
 	if path == "" {
-		db, err = v4.Open(badgerOptions("").WithInMemory(true))
+		db, err = badgerv4.Open(badgerOptions("").WithInMemory(true))
 	} else {
-		db, err = v4.Open(badgerOptions(path))
+		db, err = badgerv4.Open(badgerOptions(path))
 	}
 	if err != nil {
 		return nil, errors.Join(ErrBadgerOpeningStore, err)
@@ -36,7 +36,7 @@ func NewKVStore(path string) (KVStore, error) {
 
 // Set sets/updates the value for a given key
 func (store *badgerKVStore) Set(key, value []byte) error {
-	err := store.db.Update(func(tx *v4.Txn) error {
+	err := store.db.Update(func(tx *badgerv4.Txn) error {
 		return tx.Set(key, value)
 	})
 	if err != nil {
@@ -48,7 +48,7 @@ func (store *badgerKVStore) Set(key, value []byte) error {
 // Get returns the value for a given key
 func (store *badgerKVStore) Get(key []byte) ([]byte, error) {
 	var val []byte
-	if err := store.db.View(func(tx *v4.Txn) error {
+	if err := store.db.View(func(tx *badgerv4.Txn) error {
 		item, err := tx.Get(key)
 		if err != nil {
 			return err
@@ -66,7 +66,7 @@ func (store *badgerKVStore) Get(key []byte) ([]byte, error) {
 
 // Delete removes a key and its value from the store
 func (store *badgerKVStore) Delete(key []byte) error {
-	err := store.db.Update(func(tx *v4.Txn) error {
+	err := store.db.Update(func(tx *badgerv4.Txn) error {
 		return tx.Delete(key)
 	})
 	if err != nil {
@@ -78,8 +78,8 @@ func (store *badgerKVStore) Delete(key []byte) error {
 // GetAll returns all keys and values with the given prefix in the specified order
 // if the prefix []byte{} is given then all key-value pairs are returned
 func (store *badgerKVStore) GetAll(prefix []byte, descending bool) (keys, values [][]byte, err error) {
-	if err := store.db.View(func(tx *v4.Txn) error {
-		opt := v4.DefaultIteratorOptions
+	if err := store.db.View(func(tx *badgerv4.Txn) error {
+		opt := badgerv4.DefaultIteratorOptions
 		opt.Prefix = prefix
 		opt.Reverse = descending
 		if descending {
@@ -161,8 +161,8 @@ func (store *badgerKVStore) Stop() error {
 // Len gives the number of keys in the store
 func (store *badgerKVStore) Len() int {
 	count := 0
-	if err := store.db.View(func(tx *v4.Txn) error {
-		opt := v4.DefaultIteratorOptions
+	if err := store.db.View(func(tx *badgerv4.Txn) error {
+		opt := badgerv4.DefaultIteratorOptions
 		opt.Prefix = []byte{}
 		opt.Reverse = false
 		it := tx.NewIterator(opt)
@@ -193,8 +193,8 @@ func prefixEndBytes(prefix []byte) []byte {
 }
 
 // badgerOptions returns the badger options for the store being created
-func badgerOptions(path string) v4.Options {
-	opts := v4.DefaultOptions(path)
+func badgerOptions(path string) badgerv4.Options {
+	opts := badgerv4.DefaultOptions(path)
 	opts.Logger = nil // disable badger's logger since it's very noisy
 	return opts
 }

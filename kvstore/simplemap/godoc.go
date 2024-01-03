@@ -9,4 +9,4 @@
 // These are included as submodules as they are not required for the SM(S)T and
 // any key-value store that satisfies the `MapStore` interface can be used with
 // the SM(S)T.
-package kvstore
+package simplemap

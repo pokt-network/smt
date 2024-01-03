@@ -1,4 +1,4 @@
-package kvstore
+package simplemap
 
 import (
 	"errors"
