@@ -234,19 +234,19 @@ func BenchmarkSparseMerkleTrie_Prove(b *testing.B) {
 			fn:       proSMT,
 		},
 		{
-			name:     "Prove (Prefilled: 1000000)",
+			desc:     "Prove (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   false,
 			fn:       proSMT,
 		},
 		{
-			name:     "Prove (Prefilled: 5000000)",
+			desc:     "Prove (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   false,
 			fn:       proSMT,
 		},
 		{
-			name:     "Prove (Prefilled: 10000000)",
+			desc:     "Prove (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   false,
 			fn:       proSMT,
@@ -255,7 +255,7 @@ func BenchmarkSparseMerkleTrie_Prove(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.ResetTimer()
-		b.Run(tc.name, func(b *testing.B) {
+		b.Run(tc.desc, func(b *testing.B) {
 			trie := setupSMT(b, tc.trieSize)
 			benchmarkSMT(b, trie, tc.commit, tc.fn)
 		})
@@ -264,67 +264,67 @@ func BenchmarkSparseMerkleTrie_Prove(b *testing.B) {
 
 func BenchmarkSparseMerkleTrie_Delete(b *testing.B) {
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 		commit   bool
 		fn       func(*smt.SMT, []byte) error
 	}{
 		{
-			name:     "Delete (Prefilled: 100000)",
+			desc:     "Delete (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   false,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete & Commit (Prefilled: 100000)",
+			desc:     "Delete & Commit (Prefilled: 100000)",
 			trieSize: 100000,
 			commit:   true,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete (Prefilled: 500000)",
+			desc:     "Delete (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   false,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete & Commit (Prefilled: 500000)",
+			desc:     "Delete & Commit (Prefilled: 500000)",
 			trieSize: 500000,
 			commit:   true,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete (Prefilled: 1000000)",
+			desc:     "Delete (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   false,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete & Commit (Prefilled: 1000000)",
+			desc:     "Delete & Commit (Prefilled: 1000000)",
 			trieSize: 1000000,
 			commit:   true,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete (Prefilled: 5000000)",
+			desc:     "Delete (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   false,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete & Commit (Prefilled: 5000000)",
+			desc:     "Delete & Commit (Prefilled: 5000000)",
 			trieSize: 5000000,
 			commit:   true,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete (Prefilled: 10000000)",
+			desc:     "Delete (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   false,
 			fn:       delSMT,
 		},
 		{
-			name:     "Delete & Commit (Prefilled: 10000000)",
+			desc:     "Delete & Commit (Prefilled: 10000000)",
 			trieSize: 10000000,
 			commit:   true,
 			fn:       delSMT,
@@ -333,7 +333,7 @@ func BenchmarkSparseMerkleTrie_Delete(b *testing.B) {
 
 	for _, tc := range testCases {
 		b.ResetTimer()
-		b.Run(tc.name, func(b *testing.B) {
+		b.Run(tc.desc, func(b *testing.B) {
 			trie := setupSMT(b, tc.trieSize)
 			benchmarkSMT(b, trie, tc.commit, tc.fn)
 		})
