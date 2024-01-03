@@ -1,4 +1,4 @@
-//go:build bechmark
+//go:build benchmark
 
 package smt
 
