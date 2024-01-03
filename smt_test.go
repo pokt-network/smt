@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 func NewSMTWithStorage(
@@ -23,8 +24,8 @@ func NewSMTWithStorage(
 }
 
 func TestSMT_TrieUpdateBasic(t *testing.T) {
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	lazy := NewSparseMerkleTrie(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
 	var value []byte
@@ -102,8 +103,8 @@ func TestSMT_TrieUpdateBasic(t *testing.T) {
 
 // Test base case trie delete operations with a few keys.
 func TestSMT_TrieDeleteBasic(t *testing.T) {
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	lazy := NewSparseMerkleTrie(smn, sha256.New())
 	smt := &SMTWithStorage{SMT: lazy, preimages: smv}
 	rootEmpty := smt.Root()
@@ -201,8 +202,8 @@ func TestSMT_TrieDeleteBasic(t *testing.T) {
 // Test trie ops with known paths
 func TestSMT_TrieKnownPath(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
 	var value []byte
 
@@ -272,8 +273,8 @@ func TestSMT_TrieKnownPath(t *testing.T) {
 // Test trie operations when two leafs are immediate neighbors.
 func TestSMT_TrieMaxHeightCase(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
 	var value []byte
 
@@ -318,8 +319,8 @@ func TestSMT_OrphanRemoval(t *testing.T) {
 		return smn.Len()
 	}
 	setup := func() {
-		smn = kvstore.NewSimpleMap()
-		smv = kvstore.NewSimpleMap()
+		smn = simplemap.NewSimpleMap()
+		smv = simplemap.NewSimpleMap()
 		require.NoError(t, err)
 		impl = NewSparseMerkleTrie(smn, sha256.New())
 		smt = &SMTWithStorage{SMT: impl, preimages: smv}

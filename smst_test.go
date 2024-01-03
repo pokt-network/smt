@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 func NewSMSTWithStorage(
@@ -25,8 +26,8 @@ func NewSMSTWithStorage(
 }
 
 func TestSMST_TrieUpdateBasic(t *testing.T) {
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	lazy := NewSparseMerkleSumTrie(smn, sha256.New())
 	smst := &SMSTWithStorage{SMST: lazy, preimages: smv}
 	var value []byte
@@ -115,8 +116,8 @@ func TestSMST_TrieUpdateBasic(t *testing.T) {
 
 // Test base case trie delete operations with a few keys.
 func TestSMST_TrieDeleteBasic(t *testing.T) {
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	lazy := NewSparseMerkleSumTrie(smn, sha256.New())
 	smst := &SMSTWithStorage{SMST: lazy, preimages: smv}
 	rootEmpty := smst.Root()
@@ -222,8 +223,8 @@ func TestSMST_TrieDeleteBasic(t *testing.T) {
 // Test trie ops with known paths
 func TestSMST_TrieKnownPath(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	smst := NewSMSTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
 	var value []byte
 	var sum uint64
@@ -301,8 +302,8 @@ func TestSMST_TrieKnownPath(t *testing.T) {
 // Test trie operations when two leafs are immediate neighbors.
 func TestSMST_TrieMaxHeightCase(t *testing.T) {
 	ph := dummyPathHasher{32}
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	smst := NewSMSTWithStorage(smn, smv, sha256.New(), WithPathHasher(ph))
 	var value []byte
 	var sum uint64
@@ -350,8 +351,8 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 		return smn.Len()
 	}
 	setup := func() {
-		smn = kvstore.NewSimpleMap()
-		smv = kvstore.NewSimpleMap()
+		smn = simplemap.NewSimpleMap()
+		smv = simplemap.NewSimpleMap()
 		impl = NewSparseMerkleSumTrie(smn, sha256.New())
 		smst = &SMSTWithStorage{SMST: impl, preimages: smv}
 
@@ -429,7 +430,7 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 }
 
 func TestSMST_TotalSum(t *testing.T) {
-	snm := kvstore.NewSimpleMap()
+	snm := simplemap.NewSimpleMap()
 	smst := NewSparseMerkleSumTrie(snm, sha256.New())
 	err := smst.Update([]byte("key1"), []byte("value1"), 5)
 	require.NoError(t, err)
@@ -471,7 +472,7 @@ func TestSMST_TotalSum(t *testing.T) {
 	require.Equal(t, sum, uint64(10))
 
 	// Calculate the total sum of a larger trie
-	snm = kvstore.NewSimpleMap()
+	snm = simplemap.NewSimpleMap()
 	smst = NewSparseMerkleSumTrie(snm, sha256.New())
 	for i := 1; i < 10000; i++ {
 		err := smst.Update([]byte(fmt.Sprintf("testKey%d", i)), []byte(fmt.Sprintf("testValue%d", i)), uint64(i))
@@ -483,7 +484,7 @@ func TestSMST_TotalSum(t *testing.T) {
 }
 
 func TestSMST_Retrieval(t *testing.T) {
-	snm := kvstore.NewSimpleMap()
+	snm := simplemap.NewSimpleMap()
 	smst := NewSparseMerkleSumTrie(snm, sha256.New(), WithValueHasher(nil))
 
 	err := smst.Update([]byte("key1"), []byte("value1"), 5)

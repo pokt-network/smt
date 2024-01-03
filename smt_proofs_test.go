@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 // Test base case Merkle proof operations.
@@ -20,9 +21,9 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	var root []byte
 	var err error
 
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
-	smv = kvstore.NewSimpleMap()
+	smv = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smt = NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()
@@ -109,8 +110,8 @@ func TestSMT_Proof_Operations(t *testing.T) {
 
 // Test sanity check cases for non-compact proofs.
 func TestSMT_Proof_ValidateBasic(t *testing.T) {
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 	base := smt.Spec()
 
@@ -175,7 +176,7 @@ func TestSMT_Proof_ValidateBasic(t *testing.T) {
 }
 
 func TestSMT_ClosestProof_ValidateBasic(t *testing.T) {
-	smn := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
 	smt := NewSparseMerkleTrie(smn, sha256.New())
 	np := NoPrehashSpec(sha256.New(), false)
 	base := smt.Spec()
@@ -255,7 +256,7 @@ func TestSMT_ProveClosest(t *testing.T) {
 	var root []byte
 	var err error
 
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 
@@ -317,7 +318,7 @@ func TestSMT_ProveClosest_Empty(t *testing.T) {
 	var proof *SparseMerkleClosestProof
 	var err error
 
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 
@@ -346,7 +347,7 @@ func TestSMT_ProveClosest_OneNode(t *testing.T) {
 	var proof *SparseMerkleClosestProof
 	var err error
 
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	smt = NewSparseMerkleTrie(smn, sha256.New(), WithValueHasher(nil))
 	require.NoError(t, smt.Update([]byte("foo"), []byte("bar")))
 
@@ -381,7 +382,7 @@ func TestSMT_ProveClosest_Proof(t *testing.T) {
 	var err error
 
 	// setup trie (256+512 path hasher) and nodestore
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smt256 = NewSparseMerkleTrie(smn, sha256.New())
 	smt512 = NewSparseMerkleTrie(smn, sha512.New())

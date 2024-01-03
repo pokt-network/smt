@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 // Test base case Merkle proof operations.
@@ -21,9 +22,9 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	var root []byte
 	var err error
 
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
-	smv = kvstore.NewSimpleMap()
+	smv = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smst = NewSMSTWithStorage(smn, smv, sha256.New())
 	base := smst.Spec()
@@ -135,8 +136,8 @@ func TestSMST_Proof_Operations(t *testing.T) {
 
 // Test sanity check cases for non-compact proofs.
 func TestSMST_Proof_ValidateBasic(t *testing.T) {
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	smst := NewSMSTWithStorage(smn, smv, sha256.New())
 	base := smst.Spec()
 
@@ -201,7 +202,7 @@ func TestSMST_Proof_ValidateBasic(t *testing.T) {
 }
 
 func TestSMST_ClosestProof_ValidateBasic(t *testing.T) {
-	smn := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
 	smst := NewSparseMerkleSumTrie(smn, sha256.New())
 	np := NoPrehashSpec(sha256.New(), true)
 	base := smst.Spec()
@@ -282,7 +283,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	var err error
 	var sumBz [sumSize]byte
 
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smst = NewSparseMerkleSumTrie(smn, sha256.New(), WithValueHasher(nil))
 
@@ -362,7 +363,7 @@ func TestSMST_ProveClosest_Empty(t *testing.T) {
 	var proof *SparseMerkleClosestProof
 	var err error
 
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smst = NewSparseMerkleSumTrie(smn, sha256.New(), WithValueHasher(nil))
 
@@ -391,7 +392,7 @@ func TestSMST_ProveClosest_OneNode(t *testing.T) {
 	var proof *SparseMerkleClosestProof
 	var err error
 
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smst = NewSparseMerkleSumTrie(smn, sha256.New(), WithValueHasher(nil))
 
@@ -432,7 +433,7 @@ func TestSMST_ProveClosest_Proof(t *testing.T) {
 	var err error
 
 	// setup trie (256+512 path hasher) and nodestore
-	smn = kvstore.NewSimpleMap()
+	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
 	smst256 = NewSparseMerkleSumTrie(smn, sha256.New())
 	smst512 = NewSparseMerkleSumTrie(smn, sha512.New())

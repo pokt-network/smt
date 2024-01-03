@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 // FuzzSMT uses fuzzing to attempt to break the SMT implementation
@@ -27,7 +27,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, input []byte) {
-		smn := kvstore.NewSimpleMap()
+		smn := simplemap.NewSimpleMap()
 		trie := NewSparseMerkleTrie(smn, sha256.New())
 
 		r := bytes.NewReader(input)
@@ -68,7 +68,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				_, err := trie.Get(key())
 				if err != nil {
 					require.ErrorIsf(
-						t, err, kvstore.ErrKVStoreKeyNotFound,
+						t, err, simplemap.ErrKVStoreKeyNotFound,
 						"unknown error occurred while getting",
 					)
 				}
@@ -85,7 +85,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				err := trie.Delete(key())
 				if err != nil {
 					require.ErrorIsf(
-						t, err, kvstore.ErrKVStoreKeyNotFound,
+						t, err, simplemap.ErrKVStoreKeyNotFound,
 						"unknown error occurred while deleting",
 					)
 					continue
@@ -97,7 +97,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				_, err := trie.Prove(key())
 				if err != nil {
 					require.ErrorIsf(
-						t, err, kvstore.ErrKVStoreKeyNotFound,
+						t, err, simplemap.ErrKVStoreKeyNotFound,
 						"unknown error occurred while proving",
 					)
 				}

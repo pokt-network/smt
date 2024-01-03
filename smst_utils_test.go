@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 // SMSTWithStorage wraps an SMST with a mapping of value hashes to values with
@@ -48,7 +49,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	}
 	value, err := smst.preimages.Get(valueHash)
 	if err != nil {
-		if errors.Is(err, kvstore.ErrKVStoreKeyNotFound) {
+		if errors.Is(err, simplemap.ErrKVStoreKeyNotFound) {
 			// If key isn't found, return default value and sum
 			return defaultValue, 0, nil
 		}

@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 type (
@@ -34,8 +34,8 @@ func TestBulkOperations(t *testing.T) {
 
 // Test all trie operations in bulk, with specified ratio probabilities of insert, update and delete.
 func bulkOperations(t *testing.T, operations int, insert int, update int, delete int) {
-	smn := kvstore.NewSimpleMap()
-	smv := kvstore.NewSimpleMap()
+	smn := simplemap.NewSimpleMap()
+	smv := simplemap.NewSimpleMap()
 	smt := NewSMTWithStorage(smn, smv, sha256.New())
 
 	max := insert + update + delete
@@ -82,7 +82,7 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			ki := r.Intn(len(kv))
 
 			err := smt.Delete(kv[ki].key)
-			if err != nil && err != kvstore.ErrKVStoreKeyNotFound {
+			if err != nil && err != simplemap.ErrKVStoreKeyNotFound {
 				t.Fatalf("error: %v", err)
 			}
 			kv[ki].val = defaultValue

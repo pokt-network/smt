@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 func TestSparseMerkleProof_Marshal(t *testing.T) {
@@ -152,7 +152,7 @@ func TestSparseCompactMerkleProof_Unmarshal(t *testing.T) {
 func setupTrie(t *testing.T) *SMT {
 	t.Helper()
 
-	db := kvstore.NewSimpleMap()
+	db := simplemap.NewSimpleMap()
 
 	trie := NewSparseMerkleTrie(db, sha256.New())
 	require.NoError(t, trie.Update([]byte("key"), []byte("value")))
@@ -166,7 +166,7 @@ func randomiseProof(proof *SparseMerkleProof) *SparseMerkleProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
 		sideNodes[i] = make([]byte, len(proof.SideNodes[i]))
-		rand.Read(sideNodes[i]) //nolint: errcheck
+		rand.Read(sideNodes[i]) // nolint: errcheck
 	}
 	return &SparseMerkleProof{
 		SideNodes:             sideNodes,
@@ -178,7 +178,7 @@ func randomiseSumProof(proof *SparseMerkleProof) *SparseMerkleProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
 		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumSize)
-		rand.Read(sideNodes[i]) //nolint: errcheck
+		rand.Read(sideNodes[i]) // nolint: errcheck
 		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumSize:]...)
 	}
 	return &SparseMerkleProof{

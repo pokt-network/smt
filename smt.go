@@ -5,6 +5,7 @@ import (
 	"hash"
 
 	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 )
 
 type trieNode interface {
-	// when committing a node to disk, if already persisted it is skipped
+	// when committing a node to disk, skip if already persisted
 	Persisted() bool
 	CachedDigest() []byte
 }
@@ -246,11 +247,11 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 	}
 
 	if node == nil {
-		return node, kvstore.ErrKVStoreKeyNotFound
+		return node, simplemap.ErrKVStoreKeyNotFound
 	}
 	if leaf, ok := node.(*leafNode); ok {
 		if !bytes.Equal(path, leaf.path) {
-			return node, kvstore.ErrKVStoreKeyNotFound
+			return node, simplemap.ErrKVStoreKeyNotFound
 		}
 		smt.addOrphan(orphans, node)
 		return nil, nil
@@ -260,7 +261,7 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 
 	if ext, ok := node.(*extensionNode); ok {
 		if _, match := ext.match(path, depth); !match {
-			return node, kvstore.ErrKVStoreKeyNotFound
+			return node, simplemap.ErrKVStoreKeyNotFound
 		}
 		ext.child, err = smt.delete(ext.child, depth+ext.length(), path, orphans)
 		if err != nil {
