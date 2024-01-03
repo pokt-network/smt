@@ -20,6 +20,7 @@
 - [Proofs](#proofs)
   * [Verification](#verification)
   * [Closest Proof](#closest-proof)
+    + [Closest Proof Use Cases](#closest-proof-use-cases)
   * [Compression](#compression)
   * [Serialisation](#serialisation)
 - [Database](#database)
@@ -384,21 +385,46 @@ of the trie.
 
 Since the `ClosestProof` method takes a hash as input, it is possible to place a
 leaf in the trie according to the hash's path, if it is known. Depending on
-the use case of this function this may expose a vulnerability. _It is not
-intendend to be used as a general purpose proof mechanism_. Given two parties:
-the prover and the verifier, the verifier should supply the prover with a hash
-after the trie has been "closed" and is no longer being updated. The prover
-will then generate a `ClosestProof` for a leaf using the corresponding method.
-The verifier can subsequently verify that proof for its validity. If however,
-the prover were to know the hash prior to "closing" the trie, they could place
-a leaf where the method would always guarantee it existence. This form of attack
-can only happen due to the method's deterministic behaviour and the prover
-knowing the hash before they have "closed" the trie. The intended use of this
-method is that the verifier gives the hash only after the prover has closed their
-trie and submitted the closed trie's root hash. This enables the verifier to
-verify the integrity of the proof (if the trie was changed the root hash would
-be different) and also guarantees the pseudo-random proof of inclusion was not
-a maliciously placed leaf.
+the use case of this function this may expose a vulnerability. **It is not
+intendend to be used as a general purpose proof mechanism**, but instead as a
+**Commit and Reveal** mechanism, as detailed below.
+
+#### Closest Proof Use Cases
+
+The `CloestProof` function is intended for use as a `commit & reveal` mechanism.
+Where there are two actors involved, the **prover** and **verifier**.
+
+_NOTE: Throughout this document, `commitment` of the the trie's root hash is also
+referred to as closing the trie, such that no more updates are made to it once
+committed._
+
+Consider the following attack vector (**without** a commit prior to a reveal)
+into consideration:
+
+1. The **verifier** picks the hash (i.e. a single branch) they intend to check
+1. The **prover** inserts a leaf (i.e. a value) whose key (determined via the
+   hasher) has a longer common prefix than any other leaf in the trie.
+1. Due to the deterministic nature of the `ClosestProof`, method this leaf will
+   **always** be returned given the identified hash.
+1. The **verifier** then verifies the revealed `ClosestProof`, which returns a
+   branch the **prover** inserted after knowing which leaf was going to be
+   checked.
+
+Consider the following normal flow (**with** a commit prior to reveal) as
+
+1. The **prover** commits to the state of their trie by publishes their root
+   hash, thereby _closing_ their trie and not being able to make further
+   changes.
+1. The **verifier** selects a hash to be used in the `commit & reveal` process
+   that the **prover** must provide a closest proof for.
+1. The **prover** utilises this hash and computes the `ClosestProof` on their
+   _closed_ trie, producing a `ClosestProof`, thus revealing a deterministic,
+   pseudo-random leaf that existed in the tree prior to commitment, yet
+1. The **verifier** verifies the proof, in turn, verifying the commitment
+   made by the **prover** to the state of the trie in the first step.
+1. The **prover** had no opportunity to insert a new leaf into the trie
+   after learning which hash the **verifier** was going to require a
+   `ClosestProof` for.
 
 ### Compression
 
@@ -438,7 +464,7 @@ node, **not** the leaf node's value, even when `WithValueHasher(nil)` is used.
 The node value can be parsed from this value, as the trie `Get` function does
 by removing the prefix and path bytes from the returned value.
 
-See [KVStore.md](./KVStore.md) for the details of the implementation.
+See [kvstore.md](./kvstore.md) for the details of the implementation.
 
 ### Data Loss
 
@@ -450,7 +476,7 @@ the `Commit()` function is called and changes are persisted.
 ## Sparse Merkle Sum Trie
 
 This library also implements a Sparse Merkle Sum Trie (SMST), the documentation
-for which can be found [here](./MerkleSumTrie.md).
+for which can be found [here](./merkle-sum-trie.md).
 
 ## Example
 
@@ -471,9 +497,6 @@ func main() {
 
   // Ensure the database connection closes
   defer nodeStore.Stop()
-
-  // Initialise the trie
-  trie := smt.NewSparseMerkleTrie(nodeStore, sha256.New())
 
   // Update the key "foo" with the value "bar"
   _ = trie.Update([]byte("foo"), []byte("bar"))

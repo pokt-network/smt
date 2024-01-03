@@ -4,16 +4,16 @@
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  - [In-Memory and Persistent](#in-memory-and-persistent)
-  - [Store methods](#store-methods)
-  - [Lifecycle Methods](#lifecycle-methods)
-  - [Data Methods](#data-methods)
-    - [Backups](#backups)
-    - [Restorations](#restorations)
-  - [Accessor Methods](#accessor-methods)
-    - [Prefixed and Sorted Get All](#prefixed-and-sorted-get-all)
-    - [Clear All Key-Value Pairs](#clear-all-key-value-pairs)
-    - [Len](#len)
+  * [In-Memory and Persistent](#in-memory-and-persistent)
+  * [Store methods](#store-methods)
+  * [Lifecycle Methods](#lifecycle-methods)
+  * [Data Methods](#data-methods)
+    + [Backups](#backups)
+    + [Restorations](#restorations)
+  * [Accessor Methods](#accessor-methods)
+    + [Prefixed and Sorted Get All](#prefixed-and-sorted-get-all)
+    + [Clear All Key-Value Pairs](#clear-all-key-value-pairs)
+    + [Len](#len)
 
 <!-- tocstop -->
 

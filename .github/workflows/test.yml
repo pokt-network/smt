@@ -1,4 +1,4 @@
-name: Test & Build
+name: Go Tests
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARGET_GOLANG_VERSION: "1.20.11"
+  TARGET_GOLANG_VERSION: "1.20.12"
 
 jobs:
   tests:
@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: "0" # Per https://github.com/ignite/cli/issues/1674#issuecomment-1144619147
+          fetch-depth: "0"
 
       - name: Setup go
         uses: actions/setup-go@v4
@@ -39,18 +39,27 @@ jobs:
 
       - name: Create coverage report and run tests
         run: |
+          # Run each of the tests (excluding benchmarks) outputting the JSON
+          # to the test_results.json file for usage in later steps.
           set -euo pipefail
-          GODEBUG=netdns=cgo go test -p 1 -json ./ -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic 2>&1 | tee test_results.json
+          go test -v -json -p 1 ./ -mod=readonly -race -coverprofile=coverage.txt -covermode=atomic 2>&1 | tee -a test_results.json
 
       - name: Sanitize test results
-        # We're utilizing `tee` above which can capture non-json stdout output so we need to remove non-json lines before additional parsing and submitting it to the external github action.
+        # We're utilizing `tee` above which can capture non-json stdout output
+        # so we need to remove non-json lines before additional parsing and
+        # submitting it to the external github action.
         run: cat test_results.json | jq -c -R 'fromjson? | select(type == "object")' > tmp.json && mv tmp.json test_results.json
 
       - name: Output test failures
-        # Makes it easier to find failed tests so no need to scroll through the whole log.
         if: ${{ failure() }}
         run: |
-          jq --argjson fail_tests "$(jq -c -r 'select(.Action == "fail") | select(.Test) | .Test' test_results.json | jq -R -s -c -r 'split("\n") | map(select(length>0))')" 'select(.Test as $t | ($fail_tests | arrays)[] | select($t == .)) | select(.Output) | .Output' test_results.json | jq -r | sed ':a;N;$!ba;s/\n\n/\n/g' > test_failures.json
+          jq --argjson fail_tests "$( \
+            jq -c -r 'select(.Action == "fail") | select(.Test) | .Test' test_results.json \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))' \
+          )" \
+          'select(.Test as $t | ($fail_tests | arrays)[] | select($t == .)) | select(.Output) | .Output' test_results.json \
+          | jq -r \
+          | sed ':a;N;$!ba;s/\n\n/\n/g' > test_failures.json
           cat test_failures.json
           exit 1
 
@@ -62,7 +71,6 @@ jobs:
             test_*.json
 
       - name: Annotate tests on GitHub
-        # Only annotate if the test failed on target version to avoid duplicated annotations on GitHub.
         uses: guyarb/golang-test-annotations@v0.5.1
         with:
           test-results: test_results.json
@@ -71,30 +79,4 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.txt
-
-  build:
-    runs-on: ubuntu-latest
-    needs: tests
-    strategy:
-      fail-fast: false
-      matrix:
-        goarch: ["arm64", "amd64"]
-    timeout-minutes: 5
-    name: Build for ${{ matrix.goarch }}
-    steps:
-      - uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.TARGET_GOLANG_VERSION }}
-
-      - uses: actions/checkout@v3
-
-      - uses: technote-space/get-diff-action@v4
-        with:
-          PATTERNS: |
-            **/**.go
-            go.mod
-            go.sum
-
-      - name: Go build
-        run: GOOS=linux GOARCH=${{ matrix.goarch }} go build
-        if: env.GIT_DIFF
+          verbose: true
