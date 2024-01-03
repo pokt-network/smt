@@ -25,6 +25,7 @@
   * [Serialisation](#serialisation)
 - [Database](#database)
   * [Database Submodules](#database-submodules)
+    + [SimpleMap](#simplemap)
     + [Badger](#badger)
   * [Data Loss](#data-loss)
 - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
@@ -452,21 +453,29 @@ schemes.
 
 ## Database
 
-By default, this library provides a simple interface (`MapStore`) and a simple
-in-memory key-value database found in [`simplemap.go`](../kvstore/simplemap.go).
-However, any key-value store implementing this interface can be used as the
-node store to back the trie.
-
-See: [`kvstore/simplemap.go`](../kvstore/simplemap.go) for the `MapStore`
-interface and simple key-value map implementation.
+By default, this library provides a simple interface (`MapStore`) which can be
+found in [`kvstore/interfaces.go`](../kvstore/interfaces.go) and submodule
+implementations of said interface. These submodules allow for more extensible
+key-value store implementations that give the user more control over their
+database backing the underlying trie.
 
 ### Database Submodules
 
-In addition to providing the `MapStore` and `SimpleMap` interfaces and
-implementations, the `smt` library also provides wrappers around other key-value
+In addition to providing the `MapStore` interface and `simplemap`
+implementation, the `smt` library also provides wrappers around other key-value
 databases as submodules with more fully-featured interfaces that can be used
 outside of backing key-value engines for tries. These submodules can be found in
 the [`kvstore`](../kvstore/) directory.
+
+#### SimpleMap
+
+This library defines the `SimpleMap` interface which is implemented as an
+extremely simple in-memory key-value store. Although it is is a submodule,
+it is ideal for testing and non-production use cases, and is used in the tests
+throughout the library.
+
+See [simplemap.go](../kvstore/simplemap/simplemap.go) for the implementation
+details.
 
 #### Badger
 
