@@ -6,7 +6,7 @@ import (
 
 var (
 	// ErrBadgerOpeningStore is returned when the badger store cannot be opened
-	// or an error occurs while opening/creating the KVStore
+	// or an error occurs while opening/creating the BadgerKVStore
 	ErrBadgerOpeningStore = errors.New("error opening the store")
 	// ErrBadgerUnableToSetValue is returned when the badger store fails to
 	// set a value

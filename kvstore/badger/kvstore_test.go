@@ -393,7 +393,7 @@ func TestBadger_KVStore_Len(t *testing.T) {
 	}
 }
 
-func setupStore(t *testing.T, store badger.KVStore) {
+func setupStore(t *testing.T, store badger.BadgerKVStore) {
 	t.Helper()
 	err := store.Set([]byte("foo"), []byte("bar"))
 	require.NoError(t, err)

@@ -11,16 +11,16 @@ const (
 	maxPendingWrites = 16 // used in backup restoration
 )
 
-var _ KVStore = &badgerKVStore{}
+var _ BadgerKVStore = &badgerKVStore{}
 
 type badgerKVStore struct {
 	db         *badgerv4.DB
 	lastBackup uint64 // timestamp of the most recent backup
 }
 
-// NewKVStore creates a new KVStore using badger as the underlying database
+// NewKVStore creates a new BadgerKVStore using badger as the underlying database
 // if no path for a persistence database is provided it will create one in-memory
-func NewKVStore(path string) (KVStore, error) {
+func NewKVStore(path string) (BadgerKVStore, error) {
 	var db *badgerv4.DB
 	var err error
 	if path == "" {
