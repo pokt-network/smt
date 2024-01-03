@@ -398,27 +398,33 @@ _NOTE: Throughout this document, `commitment` of the the trie's root hash is als
 referred to as closing the trie, such that no more updates are made to it once
 committed._
 
-Take the following attack vector (**without** a commit prior to a reveal) into
-consideration:
+Consider the following attack vector (**without** a commit prior to a reveal)
+into consideration:
 
-1. The **prover** identifies the hash the **verifier** intends to check against
-1. The **prover** then places a leaf in the tree with a common prefix to the
-   identified hash
-1. Due to the deterministic nature of the `ClosestProof` method this leaf will
+1. The **verifier** picks the hash (i.e. a single branch) they intend to check
+1. The **prover** inserts a leaf (i.e. a value) whose key (determined via the
+   hasher) has a longer common prefix than any other leaf in the trie.
+1. Due to the deterministic nature of the `ClosestProof`, method this leaf will
    **always** be returned given the identified hash.
-1. The **verifier** then verifies the revealed `ClosestProof`, in turn validating
-   a maliciously placed leaf.
+1. The **verifier** then verifies the revealed `ClosestProof`, which returns a
+   branch the **prover** inserted after knowing which leaf was going to be
+   checked.
 
-Take the following normal flow (**with** a commit prior to reveal) as
+Consider the following normal flow (**with** a commit prior to reveal) as
 
-1. The **prover** commits to the state of their trie and publishes their root
-   hash, _closing_ their trie.
-1. The **verifier** provides a hash to be used in the `commit & reveal` process
-1. The **prover** then utilises this hash and the `ClosestProof` method on their
+1. The **prover** commits to the state of their trie by publishes their root
+   hash, thereby _closing_ their trie and not being able to make further
+   changes.
+1. The **verifier** selects a hash to be used in the `commit & reveal` process
+   that the **prover** must provide a closest proof for.
+1. The **prover** utilises this hash and computes the `ClosestProof` on their
    _closed_ trie, producing a `ClosestProof`, thus revealing a deterministic,
-   yet pseudo-random leaf.
-1. The **verifier** then verifies the proof, in turn verifying the commitment
-   made by the **prover** and the state of the **prover**'s trie.
+   pseudo-random leaf that existed in the tree prior to commitment, yet
+1. The **verifier** verifies the proof, in turn, verifying the commitment
+   made by the **prover** to the state of the trie in the first step.
+1. The **prover** had no opportunity to insert a new leaf into the trie
+   after learning which hash the **verifier** was going to require a
+   `ClosestProof` for.
 
 ### Compression
 
