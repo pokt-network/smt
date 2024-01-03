@@ -41,7 +41,7 @@ make test_all
 ```
 
 To test the `badger` submodule that provides a more fully featured key-value
-store run the following command:
+store, run the following command:
 
 ```sh
 make test_badger
