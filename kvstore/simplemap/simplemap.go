@@ -4,6 +4,9 @@ import (
 	"github.com/pokt-network/smt/kvstore"
 )
 
+// Ensure that the SimpleMap can be used as an SMT node store
+var _ kvstore.MapStore = (*simpleMap)(nil)
+
 // simpleMap is a simple in-memory map.
 type simpleMap struct {
 	m map[string][]byte
