@@ -1,3 +1,5 @@
+//go:build benchmark
+
 package smt
 
 import (
@@ -8,39 +10,39 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 func TestSMT_ProofSizes(t *testing.T) {
-	nodes, err := smt.NewKVStore("")
-	require.NoError(t, err)
+	nodes := simplemap.NewSimpleMap()
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 	}{
 		{
-			name:     "Proof Size (Prefilled: 100000)",
+			desc:     "Proof Size (Prefilled: 100000)",
 			trieSize: 100000,
 		},
 		{
-			name:     "Proof Size (Prefilled: 500000)",
+			desc:     "Proof Size (Prefilled: 500000)",
 			trieSize: 500000,
 		},
 		{
-			name:     "Proof Size (Prefilled: 1000000)",
+			desc:     "Proof Size (Prefilled: 1000000)",
 			trieSize: 1000000,
 		},
 		{
-			name:     "Proof Size (Prefilled: 5000000)",
+			desc:     "Proof Size (Prefilled: 5000000)",
 			trieSize: 5000000,
 		},
 		{
-			name:     "Proof Size (Prefilled: 10000000)",
+			desc:     "Proof Size (Prefilled: 10000000)",
 			trieSize: 10000000,
 		},
 	}
 	for _, tc := range testCases {
 		trie := smt.NewSparseMerkleTrie(nodes, sha256.New())
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.desc, func(t *testing.T) {
 			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
 				binary.BigEndian.PutUint64(b, uint64(i))
@@ -96,40 +98,38 @@ func TestSMT_ProofSizes(t *testing.T) {
 		})
 		require.NoError(t, nodes.ClearAll())
 	}
-	require.NoError(t, nodes.Stop())
 }
 
 func TestSMST_ProofSizes(t *testing.T) {
-	nodes, err := smt.NewKVStore("")
-	require.NoError(t, err)
+	nodes := simplemap.NewSimpleMap()
 	testCases := []struct {
-		name     string
+		desc     string
 		trieSize int
 	}{
 		{
-			name:     "Proof Size (Prefilled: 100000)",
+			desc:     "Proof Size (Prefilled: 100000)",
 			trieSize: 100000,
 		},
 		{
-			name:     "Proof Size (Prefilled: 500000)",
+			desc:     "Proof Size (Prefilled: 500000)",
 			trieSize: 500000,
 		},
 		{
-			name:     "Proof Size (Prefilled: 1000000)",
+			desc:     "Proof Size (Prefilled: 1000000)",
 			trieSize: 1000000,
 		},
 		{
-			name:     "Proof Size (Prefilled: 5000000)",
+			desc:     "Proof Size (Prefilled: 5000000)",
 			trieSize: 5000000,
 		},
 		{
-			name:     "Proof Size (Prefilled: 10000000)",
+			desc:     "Proof Size (Prefilled: 10000000)",
 			trieSize: 10000000,
 		},
 	}
 	for _, tc := range testCases {
 		trie := smt.NewSparseMerkleSumTrie(nodes, sha256.New())
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.desc, func(t *testing.T) {
 			for i := 0; i < tc.trieSize; i++ {
 				b := make([]byte, 8)
 				binary.BigEndian.PutUint64(b, uint64(i))
@@ -185,5 +185,4 @@ func TestSMST_ProofSizes(t *testing.T) {
 		})
 		require.NoError(t, nodes.ClearAll())
 	}
-	require.NoError(t, nodes.Stop())
 }

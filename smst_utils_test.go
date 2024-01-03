@@ -6,17 +6,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
+	"github.com/pokt-network/smt/kvstore"
 )
 
-// SMSTWithStorage wraps an SMST with a mapping of value hashes to values with sums (preimages), for use in tests.
-// Note: this doesn't delete from preimages (inputs to hashing functions), since there could be duplicate stored values.
+// SMSTWithStorage wraps an SMST with a mapping of value hashes to values with
+// sums (preimages), for use in tests.
+// Note: this doesn't delete from preimages (inputs to hashing functions), since
+// there could be duplicate stored values.
 type SMSTWithStorage struct {
 	*SMST
-	preimages KVStore
+	preimages kvstore.MapStore
 }
 
-// Update updates a key with a new value in the trie and adds the value to the preimages KVStore
+// Update updates a key with a new value in the trie and adds the value to the
+// preimages KVStore
+// Preimages are the values prior to them being hashed - they are used to
+// confirm the values are in the trie
 func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
@@ -33,8 +38,8 @@ func (smst *SMSTWithStorage) Delete(key []byte) error {
 	return smst.SMST.Delete(key)
 }
 
-// GetValueSum returns the value and sum of the key stored in the trie, by looking up
-// the value hash in the preimages KVStore and extracting the sum
+// GetValueSum returns the value and sum of the key stored in the trie, by
+// looking up the value hash in the preimages KVStore and extracting the sum
 func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	valueHash, sum, err := smst.Get(key)
 	if err != nil {
@@ -45,7 +50,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	}
 	value, err := smst.preimages.Get(valueHash)
 	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
+		if errors.Is(err, ErrKeyNotFound) {
 			// If key isn't found, return default value and sum
 			return defaultValue, 0, nil
 		}

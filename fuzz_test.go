@@ -8,11 +8,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 // FuzzSMT uses fuzzing to attempt to break the SMT implementation
 // in its current state. This fuzzing test does not confirm the SMT
-// functions correctly, it only trys to detect when it fails unexpectedly
+// functions correctly, it only tries to detect when it fails unexpectedly
 func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 	seeds := [][]byte{
 		[]byte(""),
@@ -25,8 +27,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, input []byte) {
-		smn, err := NewKVStore("")
-		require.NoError(t, err)
+		smn := simplemap.NewSimpleMap()
 		trie := NewSparseMerkleTrie(smn, sha256.New())
 
 		r := bytes.NewReader(input)
@@ -66,7 +67,10 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			case Get:
 				_, err := trie.Get(key())
 				if err != nil {
-					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while getting")
+					require.ErrorIsf(
+						t, err, ErrKeyNotFound,
+						"unknown error occurred while getting",
+					)
 				}
 				newRoot := trie.Root()
 				require.Equal(t, originalRoot, newRoot, "root changed while getting")
@@ -74,13 +78,16 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				value := make([]byte, 32)
 				binary.BigEndian.PutUint64(value, uint64(i))
 				err := trie.Update(key(), value)
-				require.NoErrorf(t, err, "unknown error occured while updating")
+				require.NoErrorf(t, err, "unknown error occurred while updating")
 				newRoot := trie.Root()
 				require.NotEqual(t, originalRoot, newRoot, "root unchanged while updating")
 			case Delete:
 				err := trie.Delete(key())
 				if err != nil {
-					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while deleting")
+					require.ErrorIsf(
+						t, err, ErrKeyNotFound,
+						"unknown error occurred while deleting",
+					)
 					continue
 				}
 				// If the key was present check root has changed
@@ -89,7 +96,10 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			case Prove:
 				_, err := trie.Prove(key())
 				if err != nil {
-					require.ErrorIsf(t, err, ErrKeyNotPresent, "unknown error occured while proving")
+					require.ErrorIsf(
+						t, err, ErrKeyNotFound,
+						"unknown error occurred while proving",
+					)
 				}
 				newRoot := trie.Root()
 				require.Equal(t, originalRoot, newRoot, "root changed while proving")
@@ -100,8 +110,6 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 			newRoot := trie.Root()
 			require.Greater(t, len(newRoot), 0, "new root is empty while err is nil")
 		}
-
-		require.NoError(t, smn.Stop())
 	})
 }
 

@@ -24,9 +24,11 @@
   * [Compression](#compression)
   * [Serialisation](#serialisation)
 - [Database](#database)
+  * [Database Submodules](#database-submodules)
+    + [SimpleMap](#simplemap)
+    + [Badger](#badger)
   * [Data Loss](#data-loss)
 - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
-- [Example](#example)
 
 <!-- tocstop -->
 
@@ -451,20 +453,40 @@ schemes.
 
 ## Database
 
-This library defines the `KVStore` interface which by default is implemented
-using [BadgerDB](https://github.com/dgraph-io/badger), however any database that
-implements this interface can be used as a drop in replacement. The `KVStore`
-allows for both in memory and persisted databases to be used to store the nodes
-for the SMT.
+By default, this library provides a simple interface (`MapStore`) which can be
+found in [`kvstore/interfaces.go`](../kvstore/interfaces.go) and submodule
+implementations of said interface. These submodules allow for more extensible
+key-value store implementations that give the user more control over their
+database backing the underlying trie.
 
-When changes are committed to the underlying database using `Commit()` the
-digests of the leaf nodes are stored at their respective paths. If retrieved
-manually from the database the returned value will be the digest of the leaf
-node, **not** the leaf node's value, even when `WithValueHasher(nil)` is used.
-The node value can be parsed from this value, as the trie `Get` function does
-by removing the prefix and path bytes from the returned value.
+### Database Submodules
 
-See [kvstore.md](./kvstore.md) for the details of the implementation.
+In addition to providing the `MapStore` interface and `simplemap`
+implementation, the `smt` library also provides wrappers around other key-value
+databases as submodules with more fully-featured interfaces that can be used
+outside of backing key-value engines for tries. These submodules can be found in
+the [`kvstore`](../kvstore/) directory.
+
+#### SimpleMap
+
+This library defines the `SimpleMap` interface which is implemented as an
+extremely simple in-memory key-value store.
+
+Although it is a submodule, it is ideal for simple, testing or non-production
+use cases. It is used in the tests throughout the library.
+
+See [simplemap.go](../kvstore/simplemap/simplemap.go) for the implementation
+details.
+
+#### Badger
+
+This library defines the `BadgerStore` interface which is implemented as a
+wrapper around the [BadgerDB](https://github.com/dgraph-io/badger) v4 key-value
+database. It's interface exposes numerous extra methods not used by the trie,
+However it can still be used as a node-store with both in-memory and persistent
+options.
+
+See [badger-store.md](./badger-store.md.md) for the details of the implementation.
 
 ### Data Loss
 
@@ -477,42 +499,3 @@ the `Commit()` function is called and changes are persisted.
 
 This library also implements a Sparse Merkle Sum Trie (SMST), the documentation
 for which can be found [here](./merkle-sum-trie.md).
-
-## Example
-
-```go
-package main
-
-import (
-  "crypto/sha256"
-  "fmt"
-
-  "github.com/pokt-network/smt"
-)
-
-func main() {
-  // Initialise a new in-memory key-value store to store the nodes of the trie
-  // (Note: the trie only stores hashed values, not raw value data)
-  nodeStore := smt.NewKVStore("")
-
-  // Ensure the database connection closes
-  defer nodeStore.Stop()
-
-  // Update the key "foo" with the value "bar"
-  _ = trie.Update([]byte("foo"), []byte("bar"))
-
-  // Commit the changes to the node store
-  _ = trie.Commit()
-
-  // Generate a Merkle proof for "foo"
-  proof, _ := trie.Prove([]byte("foo"))
-  root := trie.Root() // We also need the current trie root for the proof
-
-  // Verify the Merkle proof for "foo"="bar"
-  if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), trie.Spec()) {
-    fmt.Println("Proof verification succeeded.")
-  } else {
-    fmt.Println("Proof verification failed.")
-  }
-}
-```

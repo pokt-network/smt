@@ -1,7 +1,6 @@
 package smt
 
 import (
-	"errors"
 	"hash"
 )
 
@@ -13,9 +12,6 @@ const (
 var (
 	defaultValue []byte
 	defaultSum   [sumSize]byte
-
-	// ErrKeyNotPresent is returned when a key is not present in the trie.
-	ErrKeyNotPresent = errors.New("key already empty")
 )
 
 // SparseMerkleTrie represents a Sparse Merkle Trie.
@@ -30,10 +26,11 @@ type SparseMerkleTrie interface {
 	Root() []byte
 	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
-	// ProveClosest computes a Merkle proof of inclusion for a key in the trie which is
-	// closest to the path provided. It will search for the key with the longest common
-	// prefix before finding the key with the most common bits as the path provided.
-	ProveClosest([]byte) (proof *SparseMerkleClosestProof, err error)
+	// ProveClosest computes a Merkle proof of inclusion for a key in the trie
+	// which is closest to the path provided. It will search for the key with
+	// the longest common prefix before finding the key with the most common
+	// bits as the path provided.
+	ProveClosest([]byte) (*SparseMerkleClosestProof, error)
 	// Commit saves the trie's state to its persistent storage.
 	Commit() error
 	// Spec returns the TrieSpec for the trie
@@ -54,10 +51,11 @@ type SparseMerkleSumTrie interface {
 	Sum() uint64
 	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
-	// ProveClosest computes a Merkle proof of inclusion for a key in the trie which is
-	// closest to the path provided. It will search for the key with the longest common
-	// prefix before finding the key with the most common bits as the path provided.
-	ProveClosest([]byte) (proof *SparseMerkleClosestProof, err error)
+	// ProveClosest computes a Merkle proof of inclusion for a key in the trie
+	// which is closest to the path provided. It will search for the key with
+	// the longest common prefix before finding the key with the most common
+	// bits as the path provided.
+	ProveClosest([]byte) (*SparseMerkleClosestProof, error)
 	// Commit saves the trie's state to its persistent storage.
 	Commit() error
 	// Spec returns the TrieSpec for the trie
@@ -133,7 +131,8 @@ func (spec *TrieSpec) hashNode(node trieNode) []byte {
 	return *cache
 }
 
-// sumSerialize serializes a node returning the preimage hash, its sum and any errors encountered
+// sumSerialize serializes a node returning the preimage hash, its sum and any
+// errors encountered
 func (spec *TrieSpec) sumSerialize(node trieNode) (preimage []byte) {
 	switch n := node.(type) {
 	case *lazyNode:
