@@ -28,7 +28,6 @@
     + [Badger](#badger)
   * [Data Loss](#data-loss)
 - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
-- [Example](#example)
 
 <!-- tocstop -->
 
@@ -453,9 +452,9 @@ schemes.
 
 ## Database
 
-By default this library provides a simple interface (`MapStore`) and a simple
+By default, this library provides a simple interface (`MapStore`) and a simple
 in-memory key-value database found in [`simplemap.go`](../kvstore/simplemap.go).
-However, any key-value store that implements this interface can be used as the
+However, any key-value store implementing this interface can be used as the
 node store to back the trie.
 
 See: [`kvstore/simplemap.go`](../kvstore/simplemap.go) for the `MapStore`
@@ -463,11 +462,11 @@ interface and simple key-value map implementation.
 
 ### Database Submodules
 
-In addition to providing the `MapStore` and `SimpleMap` the `smt` library also
-provides wrappers around other key-value databases as submodules with more
-fully featured interfaces that can be used as outside of being a node store for
-the tries. These submodules can be found in the [`kvstore`](../kvstore/)
-directory.
+In addition to providing the `MapStore` and `SimpleMap` interfaces and
+implementations, the `smt` library also provides wrappers around other key-value
+databases as submodules with more fully-featured interfaces that can be used
+outside of backing key-value engines for tries. These submodules can be found in
+the [`kvstore`](../kvstore/) directory.
 
 #### Badger
 
@@ -490,40 +489,3 @@ the `Commit()` function is called and changes are persisted.
 
 This library also implements a Sparse Merkle Sum Trie (SMST), the documentation
 for which can be found [here](./merkle-sum-trie.md).
-
-## Example
-
-```go
-package main
-
-import (
-  "crypto/sha256"
-  "fmt"
-
-  "github.com/pokt-network/smt"
-  "github.com/pokt-network/smt/kvstore"
-)
-
-func main() {
-  // Initialise a new in-memory key-value store to store the nodes of the trie
-  // (Note: the trie only stores hashed values, not raw value data)
-  nodeStore := kvstore.NewSimpleMap()
-
-  // Update the key "foo" with the value "bar"
-  _ = trie.Update([]byte("foo"), []byte("bar"))
-
-  // Commit the changes to the node store
-  _ = trie.Commit()
-
-  // Generate a Merkle proof for "foo"
-  proof, _ := trie.Prove([]byte("foo"))
-  root := trie.Root() // We also need the current trie root for the proof
-
-  // Verify the Merkle proof for "foo"="bar"
-  if smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), trie.Spec()) {
-    fmt.Println("Proof verification succeeded.")
-  } else {
-    fmt.Println("Proof verification failed.")
-  }
-}
-```

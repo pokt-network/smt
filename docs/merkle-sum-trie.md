@@ -11,7 +11,6 @@
     + [Binary Sum Digests](#binary-sum-digests)
 - [Sum](#sum)
 - [Nil Values](#nil-values)
-- [Example](#example)
 
 <!-- tocstop -->
 
@@ -269,50 +268,5 @@ Assume `(key, value, weight)` groupings as follows:
   - Proving this `key` is in the trie will succeed
 - `(key, value, weight)` -> DOES modify the `root` hash
   - Proving this `key` is in the trie will succeed
-
-## Example
-
-```go
-package main
-
-import (
-  "crypto/sha256"
-  "fmt"
-
-  "github.com/pokt-network/smt"
-  "github.com/pokt-network/smt/kvstore"
-)
-
-func main() {
-  // Initialise a new in-memory key-value store to store the nodes of the trie
-  // (Note: the trie only stores hashed values, not raw value data)
-  nodeStore := kvstore.NewSimpleMap()
-
-  // Initialise the trie
-  trie := smt.NewSparseMerkleSumTrie(nodeStore, sha256.New())
-
-  // Update trie with keys, values and their sums
-  _ = trie.Update([]byte("foo"), []byte("oof"), 10)
-  _ = trie.Update([]byte("baz"), []byte("zab"), 7)
-  _ = trie.Update([]byte("bin"), []byte("nib"), 3)
-
-  // Commit the changes to the nodeStore
-  _ = trie.Commit()
-
-  sum := trie.Sum()
-  fmt.Println(sum == 20) // true
-
-  // Generate a Merkle proof for "foo"
-  proof, _ := trie.Prove([]byte("foo"))
-  root := trie.Root() // We also need the current trie root for the proof
-
-  // Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-  if valid := smt.VerifySumProof(proof, root, []byte("foo"), []byte("oof"), 10, trie.Spec()); valid {
-    fmt.Println("Proof verification succeeded.")
-  } else {
-    fmt.Println("Proof verification failed.")
-  }
-}
-```
 
 [plasma core docs]: https://plasma-core.readthedocs.io/en/latest/specs/sum-tree.html
