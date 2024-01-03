@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/pokt-network/smt/kvstore"
-	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 // SMTWithStorage wraps an SMT with a mapping of value hashes to values
@@ -43,7 +42,7 @@ func (smt *SMTWithStorage) GetValue(key []byte) ([]byte, error) {
 	}
 	value, err := smt.preimages.Get(valueHash)
 	if err != nil {
-		if errors.Is(err, simplemap.ErrKVStoreKeyNotFound) {
+		if errors.Is(err, ErrKeyNotFound) {
 			// If key isn't found, return default value
 			value = defaultValue
 		} else {

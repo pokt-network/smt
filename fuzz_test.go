@@ -68,7 +68,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				_, err := trie.Get(key())
 				if err != nil {
 					require.ErrorIsf(
-						t, err, simplemap.ErrKVStoreKeyNotFound,
+						t, err, ErrKeyNotFound,
 						"unknown error occurred while getting",
 					)
 				}
@@ -85,7 +85,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				err := trie.Delete(key())
 				if err != nil {
 					require.ErrorIsf(
-						t, err, simplemap.ErrKVStoreKeyNotFound,
+						t, err, ErrKeyNotFound,
 						"unknown error occurred while deleting",
 					)
 					continue
@@ -97,7 +97,7 @@ func FuzzSMT_DetectUnexpectedFailures(f *testing.F) {
 				_, err := trie.Prove(key())
 				if err != nil {
 					require.ErrorIsf(
-						t, err, simplemap.ErrKVStoreKeyNotFound,
+						t, err, ErrKeyNotFound,
 						"unknown error occurred while proving",
 					)
 				}

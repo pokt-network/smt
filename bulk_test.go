@@ -82,7 +82,7 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			ki := r.Intn(len(kv))
 
 			err := smt.Delete(kv[ki].key)
-			if err != nil && err != simplemap.ErrKVStoreKeyNotFound {
+			if err != nil && err != ErrKeyNotFound {
 				t.Fatalf("error: %v", err)
 			}
 			kv[ki].val = defaultValue

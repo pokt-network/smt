@@ -5,7 +5,6 @@ import (
 	"hash"
 
 	"github.com/pokt-network/smt/kvstore"
-	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 var (
@@ -247,11 +246,11 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 	}
 
 	if node == nil {
-		return node, simplemap.ErrKVStoreKeyNotFound
+		return node, ErrKeyNotFound
 	}
 	if leaf, ok := node.(*leafNode); ok {
 		if !bytes.Equal(path, leaf.path) {
-			return node, simplemap.ErrKVStoreKeyNotFound
+			return node, ErrKeyNotFound
 		}
 		smt.addOrphan(orphans, node)
 		return nil, nil
@@ -261,7 +260,7 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 
 	if ext, ok := node.(*extensionNode); ok {
 		if _, match := ext.match(path, depth); !match {
-			return node, simplemap.ErrKVStoreKeyNotFound
+			return node, ErrKeyNotFound
 		}
 		ext.child, err = smt.delete(ext.child, depth+ext.length(), path, orphans)
 		if err != nil {
