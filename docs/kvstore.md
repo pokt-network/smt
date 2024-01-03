@@ -25,7 +25,9 @@ submodule the library (the SMT) can be used without it. As long as the node
 store provided to the SMT adheres to the `MapStore` interface **anything** can
 be used.
 
-This is recommemded for testing purposes or non-production usage.
+This is recommemded for simple, testing purposes or non-production usage.
+
+See [simplemap.go](../kvstore/simplemap/simplemap.go) for more details.
 
 ### BadgerV4
 
