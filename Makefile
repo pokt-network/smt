@@ -18,15 +18,15 @@ list:  ## List all make targets
 #####################
 
 ## Ensure godoc is installed
-.PHONY: check_godoc
-	# Internal helper target - check if godoc is installed
+.PHONY:
+# Internal helper target - check if godoc is installed
 check_godoc:
 	{ \
 		if ( ! ( command -v godoc >/dev/null )); then \
 		echo "Seems like you don't have godoc installed. Make sure you install it via 'go install golang.org/x/tools/cmd/godoc@latest' before continuing"; \
 		exit 1; \
 		fi; \
-		}
+	}
 
 #####################
 ####   Testing   ####
