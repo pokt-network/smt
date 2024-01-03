@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/pokt-network/smt"
-	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 func ExampleSMT() {
 	// Initialise a new in-memory key-value store to store the nodes of the trie
 	// (Note: the trie only stores hashed values, not raw value data)
-	nodeStore := kvstore.NewSimpleMap()
+	nodeStore := simplemap.NewSimpleMap()
 
 	// Initialise the trie
 	trie := smt.NewSparseMerkleTrie(nodeStore, sha256.New())
@@ -28,9 +28,8 @@ func ExampleSMT() {
 
 	// Verify the Merkle proof for "foo"="bar"
 	valid, _ := smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), trie.Spec())
-	fmt.Println(valid)
 	// Attempt to verify the Merkle proof for "foo"="baz"
-	false, _ := smt.VerifyProof(proof, root, []byte("foo"), []byte("baz"), trie.Spec())
-	fmt.Println(valid, false)
+	invalid, _ := smt.VerifyProof(proof, root, []byte("foo"), []byte("baz"), trie.Spec())
+	fmt.Println(valid, invalid)
 	// Output: true false
 }
