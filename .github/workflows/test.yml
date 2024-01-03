@@ -45,8 +45,8 @@ jobs:
           # Run each of the tests (excluding benchmarks) outputting the JSON
           # to the test_results.json file for usage in later steps.
           set -euo pipefail
-          go test -v -json -p 1 ./ -mod=readonly -race -coverprofile=coverage1.txt -covermode=atomic 2>&1 | tee -a test_results.json
-          go test -v -json -p 1 ./kvstore/... -race -coverprofile=coverage2.txt -covermode=atomic 2>&1 | tee -a test_results.json
+          go test -v -json -p 1 ./ -mod=readonly -race -coverprofile=coverage1.txt -covermode=atomic 2>&1 | tee test_results.json
+          go test -v -json -p 1 ./kvstore/simplemap/... -mod=readonly -race -coverprofile=coverage2.txt -covermode=atomic 2>&1 | tee -a test_results.json
           go test -v -json -p 1 ./kvstore/badger/... -mod=readonly -race -coverprofile=coverage3.txt -covermode=atomic 2>&1 | tee -a test_results.json
           # Combine coverage reports
           gocovmerge coverage1.txt coverage2.txt coverage3.txt > coverage.txt
