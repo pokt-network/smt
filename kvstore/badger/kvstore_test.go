@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pokt-network/smt/badger"
+	"github.com/pokt-network/smt/kvstore/badger"
 )
 
 func TestBadger_KVStore_BasicOperations(t *testing.T) {
