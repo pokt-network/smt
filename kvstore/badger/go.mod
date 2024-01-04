@@ -1,4 +1,4 @@
-module github.com/pokt-network/smt/badger
+module github.com/pokt-network/smt/kvstore/badger
 
 go 1.20
 
