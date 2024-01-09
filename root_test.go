@@ -2,8 +2,10 @@ package smt_test
 
 import (
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/binary"
 	"fmt"
+	"hash"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,28 +14,69 @@ import (
 	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
-func TestMerkleRoot_SumTrie(t *testing.T) {
-	nodeStore := simplemap.NewSimpleMap()
-	trie := smt.NewSparseMerkleSumTrie(nodeStore, sha256.New())
-	for i := uint64(0); i < 10; i++ {
-		require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i)), i))
+func TestMerkleRoot_TrieTypes(t *testing.T) {
+	tests := []struct {
+		desc          string
+		sumTree       bool
+		hasher        hash.Hash
+		expectedPanic string
+	}{
+		{
+			desc:          "successfully: gets sum of sha256 hasher SMST",
+			sumTree:       true,
+			hasher:        sha256.New(),
+			expectedPanic: "",
+		},
+		{
+			desc:          "successfully: gets sum of sha512 hasher SMST",
+			sumTree:       true,
+			hasher:        sha512.New(),
+			expectedPanic: "",
+		},
+		{
+			desc:          "failure: panics for sha256 hasher SMT",
+			sumTree:       false,
+			hasher:        sha256.New(),
+			expectedPanic: "roo#sum: not a merkle sum trie",
+		},
+		{
+			desc:          "failure: panics for sha512 hasher SMT",
+			sumTree:       false,
+			hasher:        sha512.New(),
+			expectedPanic: "roo#sum: not a merkle sum trie",
+		},
 	}
-	root := trie.Root()
-	require.Equal(t, root.Sum(true), getSumBzHelper(t, root))
-}
 
-func TestMerkleRoot_Trie(t *testing.T) {
 	nodeStore := simplemap.NewSimpleMap()
-	trie := smt.NewSparseMerkleTrie(nodeStore, sha256.New())
-	for i := 0; i < 10; i++ {
-		require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i))))
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Cleanup(func() {
+				require.NoError(t, nodeStore.ClearAll())
+			})
+			if tt.sumTree {
+				trie := smt.NewSparseMerkleSumTrie(nodeStore, tt.hasher)
+				for i := uint64(0); i < 10; i++ {
+					require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i)), i))
+				}
+				root := trie.Root()
+				require.Equal(t, root.Sum(), getSumBzHelper(t, root))
+				return
+			}
+			trie := smt.NewSparseMerkleTrie(nodeStore, tt.hasher)
+			for i := 0; i < 10; i++ {
+				require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i))))
+			}
+			if panicStr := recover(); panicStr != nil {
+				require.Equal(t, tt.expectedPanic, panicStr)
+			}
+		})
 	}
-	root := trie.Root()
-	require.Equal(t, root.Sum(false), uint64(0))
 }
 
 func getSumBzHelper(t *testing.T, r []byte) uint64 {
-	var sumbz [8]byte                            // Using sha256
-	copy(sumbz[:], []byte(r)[len([]byte(r))-8:]) // Using sha256 so - 8 bytes
-	return binary.BigEndian.Uint64(sumbz[:])
+	sumSize := len(r) % 32
+	sumBz := make([]byte, sumSize)
+	copy(sumBz[:], []byte(r)[len([]byte(r))-sumSize:])
+	return binary.BigEndian.Uint64(sumBz[:])
 }

@@ -119,5 +119,5 @@ func (smst *SMST) Root() MerkleRoot {
 // Sum returns the uint64 sum of the entire trie
 func (smst *SMST) Sum() uint64 {
 	digest := smst.Root()
-	return digest.Sum(true)
+	return digest.Sum()
 }

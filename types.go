@@ -18,15 +18,16 @@ var (
 // MerkleRoot is a type alias for a byte slice returned from the Root method
 type MerkleRoot []byte
 
-// Sum returns the uint64 sum of the merkle root, if sumTrie is true
-// otherwise it returns 0, as it would result in undefined behaviour.
-func (r MerkleRoot) Sum(sumTrie bool) uint64 {
-	if sumTrie {
-		var sumbz [sumSize]byte
-		copy(sumbz[:], []byte(r)[len([]byte(r))-sumSize:])
-		return binary.BigEndian.Uint64(sumbz[:])
+// Sum returns the uint64 sum of the merkle root, it checks the length of the
+// merkle root and if it is no the same as the size of the SMST's expected
+// root hash it will panic.
+func (r MerkleRoot) Sum() uint64 {
+	if len(r)%32 == 0 {
+		panic("roo#sum: not a merkle sum trie")
 	}
-	return 0
+	var sumbz [sumSize]byte
+	copy(sumbz[:], []byte(r)[len([]byte(r))-sumSize:])
+	return binary.BigEndian.Uint64(sumbz[:])
 }
 
 // SparseMerkleTrie represents a Sparse Merkle Trie.
