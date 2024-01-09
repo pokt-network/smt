@@ -675,7 +675,7 @@ func (smt *SMT) commit(node trieNode) error {
 }
 
 // Root returns the root hash of the trie
-func (smt *SMT) Root() []byte {
+func (smt *SMT) Root() MerkleRoot {
 	return hashNode(smt.Spec(), smt.trie)
 }
 

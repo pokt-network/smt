@@ -112,14 +112,12 @@ func (smst *SMST) Commit() error {
 }
 
 // Root returns the root hash of the trie with the total sum bytes appended
-func (smst *SMST) Root() []byte {
+func (smst *SMST) Root() MerkleRoot {
 	return smst.SMT.Root() // [digest]+[binary sum]
 }
 
 // Sum returns the uint64 sum of the entire trie
 func (smst *SMST) Sum() uint64 {
-	var sumBz [sumSize]byte
 	digest := smst.Root()
-	copy(sumBz[:], digest[len(digest)-sumSize:])
-	return binary.BigEndian.Uint64(sumBz[:])
+	return digest.Sum(true)
 }
