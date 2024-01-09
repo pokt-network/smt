@@ -10,6 +10,7 @@
     + [General Trie Structure](#general-trie-structure)
     + [Binary Sum Digests](#binary-sum-digests)
 - [Sum](#sum)
+- [Roots](#roots)
 - [Nil Values](#nil-values)
 
 <!-- tocstop -->
@@ -247,6 +248,15 @@ graph TB
 
 The `Sum()` function adds functionality to easily retrieve the trie's current
 sum as a `uint64`.
+
+## Roots
+
+Roots are `[]byte` types aliases by the `MerkleRoot` type. This type has one
+method `Sum(sumTrie bool) uint64`. For the SMST this method is used by its own
+`Sum()` method to return the total sum of the trie.
+
+The `MerkleRoot` type being an alias means it can be used in place of the
+`[]byte` type. Specifically for proofs.
 
 ## Nil Values
 

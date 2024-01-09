@@ -17,6 +17,7 @@
 - [Values](#values)
   * [Nil values](#nil-values)
 - [Hashers & Digests](#hashers--digests)
+- [Roots](#roots)
 - [Proofs](#proofs)
   * [Verification](#verification)
   * [Closest Proof](#closest-proof)
@@ -341,6 +342,14 @@ graph TD
 	PH --Path-->L
 	VH --ValueHash-->L
 ```
+
+## Roots
+
+Roots are `[]byte` types aliases by the `MerkleRoot` type. This type has one
+method `Sum(sumTrie bool) uint64`. For the SMT this method **always** returns 0.
+
+The `MerkleRoot` type being an alias means it can be used in place of the
+`[]byte` type. Specifically for proofs.
 
 ## Proofs
 
