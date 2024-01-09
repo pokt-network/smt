@@ -27,6 +27,9 @@
 - [Database](#database)
   * [Database Submodules](#database-submodules)
     + [SimpleMap](#simplemap)
+    + [Badger](#badger)
+  * [Data Loss](#data-loss)
+- [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 
 <!-- tocstop -->
 
@@ -477,4 +480,33 @@ the [`kvstore`](../kvstore/) directory.
 
 #### SimpleMap
 
-This l
+This library defines the `SimpleMap` interface which is implemented as an
+extremely simple in-memory key-value store.
+
+Although it is a submodule, it is ideal for simple, testing or non-production
+use cases. It is used in the tests throughout the library.
+
+See [simplemap.go](../kvstore/simplemap/simplemap.go) for the implementation
+details.
+
+#### Badger
+
+This library defines the `BadgerStore` interface which is implemented as a
+wrapper around the [BadgerDB](https://github.com/dgraph-io/badger) v4 key-value
+database. It's interface exposes numerous extra methods not used by the trie,
+However it can still be used as a node-store with both in-memory and persistent
+options.
+
+See [badger-store.md](./badger-store.md.md) for the details of the implementation.
+
+### Data Loss
+
+In the event of a system crash or unexpected failure of the program utilising
+the SMT, if the `Commit()` function has not been called, any changes to the trie
+will be lost. This is due to the underlying database not being changed **until**
+the `Commit()` function is called and changes are persisted.
+
+## Sparse Merkle Sum Trie
+
+This library also implements a Sparse Merkle Sum Trie (SMST), the documentation
+for which can be found [here](./merkle-sum-trie.md).
