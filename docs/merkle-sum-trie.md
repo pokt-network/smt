@@ -10,6 +10,7 @@
     + [General Trie Structure](#general-trie-structure)
     + [Binary Sum Digests](#binary-sum-digests)
 - [Sum](#sum)
+- [Roots](#roots)
 - [Nil Values](#nil-values)
 
 <!-- tocstop -->
@@ -247,6 +248,15 @@ graph TB
 
 The `Sum()` function adds functionality to easily retrieve the trie's current
 sum as a `uint64`.
+
+## Roots
+
+The root of the tree is a slice of bytes. `MerkleRoot` is an alias for `[]byte`.
+This design enables easily passing around the data (e.g. on-chain)
+while maintaining primitive usage in different use cases (e.g. proofs).
+
+`MerkleRoot` provides helpers, such as retrieving the `Sum(sumTrie bool)uint64`
+to interface with data it captures.
 
 ## Nil Values
 

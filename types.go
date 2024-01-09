@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"encoding/binary"
 	"hash"
 )
 
@@ -14,6 +15,21 @@ var (
 	defaultSum   [sumSize]byte
 )
 
+// MerkleRoot is a type alias for a byte slice returned from the Root method
+type MerkleRoot []byte
+
+// Sum returns the uint64 sum of the merkle root, it checks the length of the
+// merkle root and if it is no the same as the size of the SMST's expected
+// root hash it will panic.
+func (r MerkleRoot) Sum() uint64 {
+	if len(r)%32 == 0 {
+		panic("roo#sum: not a merkle sum trie")
+	}
+	var sumbz [sumSize]byte
+	copy(sumbz[:], []byte(r)[len([]byte(r))-sumSize:])
+	return binary.BigEndian.Uint64(sumbz[:])
+}
+
 // SparseMerkleTrie represents a Sparse Merkle Trie.
 type SparseMerkleTrie interface {
 	// Update inserts a value into the SMT.
@@ -23,7 +39,7 @@ type SparseMerkleTrie interface {
 	// Get descends the trie to access a value. Returns nil if key is not present.
 	Get(key []byte) ([]byte, error)
 	// Root computes the Merkle root digest.
-	Root() []byte
+	Root() MerkleRoot
 	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
 	// ProveClosest computes a Merkle proof of inclusion for a key in the trie
@@ -46,7 +62,7 @@ type SparseMerkleSumTrie interface {
 	// Get descends the trie to access a value. Returns nil if key is not present.
 	Get(key []byte) ([]byte, uint64, error)
 	// Root computes the Merkle root digest.
-	Root() []byte
+	Root() MerkleRoot
 	// Sum computes the total sum of the Merkle trie
 	Sum() uint64
 	// Prove computes a Merkle proof of inclusion or exclusion of a key.

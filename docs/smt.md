@@ -17,6 +17,7 @@
 - [Values](#values)
   * [Nil values](#nil-values)
 - [Hashers & Digests](#hashers--digests)
+- [Roots](#roots)
 - [Proofs](#proofs)
   * [Verification](#verification)
   * [Closest Proof](#closest-proof)
@@ -26,9 +27,6 @@
 - [Database](#database)
   * [Database Submodules](#database-submodules)
     + [SimpleMap](#simplemap)
-    + [Badger](#badger)
-  * [Data Loss](#data-loss)
-- [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 
 <!-- tocstop -->
 
@@ -342,6 +340,16 @@ graph TD
 	VH --ValueHash-->L
 ```
 
+## Roots
+
+The root of the tree is a slice of bytes. `MerkleRoot` is an alias for `[]byte`.
+This design enables easily passing around the data (e.g. on-chain)
+while maintaining primitive usage in different use cases (e.g. proofs).
+
+`MerkleRoot` provides helpers, such as retrieving the `Sum(sumTrie bool)uint64`
+to interface with data it captures. However, for the SMT it **always** panics,
+as there is no sum.
+
 ## Proofs
 
 The `SparseMerkleProof` type contains the information required for inclusion
@@ -469,33 +477,4 @@ the [`kvstore`](../kvstore/) directory.
 
 #### SimpleMap
 
-This library defines the `SimpleMap` interface which is implemented as an
-extremely simple in-memory key-value store.
-
-Although it is a submodule, it is ideal for simple, testing or non-production
-use cases. It is used in the tests throughout the library.
-
-See [simplemap.go](../kvstore/simplemap/simplemap.go) for the implementation
-details.
-
-#### Badger
-
-This library defines the `BadgerStore` interface which is implemented as a
-wrapper around the [BadgerDB](https://github.com/dgraph-io/badger) v4 key-value
-database. It's interface exposes numerous extra methods not used by the trie,
-However it can still be used as a node-store with both in-memory and persistent
-options.
-
-See [badger-store.md](./badger-store.md.md) for the details of the implementation.
-
-### Data Loss
-
-In the event of a system crash or unexpected failure of the program utilising
-the SMT, if the `Commit()` function has not been called, any changes to the trie
-will be lost. This is due to the underlying database not being changed **until**
-the `Commit()` function is called and changes are persisted.
-
-## Sparse Merkle Sum Trie
-
-This library also implements a Sparse Merkle Sum Trie (SMST), the documentation
-for which can be found [here](./merkle-sum-trie.md).
+This l
