@@ -2,16 +2,17 @@
 
 <!-- toc -->
 
-- [Overview](#overview)
-- [Implementation](#implementation)
-  * [Sum Encoding](#sum-encoding)
-  * [Digests](#digests)
-  * [Visualisations](#visualisations)
-    + [General Trie Structure](#general-trie-structure)
-    + [Binary Sum Digests](#binary-sum-digests)
-- [Sum](#sum)
-- [Roots](#roots)
-- [Nil Values](#nil-values)
+- [Sparse Merkle Sum Trie (smst)](#sparse-merkle-sum-trie-smst)
+  - [Overview](#overview)
+  - [Implementation](#implementation)
+    - [Sum Encoding](#sum-encoding)
+    - [Digests](#digests)
+    - [Visualisations](#visualisations)
+      - [General Trie Structure](#general-trie-structure)
+      - [Binary Sum Digests](#binary-sum-digests)
+  - [Sum](#sum)
+  - [Roots](#roots)
+  - [Nil Values](#nil-values)
 
 <!-- tocstop -->
 
