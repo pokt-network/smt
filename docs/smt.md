@@ -5,9 +5,9 @@
 - [smt](#smt)
   - [Overview](#overview)
   - [Implementation](#implementation)
+    - [Leaf Nodes](#leaf-nodes)
     - [Inner Nodes](#inner-nodes)
     - [Extension Nodes](#extension-nodes)
-    - [Leaf Nodes](#leaf-nodes)
     - [Lazy Nodes](#lazy-nodes)
     - [Lazy Loading](#lazy-loading)
     - [Visualisations](#visualisations)
@@ -51,33 +51,13 @@ See [smt.go](../smt.go) for more details on the implementation.
 
 The SMT has 4 node types that are used to construct the trie:
 
-- Inner Nodes
-  - Prefixed `[]byte{1}`
-  - `digest = hash([]byte{1} + leftChild.digest + rightChild.digest)`
-- Extension Nodes
-  - Prefixed `[]byte{2}`
-  - `digest = hash([]byte{2} + pathBounds + path + child.digest)`
-- Leaf Nodes
-  - Prefixed `[]byte{0}`
-  - `digest = hash([]byte{0} + path + value)`
+- [Inner Nodes](#inner-nodes)
+- [Extension Nodes](#extension-nodes)
+- [Leaf Nodes](#leaf-nodes)
 - Lazy Nodes
   - Prefix of the actual node type is stored in the persisted digest as
     determined above
   - `digest = persistedDigest`
-
-### Inner Nodes
-
-Inner nodes represent a branch in the trie with two **non-nil** child nodes.
-The inner node has an internal `digest` which represents the hash of the child
-nodes concatenated hashes.
-
-### Extension Nodes
-
-Extension nodes represent a singly linked chain of inner nodes, with a single
-child. They are used to represent a common path in the trie and as such contain
-the path and bounds of the path they represent. The `digest` of an extension
-node is the hash of its path bounds, the path itself and the child nodes digest
-concatenated.
 
 ### Leaf Nodes
 
@@ -89,6 +69,30 @@ The SMT stores only the hashes of the values in the trie, not the raw values
 themselves. In order to store the raw values in the underlying database the
 option `WithValueHasher(nil)` must be passed into the `NewSparseMerkleTrie`
 constructor.
+
+- _Prefix_: `[]byte{0}`
+- _Digest_: `hash([]byte{0} + path + value)`
+
+### Inner Nodes
+
+Inner nodes represent a branch in the trie with two **non-nil** child nodes.
+
+The inner node has an internal `digest` which represents the hash of the child
+nodes concatenated hashes.
+
+- _Prefix_: `[]byte{1}`
+- _Digest_: `hash([]byte{1} + leftChild.digest + rightChild.digest)`
+
+### Extension Nodes
+
+Extension nodes represent a singly linked chain of inner nodes, with a single
+child. They are used to represent a common path in the trie and as such contain
+the path and bounds of the path they represent. The `digest` of an extension
+node is the hash of its path bounds, the path itself and the child nodes digest
+concatenated.
+
+- _Prefix_: `[]byte{2}`
+- _Digest_: `hash([]byte{2} + pathBounds + path + child.digest)`
 
 ### Lazy Nodes
 

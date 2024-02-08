@@ -13,21 +13,27 @@ var (
 	_ SparseMerkleTrie = (*SMT)(nil)
 )
 
+// A high-level interface that captures the behaviour of all types of nodes
 type trieNode interface {
-	// when committing a node to disk, skip if already persisted
+	// Persisted returns a boolean to determine whether or not the node
+	// has been persisted to disk or only held in memory.
+	// It can be used skip unnecessary iops if already persisted
 	Persisted() bool
+
+	// The digest of the node, returning a cached value if available.
 	CachedDigest() []byte
 }
 
-// A branch within the trie
+// A branch within the binary trie pointing to a left & right child.
 type innerNode struct {
-	// Both child nodes are always non-nil
+	// Left and right child nodes.
+	// Both child nodes are always expected to be non-nil.
 	leftChild, rightChild trieNode
 	persisted             bool
 	digest                []byte
 }
 
-// Stores data and full path
+// A leaf node storing a key-value pair for a full path.
 type leafNode struct {
 	path      []byte
 	valueHash []byte
@@ -39,7 +45,7 @@ type leafNode struct {
 type extensionNode struct {
 	path []byte
 	// Offsets into path slice of bounds defining actual path segment.
-	// Note: assumes path is <=256 bits
+	// NOTE: assumes path is <=256 bits
 	pathBounds [2]byte
 	// Child is always an inner node, or lazy.
 	child     trieNode
@@ -171,23 +177,29 @@ func (smt *SMT) update(
 		return newLeaf, nil
 	}
 	if leaf, ok := node.(*leafNode); ok {
-		prefixlen := countCommonPrefixBits(path, leaf.path, depth)
-		if prefixlen == smt.depth() { // replace leaf if paths are equal
+		prefixLen := countCommonPrefixBits(path, leaf.path, depth)
+		if prefixLen == smt.depth() { // replace leaf if paths are equal
 			smt.addOrphan(orphans, node)
 			return newLeaf, nil
 		}
 		// We insert an "extension" representing multiple single-branch inner nodes
 		last := &node
-		if depth < prefixlen {
+		if depth < prefixLen {
 			// note: this keeps path slice alive - GC inefficiency?
 			if depth > 0xff {
 				panic("invalid depth")
 			}
-			ext := extensionNode{path: path, pathBounds: [2]byte{byte(depth), byte(prefixlen)}}
+			ext := extensionNode{
+				path: path,
+				pathBounds: [2]byte{
+					byte(depth),
+					byte(prefixLen),
+				},
+			}
 			*last = &ext
 			last = &ext.child
 		}
-		if getPathBit(path, prefixlen) == left {
+		if getPathBit(path, prefixLen) == left {
 			*last = &innerNode{leftChild: newLeaf, rightChild: leaf}
 		} else {
 			*last = &innerNode{leftChild: leaf, rightChild: newLeaf}
@@ -685,14 +697,22 @@ func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {
 	}
 }
 
-func (node *leafNode) Persisted() bool      { return node.persisted }
-func (node *innerNode) Persisted() bool     { return node.persisted }
-func (node *lazyNode) Persisted() bool      { return true }
+// TODO_IMPROVE: Lots of opportunity to modularize and improve the code here.
+
+func (node *leafNode) Persisted() bool { return node.persisted }
+
+func (node *innerNode) Persisted() bool { return node.persisted }
+
+func (node *lazyNode) Persisted() bool { return true }
+
 func (node *extensionNode) Persisted() bool { return node.persisted }
 
-func (node *leafNode) CachedDigest() []byte      { return node.digest }
-func (node *innerNode) CachedDigest() []byte     { return node.digest }
-func (node *lazyNode) CachedDigest() []byte      { return node.digest }
+func (node *leafNode) CachedDigest() []byte { return node.digest }
+
+func (node *innerNode) CachedDigest() []byte { return node.digest }
+
+func (node *lazyNode) CachedDigest() []byte { return node.digest }
+
 func (node *extensionNode) CachedDigest() []byte { return node.digest }
 
 func (inner *innerNode) setDirty() {
@@ -733,7 +753,8 @@ func (ext *extensionNode) commonPrefix(path []byte) int {
 }
 
 func (ext *extensionNode) pathStart() int { return int(ext.pathBounds[0]) }
-func (ext *extensionNode) pathEnd() int   { return int(ext.pathBounds[1]) }
+
+func (ext *extensionNode) pathEnd() int { return int(ext.pathBounds[1]) }
 
 // Splits the node in-place; returns replacement node, child node at the split, and split depth
 func (ext *extensionNode) split(path []byte, depth int) (trieNode, *trieNode, int) {
@@ -780,9 +801,12 @@ func (ext *extensionNode) split(path []byte, depth int) (trieNode, *trieNode, in
 			*tail = child
 		} else {
 			*tail = &extensionNode{
-				path:       ext.path,
-				pathBounds: [2]byte{byte(index + 1), ext.pathBounds[1]},
-				child:      child,
+				path: ext.path,
+				pathBounds: [2]byte{
+					byte(index + 1),
+					ext.pathBounds[1],
+				},
+				child: child,
 			}
 		}
 		ext.pathBounds[1] = byte(index)
