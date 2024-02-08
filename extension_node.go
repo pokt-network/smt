@@ -2,8 +2,11 @@ package smt
 
 var _ trieNode = (*extensionNode)(nil)
 
-// A compressed chain of singly-linked inner nodes
+// A compressed chain of singly-linked inner nodes.
+// Instead of storing innerNodes pointing to other innerNodes, the extensionNode
+// at `path` capture all the innerNodes from `pathBounds[0]` to `pathBounds[1]`.
 type extensionNode struct {
+	// The path to this extensionNode starting at the root.
 	path []byte
 	// Offsets into path slice of bounds defining actual path segment.
 	// NOTE: assumes path is <=256 bits
@@ -16,16 +19,24 @@ type extensionNode struct {
 	digest []byte
 }
 
+// Persisted satisfied the trieNode#Persisted interface
 func (node *extensionNode) Persisted() bool {
 	return node.persisted
 }
 
+// Persisted satisfied the trieNode#CachedDigest interface
 func (node *extensionNode) CachedDigest() []byte {
 	return node.digest
 }
 
-func (ext *extensionNode) length() int { return int(ext.pathBounds[1] - ext.pathBounds[0]) }
+// length returns the length of the path segment (number of inner nodes replaced)
+// by this single extensionNode
+func (ext *extensionNode) length() int {
+	return int(ext.pathBounds[1] - ext.pathBounds[0])
+}
 
+// setDirty marks the node as dirty (i.e. not flushed to disk) and clears
+// its digest
 func (ext *extensionNode) setDirty() {
 	ext.persisted = false
 	ext.digest = nil

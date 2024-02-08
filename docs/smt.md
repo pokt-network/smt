@@ -61,13 +61,15 @@ The SMT has 4 node types that are used to construct the trie:
 
 ### Leaf Nodes
 
-Leaf nodes store the full path which they represent and also the hash of the
-value they store. The `digest` of a leaf node is the hash of the leaf nodes path
-and value concatenated.
+Leaf nodes store the full path associated with the `key`. A leaf node also
+store the hash of the `value` stored.
 
-The SMT stores only the hashes of the values in the trie, not the raw values
-themselves. In order to store the raw values in the underlying database the
-option `WithValueHasher(nil)` must be passed into the `NewSparseMerkleTrie`
+The `digest` of a leaf node is the hash of concatenation of the leaf node's
+path and value.
+
+By default, the SMT only stores the hashes of the values in the trie, and not the
+raw values themselves. In order to store the raw values in the underlying database,
+the option `WithValueHasher(nil)` must be passed into the `NewSparseMerkleTrie`
 constructor.
 
 - _Prefix_: `[]byte{0}`
@@ -86,8 +88,11 @@ nodes concatenated hashes.
 ### Extension Nodes
 
 Extension nodes represent a singly linked chain of inner nodes, with a single
-child. They are used to represent a common path in the trie and as such contain
-the path and bounds of the path they represent. The `digest` of an extension
+child. In other words, they are an optimization to avoid having a long chain of
+inner nodes where each inner node only has one child.
+
+In other words, they are used to
+represent a common path in the trie and as such contain the path and bounds of the path they represent. The `digest` of an extension
 node is the hash of its path bounds, the path itself and the child nodes digest
 concatenated.
 
@@ -211,9 +216,8 @@ Paths are **only** stored in two types of nodes: `Leaf` nodes and `Extension` no
   - The full path which it represent
   - The value stored at that path
 - `Extension` nodes contain:
-  -  not only the path they represent but also the path
-  bounds (ie. the start and end of the path they cover).
-
+  - not only the path they represent but also the path
+    bounds (ie. the start and end of the path they cover).
 
 Inner nodes do **not** contain a path, as they represent a branch in the trie
 and not a path. As such their children, _if they are extension nodes or leaf

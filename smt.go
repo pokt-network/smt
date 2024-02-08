@@ -7,11 +7,7 @@ import (
 	"github.com/pokt-network/smt/kvstore"
 )
 
-var (
-	_ trieNode         = (*innerNode)(nil)
-	_ trieNode         = (*leafNode)(nil)
-	_ SparseMerkleTrie = (*SMT)(nil)
-)
+var _ SparseMerkleTrie = (*SMT)(nil)
 
 // A high-level interface that captures the behaviour of all types of nodes
 type trieNode interface {
@@ -22,28 +18,6 @@ type trieNode interface {
 
 	// The digest of the node, returning a cached value if available.
 	CachedDigest() []byte
-}
-
-// A branch within the binary trie pointing to a left & right child.
-type innerNode struct {
-	// Left and right child nodes.
-	// Both child nodes are always expected to be non-nil.
-	leftChild, rightChild trieNode
-	persisted             bool
-	digest                []byte
-}
-
-// A leaf node storing a key-value pair for a full path.
-type leafNode struct {
-	path      []byte
-	valueHash []byte
-	persisted bool
-	digest    []byte
-}
-
-// Represents an uncached, persisted node
-type lazyNode struct {
-	digest []byte
 }
 
 // SMT is a Sparse Merkle Trie object that implements the SparseMerkleTrie interface
@@ -668,23 +642,4 @@ func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {
 	if node.Persisted() {
 		*orphans = append(*orphans, node.CachedDigest())
 	}
-}
-
-// TODO_IMPROVE: Lots of opportunity to modularize and improve the code here.
-
-func (node *leafNode) Persisted() bool { return node.persisted }
-
-func (node *innerNode) Persisted() bool { return node.persisted }
-
-func (node *lazyNode) Persisted() bool { return true }
-
-func (node *leafNode) CachedDigest() []byte { return node.digest }
-
-func (node *innerNode) CachedDigest() []byte { return node.digest }
-
-func (node *lazyNode) CachedDigest() []byte { return node.digest }
-
-func (inner *innerNode) setDirty() {
-	inner.persisted = false
-	inner.digest = nil
 }
