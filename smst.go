@@ -66,8 +66,8 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	if bytes.Equal(valueHash, defaultValue) {
-		return defaultValue, 0, nil
+	if bytes.Equal(valueHash, defaultEmptyValue) {
+		return defaultEmptyValue, 0, nil
 	}
 	var weightBz [sumSize]byte
 	copy(weightBz[:], valueHash[len(valueHash)-sumSize:])

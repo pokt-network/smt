@@ -67,45 +67,49 @@ func ImportSparseMerkleTrie(
 	return smt
 }
 
-// Get returns the digest of the value stored at the given key
+// Get returns the hash (i.e. digest) of the leaf value stored at the given key
 func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
+	// The leaf node whose value will be returned
 	var leaf *leafNode
 	var err error
-	for node, depth := &smt.root, 0; ; depth++ {
-		*node, err = smt.resolveLazy(*node)
+
+	// Loop throughout the entire trie to find the corresponding leaf for the
+	// given key.
+	for currNode, depth := &smt.root, 0; ; depth++ {
+		*currNode, err = smt.resolveLazy(*currNode)
 		if err != nil {
 			return nil, err
 		}
-		if *node == nil {
+		if *currNode == nil {
 			break
 		}
-		if n, ok := (*node).(*leafNode); ok {
+		if n, ok := (*currNode).(*leafNode); ok {
 			if bytes.Equal(path, n.path) {
 				leaf = n
 			}
 			break
 		}
-		if ext, ok := (*node).(*extensionNode); ok {
-			if _, match := ext.match(path, depth); !match {
+		if extNode, ok := (*currNode).(*extensionNode); ok {
+			if _, match := extNode.match(path, depth); !match {
 				break
 			}
-			depth += ext.length()
-			node = &ext.child
-			*node, err = smt.resolveLazy(*node)
+			depth += extNode.length()
+			currNode = &extNode.child
+			*currNode, err = smt.resolveLazy(*currNode)
 			if err != nil {
 				return nil, err
 			}
 		}
-		inner := (*node).(*innerNode)
+		inner := (*currNode).(*innerNode)
 		if getPathBit(path, depth) == left {
-			node = &inner.leftChild
+			currNode = &inner.leftChild
 		} else {
-			node = &inner.rightChild
+			currNode = &inner.rightChild
 		}
 	}
 	if leaf == nil {
-		return defaultValue, nil
+		return defaultEmptyValue, nil
 	}
 	return leaf.valueHash, nil
 }
@@ -523,11 +527,10 @@ func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	if !ok {
 		return node, nil
 	}
-	ret, err := resolve(smt, stub.digest)
-	if err != nil {
-		return node, err
+	if smt.sumTrie {
+		return smt.resolveSum(stub.digest)
 	}
-	return ret, nil
+	return smt.resolve(stub.digest)
 }
 
 func (smt *SMT) resolve(hash []byte) (ret trieNode, err error) {

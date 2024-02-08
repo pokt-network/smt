@@ -52,7 +52,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	if err != nil {
 		if errors.Is(err, ErrKeyNotFound) {
 			// If key isn't found, return default value and sum
-			return defaultValue, 0, nil
+			return defaultEmptyValue, 0, nil
 		}
 		// Otherwise percolate up any other error
 		return nil, 0, err
@@ -69,5 +69,5 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 // Has returns true if the value at the given key is non-default, false otherwise.
 func (smst *SMSTWithStorage) Has(key []byte) (bool, error) {
 	val, sum, err := smst.GetValueSum(key)
-	return !bytes.Equal(defaultValue, val) || sum != 0, err
+	return !bytes.Equal(defaultEmptyValue, val) || sum != 0, err
 }

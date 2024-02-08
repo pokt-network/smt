@@ -33,7 +33,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifySumProof(proof, placeholder(base), []byte("testKey3"), defaultValue, 0, base)
+	result, err = VerifySumProof(proof, placeholder(base), []byte("testKey3"), defaultEmptyValue, 0, base)
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 5, base)
@@ -112,7 +112,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,
 	}
-	result, err = VerifySumProof(proof, root, []byte("testKey2"), defaultValue, 0, base)
+	result, err = VerifySumProof(proof, root, []byte("testKey2"), defaultEmptyValue, 0, base)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 
@@ -120,16 +120,16 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 0, base) // valid
+	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultEmptyValue, 0, base) // valid
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 0, base) // wrong value
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 5, base) // wrong sum
+	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultEmptyValue, 5, base) // wrong sum
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey3"), defaultValue, 0, base) // invalid proof
+	result, err = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey3"), defaultEmptyValue, 0, base) // invalid proof
 	require.NoError(t, err)
 	require.False(t, result)
 }

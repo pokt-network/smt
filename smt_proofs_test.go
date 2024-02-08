@@ -32,7 +32,7 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	proof, err = smt.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifyProof(proof, base.th.placeholder(), []byte("testKey3"), defaultValue, base)
+	result, err = VerifyProof(proof, base.th.placeholder(), []byte("testKey3"), defaultEmptyValue, base)
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifyProof(proof, root, []byte("testKey3"), []byte("badValue"), base)
@@ -89,7 +89,7 @@ func TestSMT_Proof_Operations(t *testing.T) {
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,
 	}
-	result, err = VerifyProof(proof, root, []byte("testKey2"), defaultValue, base)
+	result, err = VerifyProof(proof, root, []byte("testKey2"), defaultEmptyValue, base)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 
@@ -97,13 +97,13 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	proof, err = smt.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifyProof(proof, root, []byte("testKey3"), defaultValue, base)
+	result, err = VerifyProof(proof, root, []byte("testKey3"), defaultEmptyValue, base)
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifyProof(proof, root, []byte("testKey3"), []byte("badValue"), base)
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifyProof(randomiseProof(proof), root, []byte("testKey3"), defaultValue, base)
+	result, err = VerifyProof(randomiseProof(proof), root, []byte("testKey3"), defaultEmptyValue, base)
 	require.NoError(t, err)
 	require.False(t, result)
 }

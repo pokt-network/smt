@@ -285,8 +285,8 @@ func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint6
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	valueHash := spec.digestValue(value)
 	valueHash = append(valueHash, sumBz[:]...)
-	if bytes.Equal(value, defaultValue) && sum == 0 {
-		valueHash = defaultValue
+	if bytes.Equal(value, defaultEmptyValue) && sum == 0 {
+		valueHash = defaultEmptyValue
 	}
 	smtSpec := &TrieSpec{
 		th:      spec.th,
@@ -331,7 +331,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 
 	// Determine what the leaf hash should be.
 	var currentHash, currentData []byte
-	if bytes.Equal(value, defaultValue) { // Non-membership proof.
+	if bytes.Equal(value, defaultEmptyValue) { // Non-membership proof.
 		if proof.NonMembershipLeafData == nil { // Leaf is a placeholder value.
 			currentHash = placeholder(spec)
 		} else { // Leaf is an unrelated leaf.

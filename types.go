@@ -11,8 +11,10 @@ const (
 )
 
 var (
-	defaultValue []byte
-	defaultSum   [sumSize]byte
+	// defaultEmptyValue is the default value for a leaf node
+	defaultEmptyValue []byte
+	// defaultEmptySum is the default sum value for a leaf node
+	defaultEmptySum [sumSize]byte
 )
 
 // MerkleRoot is a type alias for a byte slice returned from the Root method
@@ -99,6 +101,7 @@ func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
 func (spec *TrieSpec) Spec() *TrieSpec { return spec }
 
 func (spec *TrieSpec) depth() int { return spec.ph.PathSize() * 8 }
+
 func (spec *TrieSpec) digestValue(data []byte) []byte {
 	if spec.vh == nil {
 		return data

@@ -38,7 +38,7 @@ func TestSMST_TrieUpdateBasic(t *testing.T) {
 	// Test getting an empty key.
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value)
+	require.Equal(t, defaultEmptyValue, value)
 	require.Equal(t, uint64(0), sum)
 
 	has, err = smst.Has([]byte("testKey"))
@@ -132,7 +132,7 @@ func TestSMST_TrieDeleteBasic(t *testing.T) {
 
 	value, sum, err := smst.GetValueSum([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, defaultEmptyValue, value, "getting deleted key")
 	require.Equal(t, uint64(0), sum, "getting deleted key")
 
 	has, err := smst.Has([]byte("testKey"))
@@ -157,7 +157,7 @@ func TestSMST_TrieDeleteBasic(t *testing.T) {
 
 	value, sum, err = smst.GetValueSum([]byte("testKey2"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, defaultEmptyValue, value, "getting deleted key")
 	require.Equal(t, uint64(0), sum, "getting deleted key")
 
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
@@ -179,7 +179,7 @@ func TestSMST_TrieDeleteBasic(t *testing.T) {
 
 	value, sum, err = smst.GetValueSum([]byte("foo"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, defaultEmptyValue, value, "getting deleted key")
 	require.Equal(t, uint64(0), sum, "getting deleted key")
 
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
@@ -202,7 +202,7 @@ func TestSMST_TrieDeleteBasic(t *testing.T) {
 
 	value, sum, err = smst.GetValueSum([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, defaultEmptyValue, value, "getting deleted key")
 	require.Equal(t, uint64(0), sum, "getting deleted key")
 
 	has, err = smst.Has([]byte("testKey"))

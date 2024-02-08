@@ -122,7 +122,7 @@ func bytesToInt(bz []byte) int {
 func placeholder(spec *TrieSpec) []byte {
 	if spec.sumTrie {
 		placeholder := spec.th.placeholder()
-		placeholder = append(placeholder, defaultSum[:]...)
+		placeholder = append(placeholder, defaultEmptySum[:]...)
 		return placeholder
 	}
 	return spec.th.placeholder()
@@ -198,15 +198,4 @@ func hashSumSerialization(smt *TrieSpec, data []byte) []byte {
 	digest := smt.th.digest(data)
 	digest = append(digest, data[len(data)-sumSize:]...)
 	return digest
-}
-
-// resolve resolves a lazy node depending on the trie type
-func resolve(
-	smt *SMT,
-	hash []byte,
-) (trieNode, error) {
-	if smt.sumTrie {
-		return smt.resolveSum(hash)
-	}
-	return smt.resolve(hash)
 }

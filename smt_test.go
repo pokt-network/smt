@@ -34,7 +34,7 @@ func TestSMT_TrieUpdateBasic(t *testing.T) {
 	// Test getting an empty key.
 	value, err := smt.GetValue([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value)
+	require.Equal(t, defaultEmptyValue, value)
 
 	has, err = smt.Has([]byte("testKey"))
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestSMT_TrieDeleteBasic(t *testing.T) {
 
 	value, err := smt.GetValue([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, defaultEmptyValue, value, "getting deleted key")
 
 	has, err := smt.Has([]byte("testKey"))
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestSMT_TrieDeleteBasic(t *testing.T) {
 
 	value, err = smt.GetValue([]byte("testKey2"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, defaultEmptyValue, value, "getting deleted key")
 
 	value, err = smt.GetValue([]byte("testKey"))
 	require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestSMT_TrieDeleteBasic(t *testing.T) {
 
 	value, err = smt.GetValue([]byte("foo"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, defaultEmptyValue, value, "getting deleted key")
 
 	value, err = smt.GetValue([]byte("testKey"))
 	require.NoError(t, err)
@@ -183,7 +183,7 @@ func TestSMT_TrieDeleteBasic(t *testing.T) {
 
 	value, err = smt.GetValue([]byte("testKey"))
 	require.NoError(t, err)
-	require.Equal(t, defaultValue, value, "getting deleted key")
+	require.Equal(t, defaultEmptyValue, value, "getting deleted key")
 
 	has, err = smt.Has([]byte("testKey"))
 	require.NoError(t, err)
