@@ -441,7 +441,7 @@ func TestSMST_TotalSum(t *testing.T) {
 
 	// Check root hash contains the correct hex sum
 	root1 := smst.Root()
-	sumBz := root1[len(root1)-sumSize:]
+	sumBz := root1[len(root1)-sumSizeBits:]
 	rootSum := binary.BigEndian.Uint64(sumBz)
 	require.NoError(t, err)
 

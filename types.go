@@ -6,15 +6,15 @@ import (
 )
 
 const (
-	left    = 0
-	sumSize = 8
+	leftChildBit = 0
+	sumSizeBits  = 8
 )
 
 var (
 	// defaultEmptyValue is the default value for a leaf node
 	defaultEmptyValue []byte
 	// defaultEmptySum is the default sum value for a leaf node
-	defaultEmptySum [sumSize]byte
+	defaultEmptySum [sumSizeBits]byte
 )
 
 // MerkleRoot is a type alias for a byte slice returned from the Root method
@@ -27,8 +27,8 @@ func (r MerkleRoot) Sum() uint64 {
 	if len(r)%32 == 0 {
 		panic("roo#sum: not a merkle sum trie")
 	}
-	var sumbz [sumSize]byte
-	copy(sumbz[:], []byte(r)[len([]byte(r))-sumSize:])
+	var sumbz [sumSizeBits]byte
+	copy(sumbz[:], []byte(r)[len([]byte(r))-sumSizeBits:])
 	return binary.BigEndian.Uint64(sumbz[:])
 }
 
@@ -193,7 +193,7 @@ func (spec *TrieSpec) hashSumNode(node trieNode) []byte {
 	if *cache == nil {
 		preimage := spec.sumSerialize(node)
 		*cache = spec.th.digest(preimage)
-		*cache = append(*cache, preimage[len(preimage)-sumSize:]...)
+		*cache = append(*cache, preimage[len(preimage)-sumSizeBits:]...)
 	}
 	return *cache
 }

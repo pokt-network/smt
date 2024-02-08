@@ -80,7 +80,7 @@ func (th *trieHasher) digestLeaf(path []byte, leafData []byte) ([]byte, []byte) 
 func (th *trieHasher) digestSumLeaf(path []byte, leafData []byte) ([]byte, []byte) {
 	value := encodeLeaf(path, leafData)
 	digest := th.digest(value)
-	digest = append(digest, value[len(value)-sumSize:]...)
+	digest = append(digest, value[len(value)-sumSizeBits:]...)
 	return digest, value
 }
 
@@ -92,7 +92,7 @@ func (th *trieHasher) digestNode(leftData []byte, rightData []byte) ([]byte, []b
 func (th *trieHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte) {
 	value := encodeSumInner(leftData, rightData)
 	digest := th.digest(value)
-	digest = append(digest, value[len(value)-sumSize:]...)
+	digest = append(digest, value[len(value)-sumSizeBits:]...)
 	return digest, value
 }
 
@@ -101,8 +101,8 @@ func (th *trieHasher) parseNode(data []byte) ([]byte, []byte) {
 }
 
 func (th *trieHasher) parseSumNode(data []byte) ([]byte, []byte) {
-	sumless := data[:len(data)-sumSize]
-	return sumless[len(innerPrefix) : th.hashSize()+sumSize+len(innerPrefix)], sumless[len(innerPrefix)+th.hashSize()+sumSize:]
+	sumless := data[:len(data)-sumSizeBits]
+	return sumless[len(innerPrefix) : th.hashSize()+sumSizeBits+len(innerPrefix)], sumless[len(innerPrefix)+th.hashSize()+sumSizeBits:]
 }
 
 func (th *trieHasher) hashSize() int {
@@ -131,12 +131,12 @@ func parseExtension(data []byte, ph PathHasher) (pathBounds, path, childData []b
 		data[len(extPrefix)+2+ph.PathSize():]
 }
 
-func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [sumSize]byte) {
-	var sumBz [sumSize]byte
-	copy(sumBz[:], data[len(data)-sumSize:])
+func parseSumExtension(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [sumSizeBits]byte) {
+	var sumBz [sumSizeBits]byte
+	copy(sumBz[:], data[len(data)-sumSizeBits:])
 	return data[len(extPrefix) : len(extPrefix)+2], // +2 represents the length of the pathBounds
 		data[len(extPrefix)+2 : len(extPrefix)+2+ph.PathSize()],
-		data[len(extPrefix)+2+ph.PathSize() : len(data)-sumSize],
+		data[len(extPrefix)+2+ph.PathSize() : len(data)-sumSizeBits],
 		sumBz
 }
 
@@ -163,11 +163,11 @@ func encodeSumInner(leftData []byte, rightData []byte) []byte {
 	value = append(value, innerPrefix...)
 	value = append(value, leftData...)
 	value = append(value, rightData...)
-	var sum [sumSize]byte
+	var sum [sumSizeBits]byte
 	leftSum := uint64(0)
 	rightSum := uint64(0)
-	leftSumBz := leftData[len(leftData)-sumSize:]
-	rightSumBz := rightData[len(rightData)-sumSize:]
+	leftSumBz := leftData[len(leftData)-sumSizeBits:]
+	rightSumBz := rightData[len(rightData)-sumSizeBits:]
 	if !bytes.Equal(leftSumBz, defaultEmptySum[:]) {
 		leftSum = binary.BigEndian.Uint64(leftSumBz)
 	}
@@ -194,8 +194,8 @@ func encodeSumExtension(pathBounds [2]byte, path []byte, childData []byte) []byt
 	value = append(value, pathBounds[:]...)
 	value = append(value, path...)
 	value = append(value, childData...)
-	var sum [sumSize]byte
-	copy(sum[:], childData[len(childData)-sumSize:])
+	var sum [sumSizeBits]byte
+	copy(sum[:], childData[len(childData)-sumSizeBits:])
 	value = append(value, sum[:]...)
 	return value
 }

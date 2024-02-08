@@ -281,7 +281,7 @@ func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TrieSp
 
 // VerifySumProof verifies a Merkle proof for a sum trie.
 func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
-	var sumBz [sumSize]byte
+	var sumBz [sumSizeBits]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	valueHash := spec.digestValue(value)
 	valueHash = append(valueHash, sumBz[:]...)
@@ -314,9 +314,9 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	if proof.ClosestValueHash == nil {
 		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, spec)
 	}
-	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSize:]
+	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSizeBits:]
 	sum := binary.BigEndian.Uint64(sumBz)
-	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSize]
+	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSizeBits]
 	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, spec)
 }
 
@@ -360,7 +360,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 		node := make([]byte, hashSize(spec))
 		copy(node, proof.SideNodes[i])
 
-		if getPathBit(path, len(proof.SideNodes)-1-i) == left {
+		if getPathBit(path, len(proof.SideNodes)-1-i) == leftChildBit {
 			currentHash, currentData = digestNode(spec, currentHash, node)
 		} else {
 			currentHash, currentData = digestNode(spec, node, currentHash)

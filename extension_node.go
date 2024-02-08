@@ -3,15 +3,19 @@ package smt
 var _ trieNode = (*extensionNode)(nil)
 
 // A compressed chain of singly-linked inner nodes.
-// Instead of storing innerNodes pointing to other innerNodes, the extensionNode
-// at `path` capture all the innerNodes from `pathBounds[0]` to `pathBounds[1]`.
+//
+// Extension nodes are used to captures a series of inner nodes that only
+// have one child in a succinct `pathBounds` for optimization purposes.
+//
+// Assumption: the path is <=256 bits
 type extensionNode struct {
-	// The path to this extensionNode starting at the root.
+	// The path (starting at the root) to this extension node.
 	path []byte
-	// Offsets into path slice of bounds defining actual path segment.
-	// NOTE: assumes path is <=256 bits
+	// The path (starting at pathBounds[0] and ending at pathBounds[1]) of
+	// inner nodes that this single extension node replaces.
 	pathBounds [2]byte
-	// Child is always an inner node, or lazy.
+	// A child node from this extension node.
+	// It MUST be either an innerNode or a lazyNode.
 	child trieNode
 	// Bool whether or not the node has been flushed to disk
 	persisted bool
@@ -29,30 +33,13 @@ func (node *extensionNode) CachedDigest() []byte {
 	return node.digest
 }
 
-// length returns the length of the path segment (number of inner nodes replaced)
-// by this single extensionNode
+// Length returns the length of the path segment represented by this single
+// extensionNode. Since the SMT is a binary trie, the length represents both
+// the depth and the number of nodes replaced by a single extension node. If
+// this SMT were to have k-ary support, the depth would be strictly less than
+// the number of nodes replaced.
 func (ext *extensionNode) length() int {
-	return int(ext.pathBounds[1] - ext.pathBounds[0])
-}
-
-// setDirty marks the node as dirty (i.e. not flushed to disk) and clears
-// its digest
-func (ext *extensionNode) setDirty() {
-	ext.persisted = false
-	ext.digest = nil
-}
-
-// Returns length of matching prefix, and whether it's a full match
-func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
-	if depth != ext.pathStart() {
-		panic("depth != path_begin")
-	}
-	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if getPathBit(ext.path, i) != getPathBit(path, i) {
-			return i - ext.pathStart(), false
-		}
-	}
-	return ext.length(), true
+	return ext.pathEnd() - ext.pathStart()
 }
 
 func (ext *extensionNode) pathStart() int {
@@ -63,63 +50,84 @@ func (ext *extensionNode) pathEnd() int {
 	return int(ext.pathBounds[1])
 }
 
-// Splits the node in-place; returns replacement node, child node at the split, and split depth
-func (ext *extensionNode) split(path []byte, depth int) (trieNode, *trieNode, int) {
-	if depth != ext.pathStart() {
-		panic("depth != path_begin")
+// setDirty marks the node as dirty (i.e. not flushed to disk) and clears
+// its digest
+func (ext *extensionNode) setDirty() {
+	ext.persisted = false
+	ext.digest = nil
+}
+
+// boundsMatch returns the length of the matching prefix between `ext.pathBounds`
+// and `path` starting at index `depth`, along with a bool if a full match is found.
+func (extNode *extensionNode) boundsMatch(path []byte, depth int) (int, bool) {
+	if depth != extNode.pathStart() {
+		panic("depth != extNode.pathStart")
 	}
-	index := ext.pathStart()
-	var myBit, branchBit int
-	for ; index < ext.pathEnd(); index++ {
-		myBit = getPathBit(ext.path, index)
-		branchBit = getPathBit(path, index)
-		if myBit != branchBit {
+	for pathIdx := extNode.pathStart(); pathIdx < extNode.pathEnd(); pathIdx++ {
+		if getPathBit(extNode.path, pathIdx) != getPathBit(path, pathIdx) {
+			return pathIdx - extNode.pathStart(), false
+		}
+	}
+	return extNode.length(), true
+}
+
+// split splits the node in-place by returning a new node at the extension node,
+// a child node at the split and split depth.
+func (extNode *extensionNode) split(path []byte) (trieNode, *trieNode, int) {
+	// Start path to extNode.pathBounds until there is no match
+	var extNodeBit, pathBit int
+	pathIdx := extNode.pathStart()
+	for ; pathIdx < extNode.pathEnd(); pathIdx++ {
+		extNodeBit = getPathBit(extNode.path, pathIdx)
+		pathBit = getPathBit(path, pathIdx)
+		if extNodeBit != pathBit {
 			break
 		}
 	}
-	if index == ext.pathEnd() {
-		return ext, &ext.child, index
+	// Return the extension node's child if path fully matches extNode.pathBounds
+	if pathIdx == extNode.pathEnd() {
+		return extNode, &extNode.child, pathIdx
 	}
 
-	child := ext.child
+	child := extNode.child
 	var branch innerNode
 	var head trieNode
 	var tail *trieNode
-	if myBit == left {
+	if extNodeBit == leftChildBit {
 		tail = &branch.leftChild
 	} else {
 		tail = &branch.rightChild
 	}
 
 	// Split at first bit: chain starts with new node
-	if index == ext.pathStart() {
+	if pathIdx == extNode.pathStart() {
 		head = &branch
-		ext.pathBounds[0]++ // Shrink the extension from front
-		if ext.length() == 0 {
+		extNode.pathBounds[0]++ // Shrink the extension from front
+		if extNode.length() == 0 {
 			*tail = child
 		} else {
-			*tail = ext
+			*tail = extNode
 		}
 	} else {
 		// Split inside: chain ends at index
-		head = ext
-		ext.child = &branch
-		if index == ext.pathEnd()-1 {
+		head = extNode
+		extNode.child = &branch
+		if pathIdx == extNode.pathEnd()-1 {
 			*tail = child
 		} else {
 			*tail = &extensionNode{
-				path: ext.path,
+				path: extNode.path,
 				pathBounds: [2]byte{
-					byte(index + 1),
-					ext.pathBounds[1],
+					byte(pathIdx + 1),
+					extNode.pathBounds[1],
 				},
 				child: child,
 			}
 		}
-		ext.pathBounds[1] = byte(index)
+		extNode.pathBounds[1] = byte(pathIdx)
 	}
 	var b trieNode = &branch
-	return head, &b, index
+	return head, &b, pathIdx
 }
 
 // expand returns the inner node that represents the start of the singly
@@ -128,7 +136,7 @@ func (ext *extensionNode) expand() trieNode {
 	last := ext.child
 	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {
 		var next innerNode
-		if getPathBit(ext.path, i) == left {
+		if getPathBit(ext.path, i) == leftChildBit {
 			next.leftChild = last
 		} else {
 			next.rightChild = last

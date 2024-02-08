@@ -91,7 +91,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 			break
 		}
 		if extNode, ok := (*currNode).(*extensionNode); ok {
-			if _, match := extNode.match(path, depth); !match {
+			if _, fullMatch := extNode.boundsMatch(path, depth); !fullMatch {
 				break
 			}
 			depth += extNode.length()
@@ -102,7 +102,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 			}
 		}
 		inner := (*currNode).(*innerNode)
-		if getPathBit(path, depth) == left {
+		if getPathBit(path, depth) == leftChildBit {
 			currNode = &inner.leftChild
 		} else {
 			currNode = &inner.rightChild
@@ -171,7 +171,7 @@ func (smt *SMT) update(
 			*last = &ext
 			last = &ext.child
 		}
-		if getPathBit(path, prefixLen) == left {
+		if getPathBit(path, prefixLen) == leftChildBit {
 			*last = &innerNode{
 				leftChild:  newLeaf,
 				rightChild: leaf,
@@ -187,20 +187,20 @@ func (smt *SMT) update(
 
 	smt.addOrphan(orphans, node)
 
-	if ext, ok := node.(*extensionNode); ok {
+	if extNode, ok := node.(*extensionNode); ok {
 		var branch *trieNode
-		node, branch, depth = ext.split(path, depth)
+		node, branch, depth = extNode.split(path)
 		*branch, err = smt.update(*branch, depth, path, value, orphans)
 		if err != nil {
 			return node, err
 		}
-		ext.setDirty()
+		extNode.setDirty()
 		return node, nil
 	}
 
 	inner := node.(*innerNode)
 	var child *trieNode
-	if getPathBit(path, depth) == left {
+	if getPathBit(path, depth) == leftChildBit {
 		child = &inner.leftChild
 	} else {
 		child = &inner.rightChild
@@ -248,30 +248,30 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 
 	smt.addOrphan(orphans, node)
 
-	if ext, ok := node.(*extensionNode); ok {
-		if _, match := ext.match(path, depth); !match {
+	if extNode, ok := node.(*extensionNode); ok {
+		if _, fullMatch := extNode.boundsMatch(path, depth); !fullMatch {
 			return node, ErrKeyNotFound
 		}
-		ext.child, err = smt.delete(ext.child, depth+ext.length(), path, orphans)
+		extNode.child, err = smt.delete(extNode.child, depth+extNode.length(), path, orphans)
 		if err != nil {
 			return node, err
 		}
-		switch n := ext.child.(type) {
+		switch n := extNode.child.(type) {
 		case *leafNode:
 			return n, nil
 		case *extensionNode:
 			// Join this extension with the child
 			smt.addOrphan(orphans, n)
-			n.pathBounds[0] = ext.pathBounds[0]
+			n.pathBounds[0] = extNode.pathBounds[0]
 			node = n
 		}
-		ext.setDirty()
+		extNode.setDirty()
 		return node, nil
 	}
 
 	inner := node.(*innerNode)
 	var child, sib *trieNode
-	if getPathBit(path, depth) == left {
+	if getPathBit(path, depth) == leftChildBit {
 		child, sib = &inner.leftChild, &inner.rightChild
 	} else {
 		child, sib = &inner.rightChild, &inner.leftChild
@@ -323,24 +323,24 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if _, ok := node.(*leafNode); ok {
 			break
 		}
-		if ext, ok := node.(*extensionNode); ok {
-			length, match := ext.match(path, depth)
-			if match {
-				for i := 0; i < length; i++ {
+		if extNode, ok := node.(*extensionNode); ok {
+			matchLen, fullMatch := extNode.boundsMatch(path, depth)
+			if fullMatch {
+				for i := 0; i < matchLen; i++ {
 					siblings = append(siblings, nil)
 				}
-				depth += length
-				node = ext.child
+				depth += matchLen
+				node = extNode.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
 					return nil, err
 				}
 			} else {
-				node = ext.expand()
+				node = extNode.expand()
 			}
 		}
 		inner := node.(*innerNode)
-		if getPathBit(path, depth) == left {
+		if getPathBit(path, depth) == leftChildBit {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -451,21 +451,21 @@ func (smt *SMT) ProveClosest(path []byte) (
 			proof.Depth = depth
 			break
 		}
-		if ext, ok := node.(*extensionNode); ok {
-			length, match := ext.match(workingPath, depth)
+		if extNode, ok := node.(*extensionNode); ok {
+			matchLen, fullMatch := extNode.boundsMatch(workingPath, depth)
 			// workingPath from depth to end of extension node's path bounds
 			// is a perfect match
-			if !match {
-				node = ext.expand()
+			if !fullMatch {
+				node = extNode.expand()
 			} else {
 				// extension nodes represent a singly linked list of inner nodes
 				// add nil siblings to represent the empty neighbours
-				for i := 0; i < length; i++ {
+				for i := 0; i < matchLen; i++ {
 					siblings = append(siblings, nil)
 				}
-				depth += length
-				depthDelta += length
-				node = ext.child
+				depth += matchLen
+				depthDelta += matchLen
+				node = extNode.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
 					return nil, err
@@ -477,7 +477,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			proof.Depth = depth
 			break
 		}
-		if getPathBit(workingPath, depth) == left {
+		if getPathBit(workingPath, depth) == leftChildBit {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -547,12 +547,12 @@ func (smt *SMT) resolve(hash []byte) (ret trieNode, err error) {
 		return &leaf, nil
 	}
 	if isExtension(data) {
-		ext := extensionNode{persisted: true, digest: hash}
+		extNode := extensionNode{persisted: true, digest: hash}
 		pathBounds, path, childHash := parseExtension(data, smt.ph)
-		ext.path = path
-		copy(ext.pathBounds[:], pathBounds)
-		ext.child = &lazyNode{childHash}
-		return &ext, nil
+		extNode.path = path
+		copy(extNode.pathBounds[:], pathBounds)
+		extNode.child = &lazyNode{childHash}
+		return &extNode, nil
 	}
 	leftHash, rightHash := smt.th.parseNode(data)
 	inner := innerNode{persisted: true, digest: hash}
@@ -576,12 +576,12 @@ func (smt *SMT) resolveSum(hash []byte) (ret trieNode, err error) {
 		return &leaf, nil
 	}
 	if isExtension(data) {
-		ext := extensionNode{persisted: true, digest: hash}
+		extNode := extensionNode{persisted: true, digest: hash}
 		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
-		ext.path = path
-		copy(ext.pathBounds[:], pathBounds)
-		ext.child = &lazyNode{childHash}
-		return &ext, nil
+		extNode.path = path
+		copy(extNode.pathBounds[:], pathBounds)
+		extNode.child = &lazyNode{childHash}
+		return &extNode, nil
 	}
 	leftHash, rightHash := smt.th.parseSumNode(data)
 	inner := innerNode{persisted: true, digest: hash}

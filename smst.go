@@ -69,10 +69,10 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 	if bytes.Equal(valueHash, defaultEmptyValue) {
 		return defaultEmptyValue, 0, nil
 	}
-	var weightBz [sumSize]byte
-	copy(weightBz[:], valueHash[len(valueHash)-sumSize:])
+	var weightBz [sumSizeBits]byte
+	copy(weightBz[:], valueHash[len(valueHash)-sumSizeBits:])
 	weight := binary.BigEndian.Uint64(weightBz[:])
-	return valueHash[:len(valueHash)-sumSize], weight, nil
+	return valueHash[:len(valueHash)-sumSizeBits], weight, nil
 }
 
 // Update sets the value for the given key, to the digest of the provided value
@@ -80,7 +80,7 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 // is used to compute the interim and total sum of the trie.
 func (smst *SMST) Update(key, value []byte, weight uint64) error {
 	valueHash := smst.digestValue(value)
-	var weightBz [sumSize]byte
+	var weightBz [sumSizeBits]byte
 	binary.BigEndian.PutUint64(weightBz[:], weight)
 	valueHash = append(valueHash, weightBz[:]...)
 	return smst.SMT.Update(key, valueHash)

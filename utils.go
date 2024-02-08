@@ -131,7 +131,7 @@ func placeholder(spec *TrieSpec) []byte {
 // hashSize returns the hash size depending on the trie type
 func hashSize(spec *TrieSpec) int {
 	if spec.sumTrie {
-		return spec.th.hashSize() + sumSize
+		return spec.th.hashSize() + sumSizeBits
 	}
 	return spec.th.hashSize()
 }
@@ -196,6 +196,6 @@ func hashSumSerialization(smt *TrieSpec, data []byte) []byte {
 		return smt.hashSumNode(&ext)
 	}
 	digest := smt.th.digest(data)
-	digest = append(digest, data[len(data)-sumSize:]...)
+	digest = append(digest, data[len(data)-sumSizeBits:]...)
 	return digest
 }
