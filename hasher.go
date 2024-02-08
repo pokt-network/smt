@@ -35,9 +35,11 @@ type trieHasher struct {
 	hasher    hash.Hash
 	zeroValue []byte
 }
+
 type pathHasher struct {
 	trieHasher
 }
+
 type valueHasher struct {
 	trieHasher
 }

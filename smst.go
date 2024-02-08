@@ -49,8 +49,8 @@ func ImportSparseMerkleSumTrie(
 	options ...Option,
 ) *SMST {
 	smst := NewSparseMerkleSumTrie(nodes, hasher, options...)
-	smst.trie = &lazyNode{root}
-	smst.savedRoot = root
+	smst.root = &lazyNode{root}
+	smst.rootHash = root
 	return smst
 }
 

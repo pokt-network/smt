@@ -54,7 +54,7 @@ The SMT has 4 node types that are used to construct the trie:
 - [Inner Nodes](#inner-nodes)
 - [Extension Nodes](#extension-nodes)
 - [Leaf Nodes](#leaf-nodes)
-- Lazy Nodes
+- [Lazy Nodes](#lazy-nodes)
   - Prefix of the actual node type is stored in the persisted digest as
     determined above
   - `digest = persistedDigest`
@@ -205,12 +205,15 @@ Where `Hash(Hash1 + Hash2)` is the same root hash as the previous example.
 
 ## Paths
 
-Paths are **only** stored in two types of nodes: Leaf nodes and Extension nodes.
+Paths are **only** stored in two types of nodes: `Leaf` nodes and `Extension` nodes.
 
-- Extension nodes contain not only the path they represent but also the path
+- `Leaf` nodes contain:
+  - The full path which it represent
+  - The value stored at that path
+- `Extension` nodes contain:
+  -  not only the path they represent but also the path
   bounds (ie. the start and end of the path they cover).
-- Leaf nodes contain the full path which they represent, as well as the value
-  stored at that path.
+
 
 Inner nodes do **not** contain a path, as they represent a branch in the trie
 and not a path. As such their children, _if they are extension nodes or leaf

@@ -41,18 +41,6 @@ type leafNode struct {
 	digest    []byte
 }
 
-// A compressed chain of singly-linked inner nodes
-type extensionNode struct {
-	path []byte
-	// Offsets into path slice of bounds defining actual path segment.
-	// NOTE: assumes path is <=256 bits
-	pathBounds [2]byte
-	// Child is always an inner node, or lazy.
-	child     trieNode
-	persisted bool
-	digest    []byte
-}
-
 // Represents an uncached, persisted node
 type lazyNode struct {
 	digest []byte
@@ -61,11 +49,12 @@ type lazyNode struct {
 // SMT is a Sparse Merkle Trie object that implements the SparseMerkleTrie interface
 type SMT struct {
 	TrieSpec
+	// Backing key-value store for the node
 	nodes kvstore.MapStore
 	// Last persisted root hash
-	savedRoot []byte
-	// Current state of trie
-	trie trieNode
+	rootHash []byte
+	// The current view of the SMT
+	root trieNode
 	// Lists of per-operation orphan sets
 	orphans []orphanNodes
 }
@@ -99,8 +88,8 @@ func ImportSparseMerkleTrie(
 	options ...Option,
 ) *SMT {
 	smt := NewSparseMerkleTrie(nodes, hasher, options...)
-	smt.trie = &lazyNode{root}
-	smt.savedRoot = root
+	smt.root = &lazyNode{root}
+	smt.rootHash = root
 	return smt
 }
 
@@ -109,7 +98,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
 	var leaf *leafNode
 	var err error
-	for node, depth := &smt.trie, 0; ; depth++ {
+	for node, depth := &smt.root, 0; ; depth++ {
 		*node, err = smt.resolveLazy(*node)
 		if err != nil {
 			return nil, err
@@ -147,24 +136,29 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 	return leaf.valueHash, nil
 }
 
-// Update sets the value for the given key, to the digest of the provided value
+// Update inserts the `value` for the given `key` into the SMT
 func (smt *SMT) Update(key []byte, value []byte) error {
+	// Expand
 	path := smt.ph.Path(key)
 	valueHash := smt.digestValue(value)
 	var orphans orphanNodes
-	trie, err := smt.update(smt.trie, 0, path, valueHash, &orphans)
+	trie, err := smt.update(smt.root, 0, path, valueHash, &orphans)
 	if err != nil {
 		return err
 	}
-	smt.trie = trie
+	smt.root = trie
 	if len(orphans) > 0 {
 		smt.orphans = append(smt.orphans, orphans)
 	}
 	return nil
 }
 
+// Internal helper to the `Update` method
 func (smt *SMT) update(
-	node trieNode, depth int, path, value []byte, orphans *orphanNodes,
+	node trieNode,
+	depth int,
+	path, value []byte,
+	orphans *orphanNodes,
 ) (trieNode, error) {
 	node, err := smt.resolveLazy(node)
 	if err != nil {
@@ -200,9 +194,15 @@ func (smt *SMT) update(
 			last = &ext.child
 		}
 		if getPathBit(path, prefixLen) == left {
-			*last = &innerNode{leftChild: newLeaf, rightChild: leaf}
+			*last = &innerNode{
+				leftChild:  newLeaf,
+				rightChild: leaf,
+			}
 		} else {
-			*last = &innerNode{leftChild: leaf, rightChild: newLeaf}
+			*last = &innerNode{
+				leftChild:  leaf,
+				rightChild: newLeaf,
+			}
 		}
 		return node, nil
 	}
@@ -239,11 +239,11 @@ func (smt *SMT) update(
 func (smt *SMT) Delete(key []byte) error {
 	path := smt.ph.Path(key)
 	var orphans orphanNodes
-	trie, err := smt.delete(smt.trie, 0, path, &orphans)
+	trie, err := smt.delete(smt.root, 0, path, &orphans)
 	if err != nil {
 		return err
 	}
-	smt.trie = trie
+	smt.root = trie
 	if len(orphans) > 0 {
 		smt.orphans = append(smt.orphans, orphans)
 	}
@@ -333,7 +333,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	var siblings []trieNode
 	var sib trieNode
 
-	node := smt.trie
+	node := smt.root
 	for depth := 0; depth < smt.depth(); depth++ {
 		node, err = smt.resolveLazy(node)
 		if err != nil {
@@ -433,7 +433,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 		FlippedBits: make([]int, 0),
 	}
 
-	node := smt.trie
+	node := smt.root
 	depth := 0
 	// continuously traverse the trie until we hit a leaf node
 	for depth < smt.depth() {
@@ -543,29 +543,20 @@ func (smt *SMT) ProveClosest(path []byte) (
 	return proof, nil
 }
 
-//nolint:unused
-func (smt *SMT) recursiveLoad(hash []byte) (trieNode, error) {
-	return smt.resolve(hash, smt.recursiveLoad)
-}
-
 // resolves a stub into a cached node
 func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	stub, ok := node.(*lazyNode)
 	if !ok {
 		return node, nil
 	}
-	resolver := func(hash []byte) (trieNode, error) {
-		return &lazyNode{hash}, nil
-	}
-	ret, err := resolve(smt, stub.digest, resolver)
+	ret, err := resolve(smt, stub.digest)
 	if err != nil {
 		return node, err
 	}
 	return ret, nil
 }
 
-func (smt *SMT) resolve(hash []byte, resolver func([]byte) (trieNode, error),
-) (ret trieNode, err error) {
+func (smt *SMT) resolve(hash []byte) (ret trieNode, err error) {
 	if bytes.Equal(smt.th.placeholder(), hash) {
 		return
 	}
@@ -583,27 +574,18 @@ func (smt *SMT) resolve(hash []byte, resolver func([]byte) (trieNode, error),
 		pathBounds, path, childHash := parseExtension(data, smt.ph)
 		ext.path = path
 		copy(ext.pathBounds[:], pathBounds)
-		ext.child, err = resolver(childHash)
-		if err != nil {
-			return
-		}
+		ext.child = &lazyNode{childHash}
 		return &ext, nil
 	}
 	leftHash, rightHash := smt.th.parseNode(data)
 	inner := innerNode{persisted: true, digest: hash}
-	inner.leftChild, err = resolver(leftHash)
-	if err != nil {
-		return
-	}
-	inner.rightChild, err = resolver(rightHash)
-	if err != nil {
-		return
-	}
+	inner.leftChild = &lazyNode{leftHash}
+	inner.rightChild = &lazyNode{rightHash}
 	return &inner, nil
 }
 
-func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (trieNode, error),
-) (ret trieNode, err error) {
+// resolveSum resolves
+func (smt *SMT) resolveSum(hash []byte) (ret trieNode, err error) {
 	if bytes.Equal(placeholder(smt.Spec()), hash) {
 		return
 	}
@@ -621,22 +603,13 @@ func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (trieNode, error),
 		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
 		ext.path = path
 		copy(ext.pathBounds[:], pathBounds)
-		ext.child, err = resolver(childHash)
-		if err != nil {
-			return
-		}
+		ext.child = &lazyNode{childHash}
 		return &ext, nil
 	}
 	leftHash, rightHash := smt.th.parseSumNode(data)
 	inner := innerNode{persisted: true, digest: hash}
-	inner.leftChild, err = resolver(leftHash)
-	if err != nil {
-		return
-	}
-	inner.rightChild, err = resolver(rightHash)
-	if err != nil {
-		return
-	}
+	inner.leftChild = &lazyNode{leftHash}
+	inner.rightChild = &lazyNode{rightHash}
 	return &inner, nil
 }
 
@@ -652,10 +625,10 @@ func (smt *SMT) Commit() (err error) {
 		}
 	}
 	smt.orphans = nil
-	if err = smt.commit(smt.trie); err != nil {
+	if err = smt.commit(smt.root); err != nil {
 		return
 	}
-	smt.savedRoot = smt.Root()
+	smt.rootHash = smt.Root()
 	return
 }
 
@@ -688,7 +661,7 @@ func (smt *SMT) commit(node trieNode) error {
 
 // Root returns the root hash of the trie
 func (smt *SMT) Root() MerkleRoot {
-	return hashNode(smt.Spec(), smt.trie)
+	return hashNode(smt.Spec(), smt.root)
 }
 
 func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {
@@ -705,128 +678,13 @@ func (node *innerNode) Persisted() bool { return node.persisted }
 
 func (node *lazyNode) Persisted() bool { return true }
 
-func (node *extensionNode) Persisted() bool { return node.persisted }
-
 func (node *leafNode) CachedDigest() []byte { return node.digest }
 
 func (node *innerNode) CachedDigest() []byte { return node.digest }
 
 func (node *lazyNode) CachedDigest() []byte { return node.digest }
 
-func (node *extensionNode) CachedDigest() []byte { return node.digest }
-
 func (inner *innerNode) setDirty() {
 	inner.persisted = false
 	inner.digest = nil
-}
-
-func (ext *extensionNode) length() int { return int(ext.pathBounds[1] - ext.pathBounds[0]) }
-
-func (ext *extensionNode) setDirty() {
-	ext.persisted = false
-	ext.digest = nil
-}
-
-// Returns length of matching prefix, and whether it's a full match
-func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
-	if depth != ext.pathStart() {
-		panic("depth != path_begin")
-	}
-	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if getPathBit(ext.path, i) != getPathBit(path, i) {
-			return i - ext.pathStart(), false
-		}
-	}
-	return ext.length(), true
-}
-
-//nolint:unused
-func (ext *extensionNode) commonPrefix(path []byte) int {
-	count := 0
-	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if getPathBit(ext.path, i) != getPathBit(path, i) {
-			break
-		}
-		count++
-	}
-	return count
-}
-
-func (ext *extensionNode) pathStart() int { return int(ext.pathBounds[0]) }
-
-func (ext *extensionNode) pathEnd() int { return int(ext.pathBounds[1]) }
-
-// Splits the node in-place; returns replacement node, child node at the split, and split depth
-func (ext *extensionNode) split(path []byte, depth int) (trieNode, *trieNode, int) {
-	if depth != ext.pathStart() {
-		panic("depth != path_begin")
-	}
-	index := ext.pathStart()
-	var myBit, branchBit int
-	for ; index < ext.pathEnd(); index++ {
-		myBit = getPathBit(ext.path, index)
-		branchBit = getPathBit(path, index)
-		if myBit != branchBit {
-			break
-		}
-	}
-	if index == ext.pathEnd() {
-		return ext, &ext.child, index
-	}
-
-	child := ext.child
-	var branch innerNode
-	var head trieNode
-	var tail *trieNode
-	if myBit == left {
-		tail = &branch.leftChild
-	} else {
-		tail = &branch.rightChild
-	}
-
-	// Split at first bit: chain starts with new node
-	if index == ext.pathStart() {
-		head = &branch
-		ext.pathBounds[0]++ // Shrink the extension from front
-		if ext.length() == 0 {
-			*tail = child
-		} else {
-			*tail = ext
-		}
-	} else {
-		// Split inside: chain ends at index
-		head = ext
-		ext.child = &branch
-		if index == ext.pathEnd()-1 {
-			*tail = child
-		} else {
-			*tail = &extensionNode{
-				path: ext.path,
-				pathBounds: [2]byte{
-					byte(index + 1),
-					ext.pathBounds[1],
-				},
-				child: child,
-			}
-		}
-		ext.pathBounds[1] = byte(index)
-	}
-	var b trieNode = &branch
-	return head, &b, index
-}
-
-// expand returns the inner node that represents the start of the singly
-// linked list that this extension node represents
-func (ext *extensionNode) expand() trieNode {
-	last := ext.child
-	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {
-		var next innerNode
-		if getPathBit(ext.path, i) == left {
-			next.leftChild = last
-		} else {
-			next.rightChild = last
-		}
-		last = &next
-	}
-	return last
 }

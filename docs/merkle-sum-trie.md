@@ -7,7 +7,7 @@
   - [Implementation](#implementation)
     - [Sum Encoding](#sum-encoding)
     - [Digests](#digests)
-    - [Visualisations](#visualisations)
+    - [Visualizations](#visualizations)
       - [General Trie Structure](#general-trie-structure)
       - [Binary Sum Digests](#binary-sum-digests)
   - [Sum](#sum)
@@ -65,34 +65,34 @@ The golang `encoding/binary` package is used to encode the sum with
 `binary.BigEndian.PutUint64(sumBz[:], sum)` into a byte array `sumBz`.
 
 In order for the SMST to include the sum into a leaf node the SMT the SMST
-initialises the SMT with the `WithValueHasher(nil)` option so that the SMT does
+initializes the SMT with the `WithValueHasher(nil)` option so that the SMT does
 **not** hash any values. The SMST will then hash the value and append the sum
 bytes to the end of the hashed value, using whatever `ValueHasher` was given to
-the SMST on initialisation.
+the SMST on initialization.
 
 ```mermaid
 graph TD
-	subgraph KVS[Key-Value-Sum]
-		K1["Key: foo"]
-		K2["Value: bar"]
-		K3["Sum: 10"]
-	end
-	subgraph SMST[SMST]
-		SS1[ValueHasher: SHA256]
-		subgraph SUM["SMST.Update()"]
-			SU1["valueHash = ValueHasher(Value)"]
-			SU2["sumBytes = binary(Sum)"]
-			SU3["valueHash = append(valueHash, sumBytes...)"]
-		end
-	end
-	subgraph SMT[SMT]
-		SM1[ValueHasher: nil]
-		subgraph UPD["SMT.Update()"]
-			U2["SMT.nodeStore.Set(Key, valueHash)"]
-		end
-	end
-	KVS --"Key + Value + Sum"--> SMST
-	SMST --"Key + valueHash"--> SMT
+    subgraph KVS[Key-Value-Sum]
+        K1["Key: foo"]
+        K2["Value: bar"]
+        K3["Sum: 10"]
+    end
+    subgraph SMST[SMST]
+        SS1[ValueHasher: SHA256]
+        subgraph SUM["SMST.Update()"]
+            SU1["valueHash = ValueHasher(Value)"]
+            SU2["sumBytes = binary(Sum)"]
+            SU3["valueHash = append(valueHash, sumBytes...)"]
+        end
+    end
+    subgraph SMT[SMT]
+        SM1[ValueHasher: nil]
+        subgraph UPD["SMT.Update()"]
+            U2["SMT.nodeStore.Set(Key, valueHash)"]
+        end
+    end
+    KVS --"Key + Value + Sum"--> SMST
+    SMST --"Key + valueHash"--> SMT
 ```
 
 ### Digests
@@ -129,10 +129,10 @@ Therefore for the following node types, the digests are computed as follows:
 This means that with a hasher such as `sha256.New()` whose hash size is
 `32 bytes`, the digest of any node will be `40 bytes` in length.
 
-### Visualisations
+### Visualizations
 
 The following diagrams are representations of how the trie and its components
-can be visualised.
+can be visualized.
 
 #### General Trie Structure
 
@@ -143,45 +143,45 @@ nodes as an extra field.
 
 ```mermaid
 graph TB
-	subgraph Root
-		A1["Digest: Hash(Hash(Path+H1)+Hash(H2+(Hash(H3+H4)))+Binary(20))+Binary(20)"]
+    subgraph Root
+        A1["Digest: Hash(Hash(Path+H1)+Hash(H2+(Hash(H3+H4)))+Binary(20))+Binary(20)"]
         A2[Sum: 20]
-	end
-	subgraph BI[Inner Node]
-		B1["Digest: Hash(H2+(Hash(H3+H4))+Binary(12))+Binary(12)"]
+    end
+    subgraph BI[Inner Node]
+        B1["Digest: Hash(H2+(Hash(H3+H4))+Binary(12))+Binary(12)"]
         B2[Sum: 12]
-	end
-	subgraph BE[Extension Node]
-		B3["Digest: Hash(Path+H1+Binary(8))+Binary(8)"]
+    end
+    subgraph BE[Extension Node]
+        B3["Digest: Hash(Path+H1+Binary(8))+Binary(8)"]
         B4[Sum: 8]
-	end
-	subgraph CI[Inner Node]
-		C1["Digest: Hash(H3+H4+Binary(7))+Binary(7)"]
+    end
+    subgraph CI[Inner Node]
+        C1["Digest: Hash(H3+H4+Binary(7))+Binary(7)"]
         C2[Sum: 7]
-	end
-	subgraph CL[Leaf Node]
-		C3[Digest: H2]
+    end
+    subgraph CL[Leaf Node]
+        C3[Digest: H2]
         C4[Sum: 5]
-	end
-	subgraph DL1[Leaf Node]
-		D1[Digest: H3]
+    end
+    subgraph DL1[Leaf Node]
+        D1[Digest: H3]
         D2[Sum: 4]
-	end
-	subgraph DL2[Leaf Node]
-		D3[Digest: H4]
+    end
+    subgraph DL2[Leaf Node]
+        D3[Digest: H4]
         D4[Sum: 3]
-	end
-	subgraph EL[Leaf Node]
-		E1[Digest:  H1]
+    end
+    subgraph EL[Leaf Node]
+        E1[Digest:  H1]
         E2[Sum: 8]
-	end
-	Root-->|0| BE
-	Root-->|1| BI
-	BI-->|0| CL
-	BI-->|1| CI
-	CI-->|0| DL1
-	CI-->|1| DL2
-	BE-->EL
+    end
+    Root-->|0| BE
+    Root-->|1| BI
+    BI-->|0| CL
+    BI-->|1| CI
+    CI-->|0| DL1
+    CI-->|1| DL2
+    BE-->EL
 ```
 
 #### Binary Sum Digests
@@ -193,56 +193,56 @@ exception of the leaf nodes where the sum is shown as part of its value.
 
 ```mermaid
 graph TB
-	subgraph RI[Inner Node]
-		RIA["Root Hash: Hash(D6+D7+Binary(18))+Binary(18)"]
+    subgraph RI[Inner Node]
+        RIA["Root Hash: Hash(D6+D7+Binary(18))+Binary(18)"]
         RIB[Sum: 15]
-	end
-	subgraph I1[Inner Node]
-		I1A["D7: Hash(D1+D5+Binary(11))+Binary(11)"]
+    end
+    subgraph I1[Inner Node]
+        I1A["D7: Hash(D1+D5+Binary(11))+Binary(11)"]
         I1B[Sum: 11]
-	end
-	subgraph I2[Inner Node]
-		I2A["D6: Hash(D3+D4+Binary(7))+Binary(7)"]
+    end
+    subgraph I2[Inner Node]
+        I2A["D6: Hash(D3+D4+Binary(7))+Binary(7)"]
         I2B[Sum: 7]
-	end
-	subgraph L1[Leaf Node]
-		L1A[Path: 0b0010000]
-		L1B["Value: 0x01+Binary(6)"]
+    end
+    subgraph L1[Leaf Node]
+        L1A[Path: 0b0010000]
+        L1B["Value: 0x01+Binary(6)"]
         L1C["H1: Hash(Path+Value+Binary(6))"]
         L1D["D1: H1+Binary(6)"]
-	end
-	subgraph L3[Leaf Node]
-		L3A[Path: 0b1010000]
-		L3B["Value: 0x03+Binary(3)"]
+    end
+    subgraph L3[Leaf Node]
+        L3A[Path: 0b1010000]
+        L3B["Value: 0x03+Binary(3)"]
         L3C["H3: Hash(Path+Value+Binary(3))"]
         L3D["D3: H3+Binary(3)"]
-	end
-	subgraph L4[Leaf Node]
-		L4A[Path: 0b1100000]
-		L4B["Value: 0x04+Binary(4)"]
+    end
+    subgraph L4[Leaf Node]
+        L4A[Path: 0b1100000]
+        L4B["Value: 0x04+Binary(4)"]
         L4C["H4: Hash(Path+Value+Binary(4))"]
         L4D["D4: H4+Binary(4)"]
-	end
-	subgraph E1[Extension Node]
-		E1A[Path: 0b01100101]
-		E1B["Path Bounds: [2, 6)"]
+    end
+    subgraph E1[Extension Node]
+        E1A[Path: 0b01100101]
+        E1B["Path Bounds: [2, 6)"]
         E1C[Sum: 5]
         E1D["H5: Hash(Path+PathBounds+D2+Binary(5))"]
         E1E["D5: H5+Binary(5)"]
-	end
-	subgraph L2[Leaf Node]
-		L2A[Path: 0b01100101]
-		L2B["Value: 0x02+Binary(5)"]
+    end
+    subgraph L2[Leaf Node]
+        L2A[Path: 0b01100101]
+        L2B["Value: 0x02+Binary(5)"]
         L2C["H2: Hash(Path+Value+Hex(5))+Binary(5)"]
         L2D["D2: H2+Binary(5)"]
-	end
-	RI -->|0| I1
-	RI -->|1| I2
-	I1 -->|0| L1
-	I1 -->|1| E1
-	E1 --> L2
-	I2 -->|0| L3
-	I2 -->|1| L4
+    end
+    RI -->|0| I1
+    RI -->|1| I2
+    I1 -->|0| L1
+    I1 -->|1| E1
+    E1 --> L2
+    I2 -->|0| L3
+    I2 -->|1| L4
 ```
 
 ## Sum

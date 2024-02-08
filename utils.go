@@ -9,7 +9,8 @@ type nilPathHasher struct {
 }
 
 func (n *nilPathHasher) Path(key []byte) []byte { return key[:n.hashSize] }
-func (n *nilPathHasher) PathSize() int          { return n.hashSize }
+
+func (n *nilPathHasher) PathSize() int { return n.hashSize }
 
 func newNilPathHasher(hashSize int) PathHasher {
 	return &nilPathHasher{hashSize: hashSize}
@@ -200,10 +201,12 @@ func hashSumSerialization(smt *TrieSpec, data []byte) []byte {
 }
 
 // resolve resolves a lazy node depending on the trie type
-func resolve(smt *SMT, hash []byte, resolver func([]byte) (trieNode, error),
+func resolve(
+	smt *SMT,
+	hash []byte,
 ) (trieNode, error) {
 	if smt.sumTrie {
-		return smt.resolveSum(hash, resolver)
+		return smt.resolveSum(hash)
 	}
-	return smt.resolve(hash, resolver)
+	return smt.resolve(hash)
 }
