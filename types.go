@@ -108,35 +108,39 @@ func (spec *TrieSpec) Spec() *TrieSpec {
 
 // depth returns the maximum depth of the trie.
 // Since this tree is a binary tree, the depth is the number of bits in the path
+// TODO_IN_THIS_PR: Try to understand why we're not taking the log of the output
 func (spec *TrieSpec) depth() int {
 	return spec.ph.PathSize() * 8 // path size is in bytes so multiply by 8 to get num bits
 }
 
-func (spec *TrieSpec) digestValue(data []byte) []byte {
+// valueDigest returns the hash of a value, or the value itself if no value hasher is specified.
+func (spec *TrieSpec) valueDigest(value []byte) []byte {
 	if spec.vh == nil {
-		return data
+		return value
 	}
-	return spec.vh.HashValue(data)
+	return spec.vh.HashValue(value)
 }
 
-func (spec *TrieSpec) serialize(node trieNode) (data []byte) {
+// encodeNode serializes a node into a byte slice
+func (spec *TrieSpec) encodeNode(node trieNode) (data []byte) {
 	switch n := node.(type) {
 	case *lazyNode:
-		panic("serialize(lazyNode)")
+		panic("Encoding a lazyNode is not supported")
 	case *leafNode:
 		return encodeLeafNode(n.path, n.valueHash)
 	case *innerNode:
-		lchild := spec.hashNode(n.leftChild)
-		rchild := spec.hashNode(n.rightChild)
-		return encodeInnerNode(lchild, rchild)
+		leftChild := spec.digestNode(n.leftChild)
+		rightChild := spec.digestNode(n.rightChild)
+		return encodeInnerNode(leftChild, rightChild)
 	case *extensionNode:
-		child := spec.hashNode(n.child)
+		child := spec.digestNode(n.child)
 		return encodeExtensionNode(n.pathBounds, n.path, child)
 	}
 	return nil
 }
 
-func (spec *TrieSpec) hashNode(node trieNode) []byte {
+// digestNode hashes a node returning its digest
+func (spec *TrieSpec) digestNode(node trieNode) []byte {
 	if node == nil {
 		return spec.th.placeholder()
 	}
@@ -150,12 +154,12 @@ func (spec *TrieSpec) hashNode(node trieNode) []byte {
 		cache = &n.digest
 	case *extensionNode:
 		if n.digest == nil {
-			n.digest = spec.hashNode(n.expand())
+			n.digest = spec.digestNode(n.expand())
 		}
 		return n.digest
 	}
 	if *cache == nil {
-		*cache = spec.th.digest(spec.serialize(node))
+		*cache = spec.th.digest(spec.encodeNode(node))
 	}
 	return *cache
 }

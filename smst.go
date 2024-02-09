@@ -84,7 +84,7 @@ func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
 // appended with the binary representation of the weight provided. The weight
 // is used to compute the interim and total sum of the trie.
 func (smst *SMST) Update(key, value []byte, weight uint64) error {
-	valueHash := smst.digestValue(value)
+	valueHash := smst.valueDigest(value)
 	var weightBz [sumSizeBits]byte
 	binary.BigEndian.PutUint64(weightBz[:], weight)
 	valueHash = append(valueHash, weightBz[:]...)

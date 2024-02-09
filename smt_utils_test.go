@@ -24,7 +24,7 @@ func (smt *SMTWithStorage) Update(key, value []byte) error {
 	if err := smt.SMT.Update(key, value); err != nil {
 		return err
 	}
-	valueHash := smt.digestValue(value)
+	valueHash := smt.valueDigest(value)
 	return smt.preimages.Set(valueHash, value)
 }
 

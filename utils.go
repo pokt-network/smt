@@ -157,7 +157,7 @@ func hashNode(spec *TrieSpec, node trieNode) []byte {
 	if spec.sumTrie {
 		return spec.hashSumNode(node)
 	}
-	return spec.hashNode(node)
+	return spec.digestNode(node)
 }
 
 // serialize serializes a node depending on the trie type
@@ -165,7 +165,7 @@ func serialize(spec *TrieSpec, node trieNode) []byte {
 	if spec.sumTrie {
 		return spec.sumSerialize(node)
 	}
-	return spec.serialize(node)
+	return spec.encodeNode(node)
 }
 
 // hashPreimage hashes the serialised data provided depending on the trie type
@@ -182,7 +182,7 @@ func hashSerialization(smt *TrieSpec, data []byte) []byte {
 		pathBounds, path, childHash := parseExtension(data, smt.ph)
 		ext := extensionNode{path: path, child: &lazyNode{childHash}}
 		copy(ext.pathBounds[:], pathBounds)
-		return smt.hashNode(&ext)
+		return smt.digestNode(&ext)
 	}
 	return smt.th.digest(data)
 }

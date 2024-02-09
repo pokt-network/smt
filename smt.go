@@ -108,7 +108,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 func (smt *SMT) Update(key []byte, value []byte) error {
 	// Expand
 	path := smt.ph.Path(key)
-	valueHash := smt.digestValue(value)
+	valueHash := smt.valueDigest(value)
 	var orphans orphanNodes
 	trie, err := smt.update(smt.root, 0, path, valueHash, &orphans)
 	if err != nil {

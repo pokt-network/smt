@@ -132,11 +132,11 @@ func (extNode *extensionNode) split(path []byte) (trieNode, *trieNode, int) {
 
 // expand returns the inner node that represents the start of the singly
 // linked list that this extension node represents
-func (ext *extensionNode) expand() trieNode {
-	last := ext.child
-	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {
+func (extNode *extensionNode) expand() trieNode {
+	last := extNode.child
+	for i := extNode.pathEnd() - 1; i >= extNode.pathStart(); i-- {
 		var next innerNode
-		if getPathBit(ext.path, i) == leftChildBit {
+		if getPathBit(extNode.path, i) == leftChildBit {
 			next.leftChild = last
 		} else {
 			next.rightChild = last

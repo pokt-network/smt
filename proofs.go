@@ -283,7 +283,7 @@ func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TrieSp
 func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
 	var sumBz [sumSizeBits]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
-	valueHash := spec.digestValue(value)
+	valueHash := spec.valueDigest(value)
 	valueHash = append(valueHash, sumBz[:]...)
 	if bytes.Equal(value, defaultEmptyValue) && sum == 0 {
 		valueHash = defaultEmptyValue
@@ -348,7 +348,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 			updates = append(updates, update)
 		}
 	} else { // Membership proof.
-		valueHash := spec.digestValue(value)
+		valueHash := spec.valueDigest(value)
 		currentHash, currentData = digestLeaf(spec, path, valueHash)
 		update := make([][]byte, 2)
 		update[0], update[1] = currentHash, currentData
