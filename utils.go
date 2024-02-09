@@ -178,7 +178,7 @@ func hashPreimage(spec *TrieSpec, data []byte) []byte {
 
 // Used for verification of serialized proof data
 func hashSerialization(smt *TrieSpec, data []byte) []byte {
-	if isExtension(data) {
+	if isExtNode(data) {
 		pathBounds, path, childHash := parseExtension(data, smt.ph)
 		ext := extensionNode{path: path, child: &lazyNode{childHash}}
 		copy(ext.pathBounds[:], pathBounds)
@@ -189,7 +189,7 @@ func hashSerialization(smt *TrieSpec, data []byte) []byte {
 
 // Used for verification of serialized proof data for sum trie nodes
 func hashSumSerialization(smt *TrieSpec, data []byte) []byte {
-	if isExtension(data) {
+	if isExtNode(data) {
 		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
 		ext := extensionNode{path: path, child: &lazyNode{childHash}}
 		copy(ext.pathBounds[:], pathBounds)

@@ -7,18 +7,8 @@ import (
 	"github.com/pokt-network/smt/kvstore"
 )
 
+// Make sure the `SMT` struct implements the `SparseMerkleTrie` interface
 var _ SparseMerkleTrie = (*SMT)(nil)
-
-// A high-level interface that captures the behaviour of all types of nodes
-type trieNode interface {
-	// Persisted returns a boolean to determine whether or not the node
-	// has been persisted to disk or only held in memory.
-	// It can be used skip unnecessary iops if already persisted
-	Persisted() bool
-
-	// The digest of the node, returning a cached value if available.
-	CachedDigest() []byte
-}
 
 // SMT is a Sparse Merkle Trie object that implements the SparseMerkleTrie interface
 type SMT struct {
@@ -356,7 +346,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if !bytes.Equal(leaf.path, path) {
 			// This is a non-membership proof that involves showing a different leaf.
 			// Add the leaf data to the proof.
-			leafData = encodeLeaf(leaf.path, leaf.valueHash)
+			leafData = encodeLeafNode(leaf.path, leaf.valueHash)
 		}
 	}
 	// Hash siblings from bottom up.
@@ -541,12 +531,12 @@ func (smt *SMT) resolve(hash []byte) (ret trieNode, err error) {
 	if err != nil {
 		return
 	}
-	if isLeaf(data) {
+	if isLeafNode(data) {
 		leaf := leafNode{persisted: true, digest: hash}
-		leaf.path, leaf.valueHash = parseLeaf(data, smt.ph)
+		leaf.path, leaf.valueHash = parseLeafNode(data, smt.ph)
 		return &leaf, nil
 	}
-	if isExtension(data) {
+	if isExtNode(data) {
 		extNode := extensionNode{persisted: true, digest: hash}
 		pathBounds, path, childHash := parseExtension(data, smt.ph)
 		extNode.path = path
@@ -570,12 +560,12 @@ func (smt *SMT) resolveSum(hash []byte) (ret trieNode, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if isLeaf(data) {
+	if isLeafNode(data) {
 		leaf := leafNode{persisted: true, digest: hash}
-		leaf.path, leaf.valueHash = parseLeaf(data, smt.ph)
+		leaf.path, leaf.valueHash = parseLeafNode(data, smt.ph)
 		return &leaf, nil
 	}
-	if isExtension(data) {
+	if isExtNode(data) {
 		extNode := extensionNode{persisted: true, digest: hash}
 		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
 		extNode.path = path

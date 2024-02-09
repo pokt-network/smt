@@ -59,7 +59,7 @@ func (proof *SparseMerkleProof) validateBasic(spec *TrieSpec) error {
 		return fmt.Errorf("too many side nodes: got %d but max is %d", len(proof.SideNodes), spec.ph.PathSize()*8)
 	}
 	// Check that leaf data for non-membership proofs is a valid size.
-	lps := len(leafPrefix) + spec.ph.PathSize()
+	lps := len(leafNodePrefix) + spec.ph.PathSize()
 	if proof.NonMembershipLeafData != nil && len(proof.NonMembershipLeafData) < lps {
 		return fmt.Errorf("invalid non-membership leaf data size: got %d but min is %d", len(proof.NonMembershipLeafData), lps)
 	}
@@ -336,7 +336,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 			currentHash = placeholder(spec)
 		} else { // Leaf is an unrelated leaf.
 			var actualPath, valueHash []byte
-			actualPath, valueHash = parseLeaf(proof.NonMembershipLeafData, spec.ph)
+			actualPath, valueHash = parseLeafNode(proof.NonMembershipLeafData, spec.ph)
 			if bytes.Equal(actualPath, path) {
 				// This is not an unrelated leaf; non-membership proof failed.
 				return false, nil, errors.Join(ErrBadProof, errors.New("non-membership proof on related leaf"))

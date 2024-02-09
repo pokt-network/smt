@@ -4,6 +4,11 @@ import (
 	"hash"
 )
 
+// TODO_DISCUSS_IN_THIS_PR_IMPROVEMENTS:
+// 1. Should we rename all instances of digest to hash?
+// 2. Should we introduce a shared interface between SparseMerkleTrie and SparseMerkleSumTrie?
+// 3. Should we rename Commit to FlushToDisk?
+
 const (
 	// The bit value use to distinguish an inner nodes left child and right child
 	leftChildBit = 0
@@ -18,6 +23,17 @@ var (
 
 // MerkleRoot is a type alias for a byte slice returned from the Root method
 type MerkleRoot []byte
+
+// A high-level interface that captures the behaviour of all types of nodes
+type trieNode interface {
+	// Persisted returns a boolean to determine whether or not the node
+	// has been persisted to disk or only held in memory.
+	// It can be used skip unnecessary iops if already persisted
+	Persisted() bool
+
+	// The digest of the node, returning a cached value if available.
+	CachedDigest() []byte
+}
 
 // SparseMerkleTrie represents a Sparse Merkle Trie.
 type SparseMerkleTrie interface {
@@ -76,6 +92,7 @@ type TrieSpec struct {
 	sumTrie bool
 }
 
+// newTrieSpec returns a new TrieSpec with the given hasher and sumTrie flag
 func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
 	spec := TrieSpec{th: *newTrieHasher(hasher)}
 	spec.ph = &pathHasher{spec.th}
@@ -85,9 +102,15 @@ func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
 }
 
 // Spec returns the TrieSpec associated with the given trie
-func (spec *TrieSpec) Spec() *TrieSpec { return spec }
+func (spec *TrieSpec) Spec() *TrieSpec {
+	return spec
+}
 
-func (spec *TrieSpec) depth() int { return spec.ph.PathSize() * 8 }
+// depth returns the maximum depth of the trie.
+// Since this tree is a binary tree, the depth is the number of bits in the path
+func (spec *TrieSpec) depth() int {
+	return spec.ph.PathSize() * 8 // path size is in bytes so multiply by 8 to get num bits
+}
 
 func (spec *TrieSpec) digestValue(data []byte) []byte {
 	if spec.vh == nil {
@@ -101,14 +124,14 @@ func (spec *TrieSpec) serialize(node trieNode) (data []byte) {
 	case *lazyNode:
 		panic("serialize(lazyNode)")
 	case *leafNode:
-		return encodeLeaf(n.path, n.valueHash)
+		return encodeLeafNode(n.path, n.valueHash)
 	case *innerNode:
 		lchild := spec.hashNode(n.leftChild)
 		rchild := spec.hashNode(n.rightChild)
-		return encodeInner(lchild, rchild)
+		return encodeInnerNode(lchild, rchild)
 	case *extensionNode:
 		child := spec.hashNode(n.child)
-		return encodeExtension(n.pathBounds, n.path, child)
+		return encodeExtensionNode(n.pathBounds, n.path, child)
 	}
 	return nil
 }
@@ -139,20 +162,20 @@ func (spec *TrieSpec) hashNode(node trieNode) []byte {
 
 // sumSerialize serializes a node returning the preimage hash, its sum and any
 // errors encountered
-func (spec *TrieSpec) sumSerialize(node trieNode) (preimage []byte) {
+func (spec *TrieSpec) sumSerialize(node trieNode) (preImage []byte) {
 	switch n := node.(type) {
 	case *lazyNode:
 		panic("serialize(lazyNode)")
 	case *leafNode:
-		return encodeLeaf(n.path, n.valueHash)
+		return encodeLeafNode(n.path, n.valueHash)
 	case *innerNode:
-		lchild := spec.hashSumNode(n.leftChild)
-		rchild := spec.hashSumNode(n.rightChild)
-		preimage = encodeSumInner(lchild, rchild)
-		return preimage
+		leftChild := spec.hashSumNode(n.leftChild)
+		rightChild := spec.hashSumNode(n.rightChild)
+		preImage = encodeSumInnerNode(leftChild, rightChild)
+		return preImage
 	case *extensionNode:
 		child := spec.hashSumNode(n.child)
-		return encodeSumExtension(n.pathBounds, n.path, child)
+		return encodeSumExtensionNode(n.pathBounds, n.path, child)
 	}
 	return nil
 }
@@ -178,9 +201,9 @@ func (spec *TrieSpec) hashSumNode(node trieNode) []byte {
 		return n.digest
 	}
 	if *cache == nil {
-		preimage := spec.sumSerialize(node)
-		*cache = spec.th.digest(preimage)
-		*cache = append(*cache, preimage[len(preimage)-sumSizeBits:]...)
+		preImage := spec.sumSerialize(node)
+		*cache = spec.th.digest(preImage)
+		*cache = append(*cache, preImage[len(preImage)-sumSizeBits:]...)
 	}
 	return *cache
 }
