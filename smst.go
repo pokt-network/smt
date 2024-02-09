@@ -8,6 +8,11 @@ import (
 	"github.com/pokt-network/smt/kvstore"
 )
 
+const (
+	// The number of bits used to represent the sum of a node
+	sumSizeBits = 8
+)
+
 var _ SparseMerkleSumTrie = (*SMST)(nil)
 
 // SMST is an object wrapping a Sparse Merkle Trie for custom encoding
@@ -116,8 +121,14 @@ func (smst *SMST) Root() MerkleRoot {
 	return smst.SMT.Root() // [digest]+[binary sum]
 }
 
-// Sum returns the uint64 sum of the entire trie
+// Sum returns the sum of the entire trie stored in the root.
+// If the tree is not a sum tree, it will panic.
 func (smst *SMST) Sum() uint64 {
-	digest := smst.Root()
-	return digest.Sum()
+	rootDigest := smst.Root()
+	if len(rootDigest) != smst.th.hashSize()+sumSizeBits {
+		panic("roo#sum: not a merkle sum trie")
+	}
+	var sumbz [sumSizeBits]byte
+	copy(sumbz[:], []byte(rootDigest)[len([]byte(rootDigest))-sumSizeBits:])
+	return binary.BigEndian.Uint64(sumbz[:])
 }

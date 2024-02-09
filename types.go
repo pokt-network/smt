@@ -1,13 +1,12 @@
 package smt
 
 import (
-	"encoding/binary"
 	"hash"
 )
 
 const (
+	// The bit value use to distinguish an inner nodes left child and right child
 	leftChildBit = 0
-	sumSizeBits  = 8
 )
 
 var (
@@ -19,18 +18,6 @@ var (
 
 // MerkleRoot is a type alias for a byte slice returned from the Root method
 type MerkleRoot []byte
-
-// Sum returns the uint64 sum of the merkle root, it checks the length of the
-// merkle root and if it is no the same as the size of the SMST's expected
-// root hash it will panic.
-func (r MerkleRoot) Sum() uint64 {
-	if len(r)%32 == 0 {
-		panic("roo#sum: not a merkle sum trie")
-	}
-	var sumbz [sumSizeBits]byte
-	copy(sumbz[:], []byte(r)[len([]byte(r))-sumSizeBits:])
-	return binary.BigEndian.Uint64(sumbz[:])
-}
 
 // SparseMerkleTrie represents a Sparse Merkle Trie.
 type SparseMerkleTrie interface {
