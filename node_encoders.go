@@ -19,31 +19,43 @@ var (
 	leafNodePrefix  = []byte{0}
 	innerNodePrefix = []byte{1}
 	extNodePrefix   = []byte{2}
+	prefixLen       = 1
 )
+
+// NB: We use `prefixLen` a lot through this file, so to make the code more readable, we
+// define it as a constant but need to assert on its length just in case the code evolves
+// in the future.
+func init() {
+	if len(leafNodePrefix) != prefixLen ||
+		len(innerNodePrefix) != prefixLen ||
+		len(extNodePrefix) != prefixLen {
+		panic("invalid prefix length")
+	}
+}
 
 // isLeafNode returns true if the encoded node data is a leaf node
 func isLeafNode(data []byte) bool {
-	return bytes.Equal(data[:len(leafNodePrefix)], leafNodePrefix)
+	return bytes.Equal(data[:prefixLen], leafNodePrefix)
 }
 
 // isExtNode returns true if the encoded node data is an extension node
 func isExtNode(data []byte) bool {
-	return bytes.Equal(data[:len(extNodePrefix)], extNodePrefix)
+	return bytes.Equal(data[:prefixLen], extNodePrefix)
 }
 
 // parseLeafNode parses a leafNode into its components
-func parseLeafNode(data []byte, ph PathHasher) (leftChild, rightChild []byte) {
-	leftChild = data[len(leafNodePrefix) : len(leafNodePrefix)+ph.PathSize()]
-	rightChild = data[len(leafNodePrefix)+ph.PathSize():]
+func parseLeafNode(data []byte, ph PathHasher) (path, value []byte) {
+	path = data[prefixLen : prefixLen+ph.PathSize()]
+	value = data[prefixLen+ph.PathSize():]
 	return
 }
 
 // parseExtNode parses an extNode into its components
 func parseExtNode(data []byte, ph PathHasher) (pathBounds, path, childData []byte) {
 	// +2 represents the length of the pathBounds
-	pathBounds = data[len(extNodePrefix) : len(extNodePrefix)+2]
-	path = data[len(extNodePrefix)+2 : len(extNodePrefix)+2+ph.PathSize()]
-	childData = data[len(extNodePrefix)+2+ph.PathSize():]
+	pathBounds = data[prefixLen : prefixLen+2]
+	path = data[prefixLen+2 : prefixLen+2+ph.PathSize()]
+	childData = data[prefixLen+2+ph.PathSize():]
 	return
 }
 
@@ -54,9 +66,9 @@ func parseSumExtNode(data []byte, ph PathHasher) (pathBounds, path, childData []
 	copy(sumBz[:], data[len(data)-sumSizeBits:])
 
 	// +2 represents the length of the pathBounds
-	pathBounds = data[len(extNodePrefix) : len(extNodePrefix)+2]
-	path = data[len(extNodePrefix)+2 : len(extNodePrefix)+2+ph.PathSize()]
-	childData = data[len(extNodePrefix)+2+ph.PathSize() : len(data)-sumSizeBits]
+	pathBounds = data[prefixLen : prefixLen+2]
+	path = data[prefixLen+2 : prefixLen+2+ph.PathSize()]
+	childData = data[prefixLen+2+ph.PathSize() : len(data)-sumSizeBits]
 	return
 }
 
