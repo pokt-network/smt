@@ -84,7 +84,7 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	require.False(t, result)
 
 	// Try proving a default value for a non-default leaf.
-	_, leafData := base.th.digestLeaf(base.ph.Path([]byte("testKey2")), base.valueDigest([]byte("testValue")))
+	_, leafData := base.th.digestLeaf(base.ph.Path([]byte("testKey2")), base.valueHash([]byte("testValue")))
 	proof = &SparseMerkleProof{
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,

@@ -1,71 +1,104 @@
-package smt_test
+package smt
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pokt-network/smt"
+	"github.com/pokt-network/smt/kvstore"
 	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
 // TestExampleSMT is a test that aims to act as an example of how to use the SMST.
 func TestExampleSMST(t *testing.T) {
+	dataMap := make(map[string]string)
+
 	// Initialize a new in-memory key-value store to store the nodes of the trie.
-	// NB: The trie only stores hashed values, not raw value data.
+	// NB: The trie only stores hashed values and not raw value data.
 	nodeStore := simplemap.NewSimpleMap()
 
-	// Initialize the trie
-	trie := smt.NewSparseMerkleSumTrie(nodeStore, sha256.New())
+	// Initialize the smst
+	smst := NewSparseMerkleSumTrie(nodeStore, sha256.New()) //, smt.WithValueHasher(nil), smt.WithPathHasher(smt.NewNilPathHasher(sha256.New())))
 
 	// Update trie with keys, values and their sums
-	err := trie.Update([]byte("foo"), []byte("oof"), 10)
+	err := smst.Update([]byte("foo"), []byte("oof"), 10)
 	require.NoError(t, err)
-	err = trie.Update([]byte("baz"), []byte("zab"), 7)
+	dataMap["foo"] = "oof"
+	err = smst.Update([]byte("baz"), []byte("zab"), 7)
 	require.NoError(t, err)
-	err = trie.Update([]byte("bin"), []byte("nib"), 3)
+	dataMap["baz"] = "zab"
+	err = smst.Update([]byte("bin"), []byte("nib"), 3)
 	require.NoError(t, err)
+	dataMap["bin"] = "nib"
 
 	// Commit the changes to the nodeStore
-	err = trie.Commit()
+	err = smst.Commit()
 	require.NoError(t, err)
 
 	// Calculate the total sum of the trie
-	sum := trie.Sum()
+	sum := smst.Sum()
 	require.Equal(t, uint64(20), sum)
 
 	// Generate a Merkle proof for "foo"
-	proof1, err := trie.Prove([]byte("foo"))
+	proof1, err := smst.Prove([]byte("foo"))
 	require.NoError(t, err)
-	proof2, err := trie.Prove([]byte("baz"))
+	proof2, err := smst.Prove([]byte("baz"))
 	require.NoError(t, err)
-	proof3, err := trie.Prove([]byte("bin"))
+	proof3, err := smst.Prove([]byte("bin"))
 	require.NoError(t, err)
 
 	// We also need the current trie root for the proof
-	root := trie.Root()
+	root := smst.Root()
 
 	// Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-	valid_true1, err := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 10, trie.Spec())
+	valid_true1, err := VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 10, smst.Spec())
 	require.NoError(t, err)
 	require.True(t, valid_true1)
 
 	// Verify the Merkle proof for "baz"="zab" where "baz" has a sum of 7
-	valid_true2, err := smt.VerifySumProof(proof2, root, []byte("baz"), []byte("zab"), 7, trie.Spec())
+	valid_true2, err := VerifySumProof(proof2, root, []byte("baz"), []byte("zab"), 7, smst.Spec())
 	require.NoError(t, err)
 	require.True(t, valid_true2)
 
 	// Verify the Merkle proof for "bin"="nib" where "bin" has a sum of 3
-	valid_true3, err := smt.VerifySumProof(proof3, root, []byte("bin"), []byte("nib"), 3, trie.Spec())
+	valid_true3, err := VerifySumProof(proof3, root, []byte("bin"), []byte("nib"), 3, smst.Spec())
 	require.NoError(t, err)
 	require.True(t, valid_true3)
 
 	// Fail to verify the Merkle proof for "foo"="oof" where "foo" has a sum of 11
-	valid_false1, err := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 11, trie.Spec())
+	valid_false1, err := VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 11, smst.Spec())
 	require.NoError(t, err)
 	require.False(t, valid_false1)
 
-	// Output: true true true false
-	t.Log(valid_true1, valid_true2, valid_true3, valid_false1)
+	exportToCSV(smst, dataMap, nodeStore)
+}
+
+func exportToCSV(
+	smst SparseMerkleSumTrie,
+	innerMap map[string]string,
+	nodeStore kvstore.MapStore,
+) {
+	// hasher := sha256.New()
+	fmt.Println("Exporting to CSV", smst.Root())
+	// rootBits := smst.Root()
+	for key, value := range innerMap {
+		// fmt.Println(key, smst.Spec().)
+		v, s, err := smst.Get([]byte(key))
+		if err != nil {
+			panic(err)
+		}
+		// parseLeafNode()
+		fmt.Println(v, s)
+		fmt.Println(value)
+		fmt.Println("")
+		fmt.Println("")
+	}
+
+	// Export the trie to a CSV file
+	// err := smt.ExportToCSV("export.csv")
+	// if err != nil {
+	// 	panic(err)
+	// }
 }

@@ -47,8 +47,8 @@
     -[ ] │       └── simplemap_test.go
     -[x] ├── lazy_node.go
     -[x] ├── leaf_node.go
-    -[ ] ├── node_encoders.go
-    -[ ] ├── options.go
+    -[x] ├── node_encoders.go
+    -[x] ├── options.go
     -[ ] ├── proofs.go
     -[ ] ├── proofs_test.go
     -[ ] ├── reviewpad.yml

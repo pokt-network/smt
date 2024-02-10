@@ -57,6 +57,11 @@ func ImportSparseMerkleTrie(
 	return smt
 }
 
+// Root returns the root hash of the trie
+func (smt *SMT) Root() MerkleRoot {
+	return hashNode(smt.Spec(), smt.root)
+}
+
 // Get returns the hash (i.e. digest) of the leaf value stored at the given key
 func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
@@ -105,16 +110,21 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 }
 
 // Update inserts the `value` for the given `key` into the SMT
-func (smt *SMT) Update(key []byte, value []byte) error {
-	// Expand
+func (smt *SMT) Update(key, value []byte) error {
+	// Expand the key into a path by computing its digest
 	path := smt.ph.Path(key)
-	valueHash := smt.valueDigest(value)
+
+	// Convert the value into a hash by computing its digest
+	valueHash := smt.valueHash(value)
+
+	// Update the trie with the new key-value pair
 	var orphans orphanNodes
-	trie, err := smt.update(smt.root, 0, path, valueHash, &orphans)
+	// Compute the new root by inserting (path, valueHash) starting
+	newRoot, err := smt.update(smt.root, 0, path, valueHash, &orphans)
 	if err != nil {
 		return err
 	}
-	smt.root = trie
+	smt.root = newRoot
 	if len(orphans) > 0 {
 		smt.orphans = append(smt.orphans, orphans)
 	}
@@ -140,7 +150,8 @@ func (smt *SMT) update(
 	}
 	if leaf, ok := node.(*leafNode); ok {
 		prefixLen := countCommonPrefixBits(path, leaf.path, depth)
-		if prefixLen == smt.depth() { // replace leaf if paths are equal
+		// replace leaf if paths are equal
+		if prefixLen == smt.depth() {
 			smt.addOrphan(orphans, node)
 			return newLeaf, nil
 		}
@@ -511,7 +522,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 	return proof, nil
 }
 
-// resolves a stub into a cached node
+// resolveLazy resolves resolves a stub into a cached node
 func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	stub, ok := node.(*lazyNode)
 	if !ok {
@@ -523,13 +534,13 @@ func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	return smt.resolve(stub.digest)
 }
 
-func (smt *SMT) resolve(hash []byte) (ret trieNode, err error) {
+func (smt *SMT) resolve(hash []byte) (trieNode, error) {
 	if bytes.Equal(smt.th.placeholder(), hash) {
-		return
+		return nil, nil
 	}
 	data, err := smt.nodes.Get(hash)
 	if err != nil {
-		return
+		return nil, err
 	}
 	if isLeafNode(data) {
 		leaf := leafNode{persisted: true, digest: hash}
@@ -538,7 +549,7 @@ func (smt *SMT) resolve(hash []byte) (ret trieNode, err error) {
 	}
 	if isExtNode(data) {
 		extNode := extensionNode{persisted: true, digest: hash}
-		pathBounds, path, childHash := parseExtension(data, smt.ph)
+		pathBounds, path, childHash := parseExtNode(data, smt.ph)
 		extNode.path = path
 		copy(extNode.pathBounds[:], pathBounds)
 		extNode.child = &lazyNode{childHash}
@@ -552,9 +563,9 @@ func (smt *SMT) resolve(hash []byte) (ret trieNode, err error) {
 }
 
 // resolveSum resolves
-func (smt *SMT) resolveSum(hash []byte) (ret trieNode, err error) {
+func (smt *SMT) resolveSum(hash []byte) (trieNode, error) {
 	if bytes.Equal(placeholder(smt.Spec()), hash) {
-		return
+		return nil, nil
 	}
 	data, err := smt.nodes.Get(hash)
 	if err != nil {
@@ -567,7 +578,7 @@ func (smt *SMT) resolveSum(hash []byte) (ret trieNode, err error) {
 	}
 	if isExtNode(data) {
 		extNode := extensionNode{persisted: true, digest: hash}
-		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
+		pathBounds, path, childHash, _ := parseSumExtNode(data, smt.ph)
 		extNode.path = path
 		copy(extNode.pathBounds[:], pathBounds)
 		extNode.child = &lazyNode{childHash}
@@ -624,11 +635,6 @@ func (smt *SMT) commit(node trieNode) error {
 	}
 	preimage := serialize(smt.Spec(), node)
 	return smt.nodes.Set(hashNode(smt.Spec(), node), preimage)
-}
-
-// Root returns the root hash of the trie
-func (smt *SMT) Root() MerkleRoot {
-	return hashNode(smt.Spec(), smt.root)
 }
 
 func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {

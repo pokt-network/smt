@@ -18,15 +18,18 @@ func WithValueHasher(vh ValueHasher) Option {
 }
 
 // NoHasherSpec returns a new TrieSpec that has nil ValueHasher & PathHasher specs.
-// NOTE: This should only be used when values are already hashed and a path is
-// used instead of a key during proof verification, otherwise these will be
-// double hashed and produce an incorrect leaf digest invalidating the proof.
+// NB: This should only be used when values are already hashed and a path is
+// used instead of a key during proof verification. Otherwise, this will lead
+// double hashing and product an incorrect leaf digest, thereby invalidating
+// the proof.
+// TODO_IN_THIS_PR: Need to understand this part more.
 func NoHasherSpec(hasher hash.Hash, sumTrie bool) *TrieSpec {
 	spec := newTrieSpec(hasher, sumTrie)
 
 	// Set a nil path hasher
-	opt := WithPathHasher(newNilPathHasher(hasher.Size()))
+	opt := WithPathHasher(NewNilPathHasher(hasher))
 	opt(&spec)
+
 	// Set a nil value hasher
 	opt = WithValueHasher(nil)
 	opt(&spec)

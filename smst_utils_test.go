@@ -26,7 +26,7 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
 	}
-	valueHash := smst.valueDigest(value)
+	valueHash := smst.valueHash(value)
 	var sumBz [sumSizeBits]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	value = append(value, sumBz[:]...)

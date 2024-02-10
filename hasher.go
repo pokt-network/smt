@@ -4,8 +4,10 @@ import (
 	"hash"
 )
 
+// Ensure the hasher interfaces are satisfied
 var (
 	_ PathHasher  = (*pathHasher)(nil)
+	_ PathHasher  = (*nilPathHasher)(nil)
 	_ ValueHasher = (*valueHasher)(nil)
 )
 
@@ -39,11 +41,19 @@ type valueHasher struct {
 	trieHasher
 }
 
-// newTrieHasher returns a new trie hasher with the given hash function.
-func newTrieHasher(hasher hash.Hash) *trieHasher {
+type nilPathHasher struct {
+	hashSize int
+}
+
+// NewTrieHasher returns a new trie hasher with the given hash function.
+func NewTrieHasher(hasher hash.Hash) *trieHasher {
 	th := trieHasher{hasher: hasher}
 	th.zeroValue = make([]byte, th.hashSize())
 	return &th
+}
+
+func NewNilPathHasher(hasher hash.Hash) PathHasher {
+	return &nilPathHasher{hashSize: hasher.Size()}
 }
 
 // Path returns the digest of a key produced by the path hasher
@@ -60,6 +70,16 @@ func (ph *pathHasher) PathSize() int {
 // HashValue hashes the data provided using the value hasher
 func (vh *valueHasher) HashValue(data []byte) []byte {
 	return vh.digest(data)
+}
+
+// Path satisfies the PathHasher#Path interface
+func (n *nilPathHasher) Path(key []byte) []byte {
+	return key[:n.hashSize]
+}
+
+// PathSize satisfies the PathHasher#PathSize interface
+func (n *nilPathHasher) PathSize() int {
+	return n.hashSize
 }
 
 // digest returns the hash of the data provided using the trie hasher.

@@ -64,31 +64,50 @@ func (smst *SMST) Spec() *TrieSpec {
 	return &smst.TrieSpec
 }
 
-// Get returns the digest of the value stored at the given key and the weight
-// of the leaf node
-func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
-	valueHash, err := smst.SMT.Get(key)
+// Get retrieves the value digest for the given key and the digest of the value
+// along with its weight provided a leaf node exists.
+func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error) {
+	// Retrieve the value digest from the trie for the given key
+	valueDigest, err = smst.SMT.Get(key)
 	if err != nil {
 		return nil, 0, err
 	}
-	if bytes.Equal(valueHash, defaultEmptyValue) {
+
+	// Check if it ias an empty branch
+	if bytes.Equal(valueDigest, defaultEmptyValue) {
 		return defaultEmptyValue, 0, nil
 	}
+
+	// Retrieve the node weight
 	var weightBz [sumSizeBits]byte
-	copy(weightBz[:], valueHash[len(valueHash)-sumSizeBits:])
-	weight := binary.BigEndian.Uint64(weightBz[:])
-	return valueHash[:len(valueHash)-sumSizeBits], weight, nil
+	copy(weightBz[:], valueDigest[len(valueDigest)-sumSizeBits:])
+	weight = binary.BigEndian.Uint64(weightBz[:])
+
+	// Remove the weight from the value digest
+	valueDigest = valueDigest[:len(valueDigest)-sumSizeBits]
+
+	// Return the value digest and weight
+	return valueDigest, weight, nil
 }
 
-// Update sets the value for the given key, to the digest of the provided value
-// appended with the binary representation of the weight provided. The weight
-// is used to compute the interim and total sum of the trie.
+// Update inserts the value and weight into the trie for the given key.
+//
+// The a digest (i.e. hash) of the value is computed and appended with the byte
+// representation of the weight integer provided.
+
+// The weight is used to compute the interim sum of the node which then percolates
+// up to the total sum of the trie.
 func (smst *SMST) Update(key, value []byte, weight uint64) error {
-	valueHash := smst.valueDigest(value)
+	// Convert the node weight to a byte slice
 	var weightBz [sumSizeBits]byte
 	binary.BigEndian.PutUint64(weightBz[:], weight)
-	valueHash = append(valueHash, weightBz[:]...)
-	return smst.SMT.Update(key, valueHash)
+
+	// Compute the digest of the value and append the weight to it
+	valueDigest := smst.valueHash(value)
+	valueDigest = append(valueDigest, weightBz[:]...)
+
+	// Return the result of the trie update
+	return smst.SMT.Update(key, valueDigest)
 }
 
 // Delete removes the node at the path corresponding to the given key

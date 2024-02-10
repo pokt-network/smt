@@ -94,7 +94,7 @@ type TrieSpec struct {
 
 // newTrieSpec returns a new TrieSpec with the given hasher and sumTrie flag
 func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
-	spec := TrieSpec{th: *newTrieHasher(hasher)}
+	spec := TrieSpec{th: *NewTrieHasher(hasher)}
 	spec.ph = &pathHasher{spec.th}
 	spec.vh = &valueHasher{spec.th}
 	spec.sumTrie = sumTrie
@@ -113,8 +113,8 @@ func (spec *TrieSpec) depth() int {
 	return spec.ph.PathSize() * 8 // path size is in bytes so multiply by 8 to get num bits
 }
 
-// valueDigest returns the hash of a value, or the value itself if no value hasher is specified.
-func (spec *TrieSpec) valueDigest(value []byte) []byte {
+// valueHash returns the hash of a value, or the value itself if no value hasher is specified.
+func (spec *TrieSpec) valueHash(value []byte) []byte {
 	if spec.vh == nil {
 		return value
 	}

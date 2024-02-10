@@ -4,18 +4,6 @@ import (
 	"encoding/binary"
 )
 
-type nilPathHasher struct {
-	hashSize int
-}
-
-func (n *nilPathHasher) Path(key []byte) []byte { return key[:n.hashSize] }
-
-func (n *nilPathHasher) PathSize() int { return n.hashSize }
-
-func newNilPathHasher(hashSize int) PathHasher {
-	return &nilPathHasher{hashSize: hashSize}
-}
-
 // getPathBit gets the bit at an offset (see position) in the data
 // provided relative to the most significant bit
 func getPathBit(data []byte, position int) int {
@@ -179,7 +167,7 @@ func hashPreimage(spec *TrieSpec, data []byte) []byte {
 // Used for verification of serialized proof data
 func hashSerialization(smt *TrieSpec, data []byte) []byte {
 	if isExtNode(data) {
-		pathBounds, path, childHash := parseExtension(data, smt.ph)
+		pathBounds, path, childHash := parseExtNode(data, smt.ph)
 		ext := extensionNode{path: path, child: &lazyNode{childHash}}
 		copy(ext.pathBounds[:], pathBounds)
 		return smt.digestNode(&ext)
@@ -190,7 +178,7 @@ func hashSerialization(smt *TrieSpec, data []byte) []byte {
 // Used for verification of serialized proof data for sum trie nodes
 func hashSumSerialization(smt *TrieSpec, data []byte) []byte {
 	if isExtNode(data) {
-		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
+		pathBounds, path, childHash, _ := parseSumExtNode(data, smt.ph)
 		ext := extensionNode{path: path, child: &lazyNode{childHash}}
 		copy(ext.pathBounds[:], pathBounds)
 		return smt.hashSumNode(&ext)
