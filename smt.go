@@ -7,7 +7,7 @@ import (
 	"github.com/pokt-network/smt/kvstore"
 )
 
-// Make sure the `SMT` struct implements the `SparseMerkleTrie` interface
+// Ensure the `SMT` struct implements the `SparseMerkleTrie` interface
 var _ SparseMerkleTrie = (*SMT)(nil)
 
 // SMT is a Sparse Merkle Trie object that implements the SparseMerkleTrie interface

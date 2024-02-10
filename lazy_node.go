@@ -1,8 +1,9 @@
 package smt
 
+// Ensure lazyNode satisfies the trieNode interface
 var _ trieNode = (*lazyNode)(nil)
 
-// Represents an uncached, persisted node
+// lazyNode represents an uncached persisted node
 type lazyNode struct {
 	digest []byte
 }

@@ -1,5 +1,6 @@
 package smt
 
+// Ensure extensionNode satisfies the trieNode interface
 var _ trieNode = (*extensionNode)(nil)
 
 // A compressed chain of singly-linked inner nodes.

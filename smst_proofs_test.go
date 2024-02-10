@@ -204,7 +204,7 @@ func TestSMST_Proof_ValidateBasic(t *testing.T) {
 func TestSMST_ClosestProof_ValidateBasic(t *testing.T) {
 	smn := simplemap.NewSimpleMap()
 	smst := NewSparseMerkleSumTrie(smn, sha256.New())
-	np := NoPrehashSpec(sha256.New(), true)
+	np := NoHasherSpec(sha256.New(), true)
 	base := smst.Spec()
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
@@ -326,7 +326,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 		ClosestProof:     proof.ClosestProof, // copy of proof as we are checking equality of other fields
 	})
 
-	result, err = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), true))
+	result, err = VerifyClosestProof(proof, root, NoHasherSpec(sha256.New(), true))
 	require.NoError(t, err)
 	require.True(t, result)
 
@@ -352,7 +352,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 		ClosestProof:     proof.ClosestProof, // copy of proof as we are checking equality of other fields
 	})
 
-	result, err = VerifyClosestProof(proof, root, NoPrehashSpec(sha256.New(), true))
+	result, err = VerifyClosestProof(proof, root, NoHasherSpec(sha256.New(), true))
 	require.NoError(t, err)
 	require.True(t, result)
 }
@@ -381,7 +381,7 @@ func TestSMST_ProveClosest_Empty(t *testing.T) {
 		ClosestProof: &SparseMerkleProof{},
 	})
 
-	result, err := VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
+	result, err := VerifyClosestProof(proof, smst.Root(), NoHasherSpec(sha256.New(), true))
 	require.NoError(t, err)
 	require.True(t, result)
 }
@@ -419,7 +419,7 @@ func TestSMST_ProveClosest_OneNode(t *testing.T) {
 		ClosestProof:     &SparseMerkleProof{},
 	})
 
-	result, err := VerifyClosestProof(proof, smst.Root(), NoPrehashSpec(sha256.New(), true))
+	result, err := VerifyClosestProof(proof, smst.Root(), NoHasherSpec(sha256.New(), true))
 	require.NoError(t, err)
 	require.True(t, result)
 }

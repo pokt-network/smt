@@ -12,28 +12,36 @@ import (
 
 // TestExampleSMT is a test that aims to act as an example of how to use the SMST.
 func TestExampleSMST(t *testing.T) {
-	// Initialize a new in-memory key-value store to store the nodes of the trie
-	// (Note: the trie only stores hashed values, not raw value data)
+	// Initialize a new in-memory key-value store to store the nodes of the trie.
+	// NB: The trie only stores hashed values, not raw value data.
 	nodeStore := simplemap.NewSimpleMap()
 
 	// Initialize the trie
 	trie := smt.NewSparseMerkleSumTrie(nodeStore, sha256.New())
 
 	// Update trie with keys, values and their sums
-	_ = trie.Update([]byte("foo"), []byte("oof"), 10)
-	_ = trie.Update([]byte("baz"), []byte("zab"), 7)
-	_ = trie.Update([]byte("bin"), []byte("nib"), 3)
+	err := trie.Update([]byte("foo"), []byte("oof"), 10)
+	require.NoError(t, err)
+	err = trie.Update([]byte("baz"), []byte("zab"), 7)
+	require.NoError(t, err)
+	err = trie.Update([]byte("bin"), []byte("nib"), 3)
+	require.NoError(t, err)
 
 	// Commit the changes to the nodeStore
-	_ = trie.Commit()
+	err = trie.Commit()
+	require.NoError(t, err)
 
 	// Calculate the total sum of the trie
-	_ = trie.Sum() // 20
+	sum := trie.Sum()
+	require.Equal(t, uint64(20), sum)
 
 	// Generate a Merkle proof for "foo"
-	proof1, _ := trie.Prove([]byte("foo"))
-	proof2, _ := trie.Prove([]byte("baz"))
-	proof3, _ := trie.Prove([]byte("bin"))
+	proof1, err := trie.Prove([]byte("foo"))
+	require.NoError(t, err)
+	proof2, err := trie.Prove([]byte("baz"))
+	require.NoError(t, err)
+	proof3, err := trie.Prove([]byte("bin"))
+	require.NoError(t, err)
 
 	// We also need the current trie root for the proof
 	root := trie.Root()

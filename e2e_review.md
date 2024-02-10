@@ -1,0 +1,67 @@
+# E2E Code Review
+
+    -[ ] .
+    -[ ] ├── LICENSE
+    -[ ] ├── Makefile
+    -[ ] ├── README.md
+    -[ ] ├── benchmarks
+    -[ ] │   ├── bench_leaf_test.go
+    -[ ] │   ├── bench_smst_test.go
+    -[ ] │   ├── bench_smt_test.go
+    -[ ] │   ├── bench_utils_test.go
+    -[ ] │   └── proof_sizes_test.go
+    -[ ] ├── bulk_test.go
+    -[ ] ├── docs
+    -[ ] │   ├── audit.md
+    -[ ] │   ├── badger-store.md
+    -[ ] │   ├── benchmarks.md
+    -[ ] │   ├── faq.md
+    -[ ] │   ├── mapstore.md
+    -[ ] │   ├── merkle-sum-trie.md
+    -[ ] │   └── smt.md
+    -[ ] ├── errors.go
+    -[ ] ├── extension_node.go
+    -[ ] ├── fuzz_test.go
+    -[x] ├── go.mod
+    -[x] ├── go.sum
+    -[x] ├── go.work
+    -[x] ├── go.work.sum
+    -[x] ├── godoc.go
+    -[ ] ├── hasher.go
+    -[x] ├── inner_node.go
+    -[ ] ├── kvstore
+    -[ ] │   ├── badger
+    -[ ] │   │   ├── errors.go
+    -[ ] │   │   ├── go.mod
+    -[ ] │   │   ├── go.sum
+    -[ ] │   │   ├── godoc.go
+    -[ ] │   │   ├── interface.go
+    -[ ] │   │   ├── kvstore.go
+    -[ ] │   │   └── kvstore_test.go
+    -[ ] │   ├── godoc.go
+    -[ ] │   ├── interfaces.go
+    -[ ] │   └── simplemap
+    -[ ] │       ├── errors.go
+    -[ ] │       ├── godoc.go
+    -[ ] │       ├── simplemap.go
+    -[ ] │       └── simplemap_test.go
+    -[x] ├── lazy_node.go
+    -[x] ├── leaf_node.go
+    -[ ] ├── node_encoders.go
+    -[ ] ├── options.go
+    -[ ] ├── proofs.go
+    -[ ] ├── proofs_test.go
+    -[ ] ├── reviewpad.yml
+    -[ ] ├── root_test.go
+    -[ ] ├── smst.go
+    -[ ] ├── smst_example_test.go
+    -[ ] ├── smst_proofs_test.go
+    -[ ] ├── smst_test.go
+    -[ ] ├── smst_utils_test.go
+    -[ ] ├── smt.go
+    -[ ] ├── smt_example_test.go
+    -[ ] ├── smt_proofs_test.go
+    -[ ] ├── smt_test.go
+    -[ ] ├── smt_utils_test.go
+    -[ ] ├── types.go
+    -[ ] └── utils.go

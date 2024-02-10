@@ -1,8 +1,9 @@
 package smt
 
+// Ensure leafNode satisfies the trieNode interface
 var _ trieNode = (*leafNode)(nil)
 
-// A leaf node storing a key-value pair for a full path.
+// leafNode stores a full key-value pair in the trie
 type leafNode struct {
 	path      []byte
 	valueHash []byte
