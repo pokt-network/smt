@@ -8,6 +8,11 @@ import (
 	"github.com/pokt-network/smt/kvstore"
 )
 
+const (
+	// The number of bits used to represent the sum of a node
+	sumSizeBits = 8
+)
+
 var _ SparseMerkleSumTrie = (*SMST)(nil)
 
 // SMST is an object wrapping a Sparse Merkle Trie for custom encoding
@@ -20,25 +25,27 @@ type SMST struct {
 func NewSparseMerkleSumTrie(
 	nodes kvstore.MapStore,
 	hasher hash.Hash,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMST {
+	trieSpec := newTrieSpec(hasher, true)
+	for _, option := range options {
+		option(&trieSpec)
+	}
+
+	// Initialize a non-sum SMT and modify it to have a nil value hasher
+	// TODO_IN_THIS_PR: Understand the purpose of the nilValueHasher and why
+	// we're not applying it to the smst but we need it for the smt.
 	smt := &SMT{
-		TrieSpec: newTrieSpec(hasher, true),
+		TrieSpec: trieSpec,
 		nodes:    nodes,
 	}
-	for _, option := range options {
-		option(&smt.TrieSpec)
-	}
-	nvh := WithValueHasher(nil)
-	nvh(&smt.TrieSpec)
-	smst := &SMST{
-		TrieSpec: newTrieSpec(hasher, true),
+	nilValueHasher := WithValueHasher(nil)
+	nilValueHasher(&smt.TrieSpec)
+
+	return &SMST{
+		TrieSpec: trieSpec,
 		SMT:      smt,
 	}
-	for _, option := range options {
-		option(&smst.TrieSpec)
-	}
-	return smst
 }
 
 // ImportSparseMerkleSumTrie returns a pointer to an SMST struct with the root hash provided
@@ -46,11 +53,11 @@ func ImportSparseMerkleSumTrie(
 	nodes kvstore.MapStore,
 	hasher hash.Hash,
 	root []byte,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMST {
 	smst := NewSparseMerkleSumTrie(nodes, hasher, options...)
-	smst.trie = &lazyNode{root}
-	smst.savedRoot = root
+	smst.root = &lazyNode{root}
+	smst.rootHash = root
 	return smst
 }
 
@@ -59,31 +66,50 @@ func (smst *SMST) Spec() *TrieSpec {
 	return &smst.TrieSpec
 }
 
-// Get returns the digest of the value stored at the given key and the weight
-// of the leaf node
-func (smst *SMST) Get(key []byte) ([]byte, uint64, error) {
-	valueHash, err := smst.SMT.Get(key)
+// Get retrieves the value digest for the given key and the digest of the value
+// along with its weight provided a leaf node exists.
+func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error) {
+	// Retrieve the value digest from the trie for the given key
+	valueDigest, err = smst.SMT.Get(key)
 	if err != nil {
 		return nil, 0, err
 	}
-	if bytes.Equal(valueHash, defaultValue) {
-		return defaultValue, 0, nil
+
+	// Check if it ias an empty branch
+	if bytes.Equal(valueDigest, defaultEmptyValue) {
+		return defaultEmptyValue, 0, nil
 	}
-	var weightBz [sumSize]byte
-	copy(weightBz[:], valueHash[len(valueHash)-sumSize:])
-	weight := binary.BigEndian.Uint64(weightBz[:])
-	return valueHash[:len(valueHash)-sumSize], weight, nil
+
+	// Retrieve the node weight
+	var weightBz [sumSizeBits]byte
+	copy(weightBz[:], valueDigest[len(valueDigest)-sumSizeBits:])
+	weight = binary.BigEndian.Uint64(weightBz[:])
+
+	// Remove the weight from the value digest
+	valueDigest = valueDigest[:len(valueDigest)-sumSizeBits]
+
+	// Return the value digest and weight
+	return valueDigest, weight, nil
 }
 
-// Update sets the value for the given key, to the digest of the provided value
-// appended with the binary representation of the weight provided. The weight
-// is used to compute the interim and total sum of the trie.
+// Update inserts the value and weight into the trie for the given key.
+//
+// The a digest (i.e. hash) of the value is computed and appended with the byte
+// representation of the weight integer provided.
+
+// The weight is used to compute the interim sum of the node which then percolates
+// up to the total sum of the trie.
 func (smst *SMST) Update(key, value []byte, weight uint64) error {
-	valueHash := smst.digestValue(value)
-	var weightBz [sumSize]byte
+	// Convert the node weight to a byte slice
+	var weightBz [sumSizeBits]byte
 	binary.BigEndian.PutUint64(weightBz[:], weight)
-	valueHash = append(valueHash, weightBz[:]...)
-	return smst.SMT.Update(key, valueHash)
+
+	// Compute the digest of the value and append the weight to it
+	valueDigest := smst.valueHash(value)
+	valueDigest = append(valueDigest, weightBz[:]...)
+
+	// Return the result of the trie update
+	return smst.SMT.Update(key, valueDigest)
 }
 
 // Delete removes the node at the path corresponding to the given key
@@ -116,8 +142,14 @@ func (smst *SMST) Root() MerkleRoot {
 	return smst.SMT.Root() // [digest]+[binary sum]
 }
 
-// Sum returns the uint64 sum of the entire trie
+// Sum returns the sum of the entire trie stored in the root.
+// If the tree is not a sum tree, it will panic.
 func (smst *SMST) Sum() uint64 {
-	digest := smst.Root()
-	return digest.Sum()
+	rootDigest := smst.Root()
+	if len(rootDigest) != smst.th.hashSize()+sumSizeBits {
+		panic("roo#sum: not a merkle sum trie")
+	}
+	var sumbz [sumSizeBits]byte
+	copy(sumbz[:], []byte(rootDigest)[len([]byte(rootDigest))-sumSizeBits:])
+	return binary.BigEndian.Uint64(sumbz[:])
 }

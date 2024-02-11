@@ -59,7 +59,7 @@ func (proof *SparseMerkleProof) validateBasic(spec *TrieSpec) error {
 		return fmt.Errorf("too many side nodes: got %d but max is %d", len(proof.SideNodes), spec.ph.PathSize()*8)
 	}
 	// Check that leaf data for non-membership proofs is a valid size.
-	lps := len(leafPrefix) + spec.ph.PathSize()
+	lps := len(leafNodePrefix) + spec.ph.PathSize()
 	if proof.NonMembershipLeafData != nil && len(proof.NonMembershipLeafData) < lps {
 		return fmt.Errorf("invalid non-membership leaf data size: got %d but min is %d", len(proof.NonMembershipLeafData), lps)
 	}
@@ -281,12 +281,12 @@ func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TrieSp
 
 // VerifySumProof verifies a Merkle proof for a sum trie.
 func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
-	var sumBz [sumSize]byte
+	var sumBz [sumSizeBits]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
-	valueHash := spec.digestValue(value)
+	valueHash := spec.valueHash(value)
 	valueHash = append(valueHash, sumBz[:]...)
-	if bytes.Equal(value, defaultValue) && sum == 0 {
-		valueHash = defaultValue
+	if bytes.Equal(value, defaultEmptyValue) && sum == 0 {
+		valueHash = defaultEmptyValue
 	}
 	smtSpec := &TrieSpec{
 		th:      spec.th,
@@ -314,9 +314,9 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	if proof.ClosestValueHash == nil {
 		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, spec)
 	}
-	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSize:]
+	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSizeBits:]
 	sum := binary.BigEndian.Uint64(sumBz)
-	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSize]
+	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSizeBits]
 	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, spec)
 }
 
@@ -331,12 +331,12 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 
 	// Determine what the leaf hash should be.
 	var currentHash, currentData []byte
-	if bytes.Equal(value, defaultValue) { // Non-membership proof.
+	if bytes.Equal(value, defaultEmptyValue) { // Non-membership proof.
 		if proof.NonMembershipLeafData == nil { // Leaf is a placeholder value.
-			currentHash = placeholder(spec)
+			currentHash = spec.placeholder()
 		} else { // Leaf is an unrelated leaf.
 			var actualPath, valueHash []byte
-			actualPath, valueHash = parseLeaf(proof.NonMembershipLeafData, spec.ph)
+			actualPath, valueHash = parseLeafNode(proof.NonMembershipLeafData, spec.ph)
 			if bytes.Equal(actualPath, path) {
 				// This is not an unrelated leaf; non-membership proof failed.
 				return false, nil, errors.Join(ErrBadProof, errors.New("non-membership proof on related leaf"))
@@ -348,7 +348,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 			updates = append(updates, update)
 		}
 	} else { // Membership proof.
-		valueHash := spec.digestValue(value)
+		valueHash := spec.valueHash(value)
 		currentHash, currentData = digestLeaf(spec, path, valueHash)
 		update := make([][]byte, 2)
 		update[0], update[1] = currentHash, currentData
@@ -360,7 +360,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 		node := make([]byte, hashSize(spec))
 		copy(node, proof.SideNodes[i])
 
-		if getPathBit(path, len(proof.SideNodes)-1-i) == left {
+		if getPathBit(path, len(proof.SideNodes)-1-i) == leftChildBit {
 			currentHash, currentData = digestNode(spec, currentHash, node)
 		} else {
 			currentHash, currentData = digestNode(spec, node, currentHash)
@@ -412,7 +412,7 @@ func CompactProof(proof *SparseMerkleProof, spec *TrieSpec) (*SparseCompactMerkl
 	for i := 0; i < len(proof.SideNodes); i++ {
 		node := make([]byte, hashSize(spec))
 		copy(node, proof.SideNodes[i])
-		if bytes.Equal(node, placeholder(spec)) {
+		if bytes.Equal(node, spec.placeholder()) {
 			setPathBit(bitMask, i)
 		} else {
 			compactedSideNodes = append(compactedSideNodes, node)
@@ -438,7 +438,7 @@ func DecompactProof(proof *SparseCompactMerkleProof, spec *TrieSpec) (*SparseMer
 	position := 0
 	for i := 0; i < proof.NumSideNodes; i++ {
 		if getPathBit(proof.BitMask, i) == 1 {
-			decompactedSideNodes[i] = placeholder(spec)
+			decompactedSideNodes[i] = spec.placeholder()
 		} else {
 			decompactedSideNodes[i] = proof.SideNodes[position]
 			position++

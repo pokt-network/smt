@@ -2,34 +2,35 @@
 
 <!-- toc -->
 
-- [Overview](#overview)
-- [Implementation](#implementation)
-  * [Inner Nodes](#inner-nodes)
-  * [Extension Nodes](#extension-nodes)
-  * [Leaf Nodes](#leaf-nodes)
-  * [Lazy Nodes](#lazy-nodes)
-  * [Lazy Loading](#lazy-loading)
-  * [Visualisations](#visualisations)
-    + [General Trie Structure](#general-trie-structure)
-    + [Lazy Nodes](#lazy-nodes-1)
-- [Paths](#paths)
-  * [Visualisation](#visualisation)
-- [Values](#values)
-  * [Nil values](#nil-values)
-- [Hashers & Digests](#hashers--digests)
-- [Roots](#roots)
-- [Proofs](#proofs)
-  * [Verification](#verification)
-  * [Closest Proof](#closest-proof)
-    + [Closest Proof Use Cases](#closest-proof-use-cases)
-  * [Compression](#compression)
-  * [Serialisation](#serialisation)
-- [Database](#database)
-  * [Database Submodules](#database-submodules)
-    + [SimpleMap](#simplemap)
-    + [Badger](#badger)
-  * [Data Loss](#data-loss)
-- [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
+- [smt](#smt)
+  - [Overview](#overview)
+  - [Implementation](#implementation)
+    - [Leaf Nodes](#leaf-nodes)
+    - [Inner Nodes](#inner-nodes)
+    - [Extension Nodes](#extension-nodes)
+    - [Lazy Nodes](#lazy-nodes)
+    - [Lazy Loading](#lazy-loading)
+    - [Visualisations](#visualisations)
+      - [General Trie Structure](#general-trie-structure)
+      - [Lazy Nodes](#lazy-nodes-1)
+  - [Paths](#paths)
+    - [Visualisation](#visualisation)
+  - [Values](#values)
+    - [Nil values](#nil-values)
+  - [Hashers \& Digests](#hashers--digests)
+  - [Roots](#roots)
+  - [Proofs](#proofs)
+    - [Verification](#verification)
+    - [Closest Proof](#closest-proof)
+      - [Closest Proof Use Cases](#closest-proof-use-cases)
+    - [Compression](#compression)
+    - [Serialisation](#serialisation)
+  - [Database](#database)
+    - [Database Submodules](#database-submodules)
+      - [SimpleMap](#simplemap)
+      - [Badger](#badger)
+    - [Data Loss](#data-loss)
+  - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 
 <!-- tocstop -->
 
@@ -50,44 +51,53 @@ See [smt.go](../smt.go) for more details on the implementation.
 
 The SMT has 4 node types that are used to construct the trie:
 
-- Inner Nodes
-  - Prefixed `[]byte{1}`
-  - `digest = hash([]byte{1} + leftChild.digest + rightChild.digest)`
-- Extension Nodes
-  - Prefixed `[]byte{2}`
-  - `digest = hash([]byte{2} + pathBounds + path + child.digest)`
-- Leaf Nodes
-  - Prefixed `[]byte{0}`
-  - `digest = hash([]byte{0} + path + value)`
-- Lazy Nodes
+- [Inner Nodes](#inner-nodes)
+- [Extension Nodes](#extension-nodes)
+- [Leaf Nodes](#leaf-nodes)
+- [Lazy Nodes](#lazy-nodes)
   - Prefix of the actual node type is stored in the persisted digest as
     determined above
   - `digest = persistedDigest`
 
+### Leaf Nodes
+
+Leaf nodes store the full path associated with the `key`. A leaf node also
+store the hash of the `value` stored.
+
+The `digest` of a leaf node is the hash of concatenation of the leaf node's
+path and value.
+
+By default, the SMT only stores the hashes of the values in the trie, and not the
+raw values themselves. In order to store the raw values in the underlying database,
+the option `WithValueHasher(nil)` must be passed into the `NewSparseMerkleTrie`
+constructor.
+
+- _Prefix_: `[]byte{0}`
+- _Digest_: `hash([]byte{0} + path + value)`
+
 ### Inner Nodes
 
 Inner nodes represent a branch in the trie with two **non-nil** child nodes.
+
 The inner node has an internal `digest` which represents the hash of the child
 nodes concatenated hashes.
+
+- _Prefix_: `[]byte{1}`
+- _Digest_: `hash([]byte{1} + leftChild.digest + rightChild.digest)`
 
 ### Extension Nodes
 
 Extension nodes represent a singly linked chain of inner nodes, with a single
-child. They are used to represent a common path in the trie and as such contain
-the path and bounds of the path they represent. The `digest` of an extension
+child. In other words, they are an optimization to avoid having a long chain of
+inner nodes where each inner node only has one child.
+
+In other words, they are used to
+represent a common path in the trie and as such contain the path and bounds of the path they represent. The `digest` of an extension
 node is the hash of its path bounds, the path itself and the child nodes digest
 concatenated.
 
-### Leaf Nodes
-
-Leaf nodes store the full path which they represent and also the hash of the
-value they store. The `digest` of a leaf node is the hash of the leaf nodes path
-and value concatenated.
-
-The SMT stores only the hashes of the values in the trie, not the raw values
-themselves. In order to store the raw values in the underlying database the
-option `WithValueHasher(nil)` must be passed into the `NewSparseMerkleTrie`
-constructor.
+- _Prefix_: `[]byte{2}`
+- _Digest_: `hash([]byte{2} + pathBounds + path + child.digest)`
 
 ### Lazy Nodes
 
@@ -200,12 +210,14 @@ Where `Hash(Hash1 + Hash2)` is the same root hash as the previous example.
 
 ## Paths
 
-Paths are **only** stored in two types of nodes: Leaf nodes and Extension nodes.
+Paths are **only** stored in two types of nodes: `Leaf` nodes and `Extension` nodes.
 
-- Extension nodes contain not only the path they represent but also the path
-  bounds (ie. the start and end of the path they cover).
-- Leaf nodes contain the full path which they represent, as well as the value
-  stored at that path.
+- `Leaf` nodes contain:
+  - The full path which it represent
+  - The value stored at that path
+- `Extension` nodes contain:
+  - not only the path they represent but also the path
+    bounds (ie. the start and end of the path they cover).
 
 Inner nodes do **not** contain a path, as they represent a branch in the trie
 and not a path. As such their children, _if they are extension nodes or leaf

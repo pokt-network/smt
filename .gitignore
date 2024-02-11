@@ -6,3 +6,6 @@
 
 # Ignore Goland and JetBrains IDE files
 .idea/
+
+# Ignore vscode files
+.vscode

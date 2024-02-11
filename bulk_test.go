@@ -85,7 +85,7 @@ func bulkOperations(t *testing.T, operations int, insert int, update int, delete
 			if err != nil && err != ErrKeyNotFound {
 				t.Fatalf("error: %v", err)
 			}
-			kv[ki].val = defaultValue
+			kv[ki].val = defaultEmptyValue
 		}
 	}
 
