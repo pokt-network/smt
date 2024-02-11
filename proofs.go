@@ -66,8 +66,8 @@ func (proof *SparseMerkleProof) validateBasic(spec *TrieSpec) error {
 
 	// Check that all supplied sidenodes are the correct size.
 	for _, v := range proof.SideNodes {
-		if len(v) != hashSize(spec) {
-			return fmt.Errorf("invalid side node size: got %d but want %d", len(v), hashSize(spec))
+		if len(v) != spec.hashSize() {
+			return fmt.Errorf("invalid side node size: got %d but want %d", len(v), spec.hashSize())
 		}
 	}
 
@@ -341,7 +341,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 				// This is not an unrelated leaf; non-membership proof failed.
 				return false, nil, errors.Join(ErrBadProof, errors.New("non-membership proof on related leaf"))
 			}
-			currentHash, currentData = digestLeaf(spec, actualPath, valueHash)
+			currentHash, currentData = spec.digestLeaf(actualPath, valueHash)
 
 			update := make([][]byte, 2)
 			update[0], update[1] = currentHash, currentData
@@ -349,7 +349,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 		}
 	} else { // Membership proof.
 		valueHash := spec.valueHash(value)
-		currentHash, currentData = digestLeaf(spec, path, valueHash)
+		currentHash, currentData = spec.digestLeaf(path, valueHash)
 		update := make([][]byte, 2)
 		update[0], update[1] = currentHash, currentData
 		updates = append(updates, update)
@@ -357,13 +357,13 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 
 	// Recompute root.
 	for i := 0; i < len(proof.SideNodes); i++ {
-		node := make([]byte, hashSize(spec))
+		node := make([]byte, spec.hashSize())
 		copy(node, proof.SideNodes[i])
 
 		if getPathBit(path, len(proof.SideNodes)-1-i) == leftChildBit {
-			currentHash, currentData = digestNode(spec, currentHash, node)
+			currentHash, currentData = spec.digestInnerNode(currentHash, node)
 		} else {
-			currentHash, currentData = digestNode(spec, node, currentHash)
+			currentHash, currentData = spec.digestInnerNode(node, currentHash)
 		}
 
 		update := make([][]byte, 2)
@@ -410,7 +410,7 @@ func CompactProof(proof *SparseMerkleProof, spec *TrieSpec) (*SparseCompactMerkl
 	bitMask := make([]byte, int(math.Ceil(float64(len(proof.SideNodes))/float64(8))))
 	var compactedSideNodes [][]byte
 	for i := 0; i < len(proof.SideNodes); i++ {
-		node := make([]byte, hashSize(spec))
+		node := make([]byte, spec.hashSize())
 		copy(node, proof.SideNodes[i])
 		if bytes.Equal(node, spec.placeholder()) {
 			setPathBit(bitMask, i)

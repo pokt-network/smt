@@ -100,7 +100,7 @@ func (th *trieHasher) digestLeaf(path, data []byte) (digest, value []byte) {
 	return
 }
 
-func (th *trieHasher) digestNode(leftData, rightData []byte) (digest, value []byte) {
+func (th *trieHasher) digestInnerNode(leftData, rightData []byte) (digest, value []byte) {
 	value = encodeInnerNode(leftData, rightData)
 	digest = th.digestData(value)
 	return
@@ -113,7 +113,7 @@ func (th *trieHasher) digestSumLeaf(path, leafData []byte) (digest, value []byte
 	return
 }
 
-func (th *trieHasher) digestSumNode(leftData, rightData []byte) (digest, value []byte) {
+func (th *trieHasher) digestSumInnerNode(leftData, rightData []byte) (digest, value []byte) {
 	value = encodeSumInnerNode(leftData, rightData)
 	digest = th.digestData(value)
 	digest = append(digest, value[len(value)-sumSizeBits:]...)

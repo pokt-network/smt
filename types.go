@@ -116,6 +116,78 @@ func (spec *TrieSpec) placeholder() []byte {
 	return spec.th.placeholder()
 }
 
+// hashSize returns the hash size depending on the trie type
+func (spec *TrieSpec) hashSize() int {
+	if spec.sumTrie {
+		return spec.th.hashSize() + sumSizeBits
+	}
+	return spec.th.hashSize()
+}
+
+// digestLeaf returns the hash and preimage of a leaf node depending on the trie type
+func (spec *TrieSpec) digestLeaf(path, value []byte) ([]byte, []byte) {
+	if spec.sumTrie {
+		return spec.th.digestSumLeaf(path, value)
+	}
+	return spec.th.digestLeaf(path, value)
+}
+
+// digestNode returns the hash and preimage of a node depending on the trie type
+func (spec *TrieSpec) digestInnerNode(left, right []byte) ([]byte, []byte) {
+	if spec.sumTrie {
+		return spec.th.digestSumInnerNode(left, right)
+	}
+	return spec.th.digestInnerNode(left, right)
+}
+
+// digest hashes a node depending on the trie type
+func (spec *TrieSpec) digest(node trieNode) []byte {
+	if spec.sumTrie {
+		return spec.digestSumNode(node)
+	}
+	return spec.digestNode(node)
+}
+
+// encode serializes a node depending on the trie type
+func (spec *TrieSpec) encode(node trieNode) []byte {
+	if spec.sumTrie {
+		return spec.encodeSumNode(node)
+	}
+	return spec.encodeNode(node)
+}
+
+// hashPreimage hashes the serialised data provided depending on the trie type
+func hashPreimage(spec *TrieSpec, data []byte) []byte {
+	if spec.sumTrie {
+		return hashSumSerialization(spec, data)
+	}
+	return hashSerialization(spec, data)
+}
+
+// Used for verification of serialized proof data
+func hashSerialization(smt *TrieSpec, data []byte) []byte {
+	if isExtNode(data) {
+		pathBounds, path, childHash := parseExtNode(data, smt.ph)
+		ext := extensionNode{path: path, child: &lazyNode{childHash}}
+		copy(ext.pathBounds[:], pathBounds)
+		return smt.digestNode(&ext)
+	}
+	return smt.th.digestData(data)
+}
+
+// Used for verification of serialized proof data for sum trie nodes
+func hashSumSerialization(smt *TrieSpec, data []byte) []byte {
+	if isExtNode(data) {
+		pathBounds, path, childHash, _ := parseSumExtNode(data, smt.ph)
+		ext := extensionNode{path: path, child: &lazyNode{childHash}}
+		copy(ext.pathBounds[:], pathBounds)
+		return smt.digestSumNode(&ext)
+	}
+	digest := smt.th.digestData(data)
+	digest = append(digest, data[len(data)-sumSizeBits:]...)
+	return digest
+}
+
 // depth returns the maximum depth of the trie.
 // Since this tree is a binary tree, the depth is the number of bits in the path
 // TODO_IN_THIS_PR: Try to understand why we're not taking the log of the output
@@ -176,29 +248,27 @@ func (spec *TrieSpec) digestNode(node trieNode) []byte {
 	return *cachedDigest
 }
 
-// sumSerialize serializes a node returning the preimage hash, its sum and any
-// errors encountered
-func (spec *TrieSpec) sumSerialize(node trieNode) (preImage []byte) {
+// encodeSumNode serializes a sum node and returns the preImage hash.
+func (spec *TrieSpec) encodeSumNode(node trieNode) (preImage []byte) {
 	switch n := node.(type) {
 	case *lazyNode:
-		panic("serialize(lazyNode)")
+		panic("encodeSumNode(lazyNode)")
 	case *leafNode:
 		return encodeLeafNode(n.path, n.valueHash)
 	case *innerNode:
-		leftChild := spec.hashSumNode(n.leftChild)
-		rightChild := spec.hashSumNode(n.rightChild)
+		leftChild := spec.digestSumNode(n.leftChild)
+		rightChild := spec.digestSumNode(n.rightChild)
 		preImage = encodeSumInnerNode(leftChild, rightChild)
 		return preImage
 	case *extensionNode:
-		child := spec.hashSumNode(n.child)
+		child := spec.digestSumNode(n.child)
 		return encodeSumExtensionNode(n.pathBounds, n.path, child)
 	}
 	return nil
 }
 
-// hashSumNode hashes a node returning its digest in the following form
-// digest = [node hash]+[8 byte sum]
-func (spec *TrieSpec) hashSumNode(node trieNode) []byte {
+// digestSumNode hashes a sum node returning its digest in the following form: [node hash]+[8 byte sum]
+func (spec *TrieSpec) digestSumNode(node trieNode) []byte {
 	if node == nil {
 		return spec.placeholder()
 	}
@@ -212,12 +282,12 @@ func (spec *TrieSpec) hashSumNode(node trieNode) []byte {
 		cache = &n.digest
 	case *extensionNode:
 		if n.digest == nil {
-			n.digest = spec.hashSumNode(n.expand())
+			n.digest = spec.digestSumNode(n.expand())
 		}
 		return n.digest
 	}
 	if *cache == nil {
-		preImage := spec.sumSerialize(node)
+		preImage := spec.encodeSumNode(node)
 		*cache = spec.th.digestData(preImage)
 		*cache = append(*cache, preImage[len(preImage)-sumSizeBits:]...)
 	}

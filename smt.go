@@ -59,7 +59,7 @@ func ImportSparseMerkleTrie(
 
 // Root returns the root hash of the trie
 func (smt *SMT) Root() MerkleRoot {
-	return hashNode(smt.Spec(), smt.root)
+	return smt.digest(smt.root)
 }
 
 // Get returns the hash (i.e. digest) of the leaf value stored at the given key
@@ -365,7 +365,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	for i := range siblings {
 		var sideNode []byte
 		sibling := siblings[len(siblings)-i-1]
-		sideNode = hashNode(smt.Spec(), sibling)
+		sideNode = smt.digest(sibling)
 		sideNodes = append(sideNodes, sideNode)
 	}
 
@@ -378,7 +378,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if err != nil {
 			return nil, err
 		}
-		proof.SiblingData = serialize(smt.Spec(), sib)
+		proof.SiblingData = smt.encode(sib)
 	}
 	return proof, nil
 }
@@ -505,7 +505,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 	for i := range siblings {
 		var sideNode []byte
 		sibling := siblings[len(siblings)-i-1]
-		sideNode = hashNode(smt.Spec(), sibling)
+		sideNode = smt.digest(sibling)
 		sideNodes = append(sideNodes, sideNode)
 	}
 	proof.ClosestProof = &SparseMerkleProof{
@@ -516,7 +516,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 		if err != nil {
 			return nil, err
 		}
-		proof.ClosestProof.SiblingData = serialize(smt.Spec(), sib)
+		proof.ClosestProof.SiblingData = smt.encode(sib)
 	}
 
 	return proof, nil
@@ -666,8 +666,8 @@ func (smt *SMT) commit(node trieNode) error {
 	default:
 		return nil
 	}
-	preimage := serialize(smt.Spec(), node)
-	return smt.nodes.Set(hashNode(smt.Spec(), node), preimage)
+	preimage := smt.encode(node)
+	return smt.nodes.Set(smt.digest(node), preimage)
 }
 
 func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {
