@@ -187,7 +187,7 @@ func TestSMST_Proof_ValidateBasic(t *testing.T) {
 
 	// Case: incorrect non-nil sibling data
 	proof, _ = smst.Prove([]byte("testKey1"))
-	proof.SiblingData = base.th.digest(proof.SiblingData)
+	proof.SiblingData = base.th.digestData(proof.SiblingData)
 	require.EqualError(
 		t,
 		proof.validateBasic(base),

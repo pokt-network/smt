@@ -25,25 +25,27 @@ type SMST struct {
 func NewSparseMerkleSumTrie(
 	nodes kvstore.MapStore,
 	hasher hash.Hash,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMST {
+	trieSpec := newTrieSpec(hasher, true)
+	for _, option := range options {
+		option(&trieSpec)
+	}
+
+	// Initialize a non-sum SMT and modify it to have a nil value hasher
+	// TODO_IN_THIS_PR: Understand the purpose of the nilValueHasher and why
+	// we're not applying it to the smst but we need it for the smt.
 	smt := &SMT{
-		TrieSpec: newTrieSpec(hasher, true),
+		TrieSpec: trieSpec,
 		nodes:    nodes,
 	}
-	for _, option := range options {
-		option(&smt.TrieSpec)
-	}
-	nvh := WithValueHasher(nil)
-	nvh(&smt.TrieSpec)
-	smst := &SMST{
-		TrieSpec: newTrieSpec(hasher, true),
+	nilValueHasher := WithValueHasher(nil)
+	nilValueHasher(&smt.TrieSpec)
+
+	return &SMST{
+		TrieSpec: trieSpec,
 		SMT:      smt,
 	}
-	for _, option := range options {
-		option(&smst.TrieSpec)
-	}
-	return smst
 }
 
 // ImportSparseMerkleSumTrie returns a pointer to an SMST struct with the root hash provided
@@ -51,7 +53,7 @@ func ImportSparseMerkleSumTrie(
 	nodes kvstore.MapStore,
 	hasher hash.Hash,
 	root []byte,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMST {
 	smst := NewSparseMerkleSumTrie(nodes, hasher, options...)
 	smst.root = &lazyNode{root}

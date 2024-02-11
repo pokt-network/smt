@@ -122,7 +122,7 @@ func (spec *TrieSpec) valueHash(value []byte) []byte {
 }
 
 // encodeNode serializes a node into a byte slice
-func (spec *TrieSpec) encodeNode(node trieNode) (data []byte) {
+func (spec *TrieSpec) encodeNode(node trieNode) []byte {
 	switch n := node.(type) {
 	case *lazyNode:
 		panic("Encoding a lazyNode is not supported")
@@ -135,33 +135,35 @@ func (spec *TrieSpec) encodeNode(node trieNode) (data []byte) {
 	case *extensionNode:
 		child := spec.digestNode(n.child)
 		return encodeExtensionNode(n.pathBounds, n.path, child)
+	default:
+		panic("Unknown node type")
 	}
-	return nil
 }
 
-// digestNode hashes a node returning its digest
+// digestNode hashes a node and returns its digest
 func (spec *TrieSpec) digestNode(node trieNode) []byte {
 	if node == nil {
 		return spec.th.placeholder()
 	}
-	var cache *[]byte
+
+	var cachedDigest *[]byte
 	switch n := node.(type) {
 	case *lazyNode:
 		return n.digest
 	case *leafNode:
-		cache = &n.digest
+		cachedDigest = &n.digest
 	case *innerNode:
-		cache = &n.digest
+		cachedDigest = &n.digest
 	case *extensionNode:
 		if n.digest == nil {
 			n.digest = spec.digestNode(n.expand())
 		}
 		return n.digest
 	}
-	if *cache == nil {
-		*cache = spec.th.digest(spec.encodeNode(node))
+	if *cachedDigest == nil {
+		*cachedDigest = spec.th.digestData(spec.encodeNode(node))
 	}
-	return *cache
+	return *cachedDigest
 }
 
 // sumSerialize serializes a node returning the preimage hash, its sum and any
@@ -206,7 +208,7 @@ func (spec *TrieSpec) hashSumNode(node trieNode) []byte {
 	}
 	if *cache == nil {
 		preImage := spec.sumSerialize(node)
-		*cache = spec.th.digest(preImage)
+		*cache = spec.th.digestData(preImage)
 		*cache = append(*cache, preImage[len(preImage)-sumSizeBits:]...)
 	}
 	return *cache

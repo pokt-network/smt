@@ -17,7 +17,7 @@ import (
 func NewSMSTWithStorage(
 	nodes, preimages kvstore.MapStore,
 	hasher hash.Hash,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMSTWithStorage {
 	return &SMSTWithStorage{
 		SMST:      NewSparseMerkleSumTrie(nodes, hasher, options...),

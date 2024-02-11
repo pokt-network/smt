@@ -172,7 +172,7 @@ func hashSerialization(smt *TrieSpec, data []byte) []byte {
 		copy(ext.pathBounds[:], pathBounds)
 		return smt.digestNode(&ext)
 	}
-	return smt.th.digest(data)
+	return smt.th.digestData(data)
 }
 
 // Used for verification of serialized proof data for sum trie nodes
@@ -183,7 +183,7 @@ func hashSumSerialization(smt *TrieSpec, data []byte) []byte {
 		copy(ext.pathBounds[:], pathBounds)
 		return smt.hashSumNode(&ext)
 	}
-	digest := smt.th.digest(data)
+	digest := smt.th.digestData(data)
 	digest = append(digest, data[len(data)-sumSizeBits:]...)
 	return digest
 }

@@ -4,6 +4,9 @@ import (
 	"hash"
 )
 
+// TODO_IN_THIS_PR: Improve how the `hasher` file is consolidated (or not)
+// with `node_encoders.go` since the two are very similar.
+
 // Ensure the hasher interfaces are satisfied
 var (
 	_ PathHasher  = (*pathHasher)(nil)
@@ -58,7 +61,7 @@ func NewNilPathHasher(hasher hash.Hash) PathHasher {
 
 // Path returns the digest of a key produced by the path hasher
 func (ph *pathHasher) Path(key []byte) []byte {
-	return ph.digest(key)[:ph.PathSize()]
+	return ph.digestData(key)[:ph.PathSize()]
 }
 
 // PathSize returns the length (in bytes) of digests produced by the path hasher
@@ -69,7 +72,7 @@ func (ph *pathHasher) PathSize() int {
 
 // HashValue hashes the data provided using the value hasher
 func (vh *valueHasher) HashValue(data []byte) []byte {
-	return vh.digest(data)
+	return vh.digestData(data)
 }
 
 // Path satisfies the PathHasher#Path interface
@@ -82,46 +85,52 @@ func (n *nilPathHasher) PathSize() int {
 	return n.hashSize
 }
 
-// digest returns the hash of the data provided using the trie hasher.
-func (th *trieHasher) digest(data []byte) []byte {
+// digestData returns the hash of the data provided using the trie hasher.
+func (th *trieHasher) digestData(data []byte) []byte {
 	th.hasher.Write(data)
-	sum := th.hasher.Sum(nil)
+	digest := th.hasher.Sum(nil)
 	th.hasher.Reset()
-	return sum
+	return digest
 }
 
-// digestLeaf returns the hash of the leaf data & pathprovided using the trie hasher.
-func (th *trieHasher) digestLeaf(path, data []byte) ([]byte, []byte) {
-	value := encodeLeafNode(path, data)
-	return th.digest(value), value
+// digestLeaf returns the encoded leaf data as well as its hash (i.e. digest)
+func (th *trieHasher) digestLeaf(path, data []byte) (digest, value []byte) {
+	value = encodeLeafNode(path, data)
+	digest = th.digestData(value)
+	return
 }
 
-func (th *trieHasher) digestSumLeaf(path []byte, leafData []byte) ([]byte, []byte) {
-	value := encodeLeafNode(path, leafData)
-	digest := th.digest(value)
+func (th *trieHasher) digestNode(leftData, rightData []byte) (digest, value []byte) {
+	value = encodeInnerNode(leftData, rightData)
+	digest = th.digestData(value)
+	return
+}
+
+func (th *trieHasher) digestSumLeaf(path, leafData []byte) (digest, value []byte) {
+	value = encodeLeafNode(path, leafData)
+	digest = th.digestData(value)
 	digest = append(digest, value[len(value)-sumSizeBits:]...)
-	return digest, value
+	return
 }
 
-func (th *trieHasher) digestNode(leftData []byte, rightData []byte) ([]byte, []byte) {
-	value := encodeInnerNode(leftData, rightData)
-	return th.digest(value), value
-}
-
-func (th *trieHasher) digestSumNode(leftData []byte, rightData []byte) ([]byte, []byte) {
-	value := encodeSumInnerNode(leftData, rightData)
-	digest := th.digest(value)
+func (th *trieHasher) digestSumNode(leftData, rightData []byte) (digest, value []byte) {
+	value = encodeSumInnerNode(leftData, rightData)
+	digest = th.digestData(value)
 	digest = append(digest, value[len(value)-sumSizeBits:]...)
-	return digest, value
+	return
 }
 
-func (th *trieHasher) parseNode(data []byte) ([]byte, []byte) {
-	return data[len(innerNodePrefix) : th.hashSize()+len(innerNodePrefix)], data[len(innerNodePrefix)+th.hashSize():]
+func (th *trieHasher) parseInnerNode(data []byte) (leftData, rightData []byte) {
+	leftData = data[len(innerNodePrefix) : th.hashSize()+len(innerNodePrefix)]
+	rightData = data[len(innerNodePrefix)+th.hashSize():]
+	return
 }
 
-func (th *trieHasher) parseSumNode(data []byte) ([]byte, []byte) {
-	sumless := data[:len(data)-sumSizeBits]
-	return sumless[len(innerNodePrefix) : th.hashSize()+sumSizeBits+len(innerNodePrefix)], sumless[len(innerNodePrefix)+th.hashSize()+sumSizeBits:]
+func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte) {
+	dataWithoutSum := data[:len(data)-sumSizeBits]
+	leftData = dataWithoutSum[len(innerNodePrefix) : th.hashSize()+sumSizeBits+len(innerNodePrefix)]
+	rightData = dataWithoutSum[len(innerNodePrefix)+th.hashSize()+sumSizeBits:]
+	return
 }
 
 func (th *trieHasher) hashSize() int {

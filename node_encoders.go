@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 )
 
-// TODO_IMPROVE: All of the parsing, encoding and checking functions in this file
+// TODO_TECHDEBT: All of the parsing, encoding and checking functions in this file
 // can be abstracted out into the `trieNode` interface.
 
 // TODO_IMPROVE: We should create well-defined types & structs for every type of node
@@ -43,8 +43,16 @@ func isExtNode(data []byte) bool {
 	return bytes.Equal(data[:prefixLen], extNodePrefix)
 }
 
+// isInnerNode returns true if the encoded node data is an inner node
+func isInnerNode(data []byte) bool {
+	return bytes.Equal(data[:prefixLen], innerNodePrefix)
+}
+
 // parseLeafNode parses a leafNode into its components
 func parseLeafNode(data []byte, ph PathHasher) (path, value []byte) {
+	// panics if not a leaf node
+	checkPrefix(data, leafNodePrefix)
+
 	path = data[prefixLen : prefixLen+ph.PathSize()]
 	value = data[prefixLen+ph.PathSize():]
 	return
@@ -52,6 +60,9 @@ func parseLeafNode(data []byte, ph PathHasher) (path, value []byte) {
 
 // parseExtNode parses an extNode into its components
 func parseExtNode(data []byte, ph PathHasher) (pathBounds, path, childData []byte) {
+	// panics if not an extension node
+	checkPrefix(data, extNodePrefix)
+
 	// +2 represents the length of the pathBounds
 	pathBounds = data[prefixLen : prefixLen+2]
 	path = data[prefixLen+2 : prefixLen+2+ph.PathSize()]
@@ -61,6 +72,9 @@ func parseExtNode(data []byte, ph PathHasher) (pathBounds, path, childData []byt
 
 // parseSumExtNode parses the pathBounds, path, child data and sum from the encoded extension node data
 func parseSumExtNode(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [sumSizeBits]byte) {
+	// panics if not an extension node
+	checkPrefix(data, extNodePrefix)
+
 	// Extract the sum from the encoded node data
 	var sumBz [sumSizeBits]byte
 	copy(sumBz[:], data[len(data)-sumSizeBits:])
@@ -72,8 +86,8 @@ func parseSumExtNode(data []byte, ph PathHasher) (pathBounds, path, childData []
 	return
 }
 
-// encodeLeafNode encodes leaf nodes. both normal and sum leaves as in the sum leaf the
-// sum is appended to the end of the valueHash
+// encodeLeafNode encodes leaf nodes. This function applies to both the SMT and
+// SMST since the weight of the node is appended to the end of the valueHash.
 func encodeLeafNode(path, leafData []byte) (data []byte) {
 	data = append(data, leafNodePrefix...)
 	data = append(data, path...)
@@ -86,6 +100,15 @@ func encodeInnerNode(leftData, rightData []byte) (data []byte) {
 	data = append(data, innerNodePrefix...)
 	data = append(data, leftData...)
 	data = append(data, rightData...)
+	return
+}
+
+// encodeExtensionNode encodes the data of an extension nodes
+func encodeExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
+	data = append(data, extNodePrefix...)
+	data = append(data, pathBounds[:]...)
+	data = append(data, path...)
+	data = append(data, childData...)
 	return
 }
 
@@ -115,15 +138,6 @@ func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
 	return
 }
 
-// encodeExtensionNode encodes the data of an extension nodes
-func encodeExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
-	data = append(data, extNodePrefix...)
-	data = append(data, pathBounds[:]...)
-	data = append(data, path...)
-	data = append(data, childData...)
-	return
-}
-
 // encodeSumExtensionNode encodes the data of a sum extension nodes
 func encodeSumExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
 
@@ -135,4 +149,11 @@ func encodeSumExtensionNode(pathBounds [2]byte, path, childData []byte) (data []
 	data = encodeExtensionNode(pathBounds, path, childData)
 	data = append(data, sum[:]...)
 	return
+}
+
+// checkPrefix panics if the prefix of the data does not match the expected prefix
+func checkPrefix(data, prefix []byte) {
+	if !bytes.Equal(data[:prefixLen], prefix) {
+		panic("invalid prefix")
+	}
 }

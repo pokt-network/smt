@@ -20,7 +20,7 @@ func TestExampleSMST(t *testing.T) {
 	nodeStore := simplemap.NewSimpleMap()
 
 	// Initialize the smst
-	smst := NewSparseMerkleSumTrie(nodeStore, sha256.New()) //, smt.WithValueHasher(nil), smt.WithPathHasher(smt.NewNilPathHasher(sha256.New())))
+	smst := NewSparseMerkleSumTrie(nodeStore, sha256.New())
 
 	// Update trie with keys, values and their sums
 	err := smst.Update([]byte("foo"), []byte("oof"), 10)
@@ -72,24 +72,32 @@ func TestExampleSMST(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, valid_false1)
 
-	exportToCSV(smst, dataMap, nodeStore)
+	exportToCSV(t, smst, dataMap, nodeStore)
 }
 
 func exportToCSV(
+	t *testing.T,
 	smst SparseMerkleSumTrie,
 	innerMap map[string]string,
 	nodeStore kvstore.MapStore,
 ) {
-	// hasher := sha256.New()
-	fmt.Println("Exporting to CSV", smst.Root())
-	// rootBits := smst.Root()
+	t.Helper()
+	// rootHash := smst.Root()
+	// rootNode, err := nodeStore.Get(rootHash)
+	// require.NoError(t, err)
+
+	// Testing
+	// fmt.Println(isExtNode(rootNode), isLeafNode(rootNode), isInnerNode(rootNode))
+	// leftChild, rightChild := smst.Spec().th.parseInnerNode(rootNode)
+	// // fmt.Println(isExtNode(leftChild), isExtNode(rightChild), rightChild, leftChild)
+	// fmt.Println(leftChild[:1], isExtNode(leftChild), isInnerNode(leftChild), isLeafNode(leftChild))
+	// path, value := parseLeafNode(rightChild, smst.Spec().ph)
+	// path2, value2 := parseLeafNode(leftChild, smst.Spec().ph)
+	// fmt.Println(path, "~~~", value, "~~~", path2, "~~~", value2)
+
 	for key, value := range innerMap {
-		// fmt.Println(key, smst.Spec().)
 		v, s, err := smst.Get([]byte(key))
-		if err != nil {
-			panic(err)
-		}
-		// parseLeafNode()
+		require.NoError(t, err)
 		fmt.Println(v, s)
 		fmt.Println(value)
 		fmt.Println("")

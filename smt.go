@@ -31,7 +31,7 @@ type orphanNodes = [][]byte
 func NewSparseMerkleTrie(
 	nodes kvstore.MapStore,
 	hasher hash.Hash,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMT {
 	smt := SMT{
 		TrieSpec: newTrieSpec(hasher, false),
@@ -49,7 +49,7 @@ func ImportSparseMerkleTrie(
 	nodes kvstore.MapStore,
 	hasher hash.Hash,
 	root []byte,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMT {
 	smt := NewSparseMerkleTrie(nodes, hasher, options...)
 	smt.root = &lazyNode{root}
@@ -555,7 +555,7 @@ func (smt *SMT) resolve(hash []byte) (trieNode, error) {
 		extNode.child = &lazyNode{childHash}
 		return &extNode, nil
 	}
-	leftHash, rightHash := smt.th.parseNode(data)
+	leftHash, rightHash := smt.th.parseInnerNode(data)
 	inner := innerNode{persisted: true, digest: hash}
 	inner.leftChild = &lazyNode{leftHash}
 	inner.rightChild = &lazyNode{rightHash}
@@ -584,7 +584,7 @@ func (smt *SMT) resolveSum(hash []byte) (trieNode, error) {
 		extNode.child = &lazyNode{childHash}
 		return &extNode, nil
 	}
-	leftHash, rightHash := smt.th.parseSumNode(data)
+	leftHash, rightHash := smt.th.parseSumInnerNode(data)
 	inner := innerNode{persisted: true, digest: hash}
 	inner.leftChild = &lazyNode{leftHash}
 	inner.rightChild = &lazyNode{rightHash}

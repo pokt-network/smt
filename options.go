@@ -4,16 +4,16 @@ import (
 	"hash"
 )
 
-// Option is a function that configures SparseMerkleTrie.
-type Option func(*TrieSpec)
+// TrieSpecOption is a function that configures SparseMerkleTrie.
+type TrieSpecOption func(*TrieSpec)
 
 // WithPathHasher returns an Option that sets the PathHasher to the one provided
-func WithPathHasher(ph PathHasher) Option {
+func WithPathHasher(ph PathHasher) TrieSpecOption {
 	return func(ts *TrieSpec) { ts.ph = ph }
 }
 
 // WithValueHasher returns an Option that sets the ValueHasher to the one provided
-func WithValueHasher(vh ValueHasher) Option {
+func WithValueHasher(vh ValueHasher) TrieSpecOption {
 	return func(ts *TrieSpec) { ts.vh = vh }
 }
 

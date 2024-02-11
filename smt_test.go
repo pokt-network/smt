@@ -15,7 +15,7 @@ import (
 func NewSMTWithStorage(
 	nodes, preimages kvstore.MapStore,
 	hasher hash.Hash,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMTWithStorage {
 	return &SMTWithStorage{
 		SMT:       NewSparseMerkleTrie(nodes, hasher, options...),
