@@ -33,7 +33,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifySumProof(proof, placeholder(base), []byte("testKey3"), defaultEmptyValue, 0, base)
+	result, err = VerifySumProof(proof, base.placeholder(), []byte("testKey3"), defaultEmptyValue, 0, base)
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 5, base)
@@ -377,7 +377,7 @@ func TestSMST_ProveClosest_Empty(t *testing.T) {
 		Path:         path[:],
 		FlippedBits:  []int{0},
 		Depth:        0,
-		ClosestPath:  placeholder(smst.Spec()),
+		ClosestPath:  smst.placeholder(),
 		ClosestProof: &SparseMerkleProof{},
 	})
 

@@ -106,16 +106,6 @@ func bytesToInt(bz []byte) int {
 	return int(u)
 }
 
-// placeholder returns the default placeholder value depending on the trie type
-func placeholder(spec *TrieSpec) []byte {
-	if spec.sumTrie {
-		placeholder := spec.th.placeholder()
-		placeholder = append(placeholder, defaultEmptySum[:]...)
-		return placeholder
-	}
-	return spec.th.placeholder()
-}
-
 // hashSize returns the hash size depending on the trie type
 func hashSize(spec *TrieSpec) int {
 	if spec.sumTrie {

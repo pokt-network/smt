@@ -106,6 +106,16 @@ func (spec *TrieSpec) Spec() *TrieSpec {
 	return spec
 }
 
+// placeholder returns the default placeholder value depending on the trie type
+func (spec *TrieSpec) placeholder() []byte {
+	if spec.sumTrie {
+		placeholder := spec.th.placeholder()
+		placeholder = append(placeholder, defaultEmptySum[:]...)
+		return placeholder
+	}
+	return spec.th.placeholder()
+}
+
 // depth returns the maximum depth of the trie.
 // Since this tree is a binary tree, the depth is the number of bits in the path
 // TODO_IN_THIS_PR: Try to understand why we're not taking the log of the output
@@ -190,7 +200,7 @@ func (spec *TrieSpec) sumSerialize(node trieNode) (preImage []byte) {
 // digest = [node hash]+[8 byte sum]
 func (spec *TrieSpec) hashSumNode(node trieNode) []byte {
 	if node == nil {
-		return placeholder(spec)
+		return spec.placeholder()
 	}
 	var cache *[]byte
 	switch n := node.(type) {

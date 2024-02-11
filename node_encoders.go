@@ -15,6 +15,8 @@ import (
 // NB: In this file, all references to the variable `data` should be treated as `encodedNodeData`.
 // It was abbreviated to `data` for brevity.
 
+// TODO_TECHDEBT: We can easily use `iota` and ENUMS to create a wait to have
+// more expressive code, and leverage switches statements throughout.
 var (
 	leafNodePrefix  = []byte{0}
 	innerNodePrefix = []byte{1}
@@ -114,22 +116,10 @@ func encodeExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byt
 
 // encodeSumInnerNode encodes an inner node for an smst given the data for both children
 func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
-	// Retrieve the sum of the left subtree
-	leftSum := uint64(0)
-	leftSumBz := leftData[len(leftData)-sumSizeBits:]
-	if !bytes.Equal(leftSumBz, defaultEmptySum[:]) {
-		leftSum = binary.BigEndian.Uint64(leftSumBz)
-	}
-
-	// Retrieve the sum of the right subtree
-	rightSum := uint64(0)
-	rightSumBz := rightData[len(rightData)-sumSizeBits:]
-	if !bytes.Equal(rightSumBz, defaultEmptySum[:]) {
-		rightSum = binary.BigEndian.Uint64(rightSumBz)
-	}
-
 	// Compute the sum of the current node
 	var sum [sumSizeBits]byte
+	leftSum := parseSum(leftData)
+	rightSum := parseSum(rightData)
 	binary.BigEndian.PutUint64(sum[:], leftSum+rightSum)
 
 	// Prepare and return the encoded inner node data
@@ -156,4 +146,14 @@ func checkPrefix(data, prefix []byte) {
 	if !bytes.Equal(data[:prefixLen], prefix) {
 		panic("invalid prefix")
 	}
+}
+
+// parseSum parses the sum from the encoded node data
+func parseSum(data []byte) uint64 {
+	sum := uint64(0)
+	sumBz := data[len(data)-sumSizeBits:]
+	if !bytes.Equal(sumBz, defaultEmptySum[:]) {
+		sum = binary.BigEndian.Uint64(sumBz)
+	}
+	return sum
 }

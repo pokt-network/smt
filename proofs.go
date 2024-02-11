@@ -333,7 +333,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 	var currentHash, currentData []byte
 	if bytes.Equal(value, defaultEmptyValue) { // Non-membership proof.
 		if proof.NonMembershipLeafData == nil { // Leaf is a placeholder value.
-			currentHash = placeholder(spec)
+			currentHash = spec.placeholder()
 		} else { // Leaf is an unrelated leaf.
 			var actualPath, valueHash []byte
 			actualPath, valueHash = parseLeafNode(proof.NonMembershipLeafData, spec.ph)
@@ -412,7 +412,7 @@ func CompactProof(proof *SparseMerkleProof, spec *TrieSpec) (*SparseCompactMerkl
 	for i := 0; i < len(proof.SideNodes); i++ {
 		node := make([]byte, hashSize(spec))
 		copy(node, proof.SideNodes[i])
-		if bytes.Equal(node, placeholder(spec)) {
+		if bytes.Equal(node, spec.placeholder()) {
 			setPathBit(bitMask, i)
 		} else {
 			compactedSideNodes = append(compactedSideNodes, node)
@@ -438,7 +438,7 @@ func DecompactProof(proof *SparseCompactMerkleProof, spec *TrieSpec) (*SparseMer
 	position := 0
 	for i := 0; i < proof.NumSideNodes; i++ {
 		if getPathBit(proof.BitMask, i) == 1 {
-			decompactedSideNodes[i] = placeholder(spec)
+			decompactedSideNodes[i] = spec.placeholder()
 		} else {
 			decompactedSideNodes[i] = proof.SideNodes[position]
 			position++

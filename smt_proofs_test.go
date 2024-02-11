@@ -332,7 +332,7 @@ func TestSMT_ProveClosest_Empty(t *testing.T) {
 		Path:         path[:],
 		FlippedBits:  []int{0},
 		Depth:        0,
-		ClosestPath:  placeholder(smt.Spec()),
+		ClosestPath:  smt.placeholder(),
 		ClosestProof: &SparseMerkleProof{},
 	})
 

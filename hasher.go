@@ -128,7 +128,7 @@ func (th *trieHasher) parseInnerNode(data []byte) (leftData, rightData []byte) {
 
 func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte) {
 	dataWithoutSum := data[:len(data)-sumSizeBits]
-	leftData = dataWithoutSum[len(innerNodePrefix) : th.hashSize()+sumSizeBits+len(innerNodePrefix)]
+	leftData = dataWithoutSum[len(innerNodePrefix) : len(innerNodePrefix)+th.hashSize()+sumSizeBits]
 	rightData = dataWithoutSum[len(innerNodePrefix)+th.hashSize()+sumSizeBits:]
 	return
 }

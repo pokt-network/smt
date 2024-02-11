@@ -82,15 +82,15 @@ func exportToCSV(
 	nodeStore kvstore.MapStore,
 ) {
 	t.Helper()
-	// rootHash := smst.Root()
-	// rootNode, err := nodeStore.Get(rootHash)
-	// require.NoError(t, err)
+	rootHash := smst.Root()
+	rootNode, err := nodeStore.Get(rootHash)
+	require.NoError(t, err)
 
-	// Testing
-	// fmt.Println(isExtNode(rootNode), isLeafNode(rootNode), isInnerNode(rootNode))
-	// leftChild, rightChild := smst.Spec().th.parseInnerNode(rootNode)
-	// // fmt.Println(isExtNode(leftChild), isExtNode(rightChild), rightChild, leftChild)
-	// fmt.Println(leftChild[:1], isExtNode(leftChild), isInnerNode(leftChild), isLeafNode(leftChild))
+	leftChild, rightChild := smst.Spec().th.parseSumInnerNode(rootNode)
+	fmt.Println("Prefix", "isExt", "isLeaf", "isInner")
+	fmt.Println(rootNode[:1], isExtNode(rootNode), isLeafNode(rootNode), isInnerNode(rootNode))
+	fmt.Println(leftChild[:1], isExtNode(leftChild), isLeafNode(leftChild), isInnerNode(leftChild))
+	fmt.Println(rightChild[:1], isExtNode(rightChild), isLeafNode(rightChild), isInnerNode(rightChild))
 	// path, value := parseLeafNode(rightChild, smst.Spec().ph)
 	// path2, value2 := parseLeafNode(leftChild, smst.Spec().ph)
 	// fmt.Println(path, "~~~", value, "~~~", path2, "~~~", value2)

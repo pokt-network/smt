@@ -490,7 +490,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 
 	// Retrieve the closest path and value hash if found
 	if node == nil { // trie was empty
-		proof.ClosestPath, proof.ClosestValueHash = placeholder(smt.Spec()), nil
+		proof.ClosestPath, proof.ClosestValueHash = smt.placeholder(), nil
 		proof.ClosestProof = &SparseMerkleProof{}
 		return proof, nil
 	}
@@ -529,66 +529,99 @@ func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 		return node, nil
 	}
 	if smt.sumTrie {
-		return smt.resolveSum(stub.digest)
+		return smt.resolveSumNode(stub.digest)
 	}
-	return smt.resolve(stub.digest)
+	return smt.resolveNode(stub.digest)
 }
 
-func (smt *SMT) resolve(hash []byte) (trieNode, error) {
-	if bytes.Equal(smt.th.placeholder(), hash) {
+// resolveNode returns a trieNode (inner, leaf, or extension) based on what they
+// keyHash points to.
+func (smt *SMT) resolveNode(digest []byte) (trieNode, error) {
+	// Check if the keyHash is the empty zero value of an empty subtree
+	if bytes.Equal(smt.placeholder(), digest) {
 		return nil, nil
 	}
-	data, err := smt.nodes.Get(hash)
+
+	// Retrieve the encoded noe data
+	data, err := smt.nodes.Get(digest)
 	if err != nil {
 		return nil, err
 	}
+
+	// Return the appropriate node type based on the first byte of the data
 	if isLeafNode(data) {
-		leaf := leafNode{persisted: true, digest: hash}
-		leaf.path, leaf.valueHash = parseLeafNode(data, smt.ph)
-		return &leaf, nil
+		path, valueHash := parseLeafNode(data, smt.ph)
+		return &leafNode{
+			path:      path,
+			valueHash: valueHash,
+			persisted: true,
+			digest:    digest,
+		}, nil
+	} else if isExtNode(data) {
+		pathBounds, path, childData := parseExtNode(data, smt.ph)
+		return &extensionNode{
+			path:       path,
+			pathBounds: [2]byte(pathBounds),
+			child:      &lazyNode{childData},
+			persisted:  true,
+			digest:     digest,
+		}, nil
+	} else if isInnerNode(data) {
+		leftData, rightData := smt.th.parseInnerNode(data)
+		return &innerNode{
+			leftChild:  &lazyNode{leftData},
+			rightChild: &lazyNode{rightData},
+			persisted:  true,
+			digest:     digest,
+		}, nil
+	} else {
+		panic("invalid node type")
 	}
-	if isExtNode(data) {
-		extNode := extensionNode{persisted: true, digest: hash}
-		pathBounds, path, childHash := parseExtNode(data, smt.ph)
-		extNode.path = path
-		copy(extNode.pathBounds[:], pathBounds)
-		extNode.child = &lazyNode{childHash}
-		return &extNode, nil
-	}
-	leftHash, rightHash := smt.th.parseInnerNode(data)
-	inner := innerNode{persisted: true, digest: hash}
-	inner.leftChild = &lazyNode{leftHash}
-	inner.rightChild = &lazyNode{rightHash}
-	return &inner, nil
 }
 
-// resolveSum resolves
-func (smt *SMT) resolveSum(hash []byte) (trieNode, error) {
-	if bytes.Equal(placeholder(smt.Spec()), hash) {
+// resolveNode returns a trieNode (inner, leaf, or extension) based on what they
+// keyHash points to.
+func (smt *SMT) resolveSumNode(digest []byte) (trieNode, error) {
+	// Check if the keyHash is the empty zero value of an empty subtree
+	if bytes.Equal(smt.placeholder(), digest) {
 		return nil, nil
 	}
-	data, err := smt.nodes.Get(hash)
+
+	// Retrieve the encoded noe data
+	data, err := smt.nodes.Get(digest)
 	if err != nil {
 		return nil, err
 	}
+
+	// Return the appropriate node type based on the first byte of the data
 	if isLeafNode(data) {
-		leaf := leafNode{persisted: true, digest: hash}
-		leaf.path, leaf.valueHash = parseLeafNode(data, smt.ph)
-		return &leaf, nil
+		path, valueHash := parseLeafNode(data, smt.ph)
+		return &leafNode{
+			path:      path,
+			valueHash: valueHash,
+			persisted: true,
+			digest:    digest,
+		}, nil
+	} else if isExtNode(data) {
+		pathBounds, path, childData, _ := parseSumExtNode(data, smt.ph)
+		return &extensionNode{
+			path:       path,
+			pathBounds: [2]byte(pathBounds),
+			child:      &lazyNode{childData},
+			persisted:  true,
+			digest:     digest,
+		}, nil
+	} else if isInnerNode(data) {
+		leftData, rightData := smt.th.parseSumInnerNode(data)
+		return &innerNode{
+			leftChild:  &lazyNode{leftData},
+			rightChild: &lazyNode{rightData},
+			persisted:  true,
+			digest:     digest,
+		}, nil
+	} else {
+		panic("invalid node type")
 	}
-	if isExtNode(data) {
-		extNode := extensionNode{persisted: true, digest: hash}
-		pathBounds, path, childHash, _ := parseSumExtNode(data, smt.ph)
-		extNode.path = path
-		copy(extNode.pathBounds[:], pathBounds)
-		extNode.child = &lazyNode{childHash}
-		return &extNode, nil
-	}
-	leftHash, rightHash := smt.th.parseSumInnerNode(data)
-	inner := innerNode{persisted: true, digest: hash}
-	inner.leftChild = &lazyNode{leftHash}
-	inner.rightChild = &lazyNode{rightHash}
-	return &inner, nil
 }
 
 // Commit persists all dirty nodes in the trie, deletes all orphaned
