@@ -49,33 +49,34 @@ func (proof *SparseMerkleProof) Unmarshal(bz []byte) error {
 	return dec.Decode(proof)
 }
 
+// validateBasic performs basic sanity check on the proof so that a malicious
+// proof cannot cause the verifier to fatally exit (e.g. due to an index
+// out-of-range error) or cause a CPU DoS attack.
 func (proof *SparseMerkleProof) validateBasic(spec *TrieSpec) error {
-	// Do a basic sanity check on the proof, so that a malicious proof cannot
-	// cause the verifier to fatally exit (e.g. due to an index out-of-range
-	// error) or cause a CPU DoS attack.
-
-	// Check that the number of supplied sidenodes does not exceed the maximum possible.
+	// Verify the number of supplied sideNodes does not exceed the possible maximum.
 	if len(proof.SideNodes) > spec.ph.PathSize()*8 {
 		return fmt.Errorf("too many side nodes: got %d but max is %d", len(proof.SideNodes), spec.ph.PathSize()*8)
 	}
-	// Check that leaf data for non-membership proofs is a valid size.
-	lps := len(leafNodePrefix) + spec.ph.PathSize()
-	if proof.NonMembershipLeafData != nil && len(proof.NonMembershipLeafData) < lps {
-		return fmt.Errorf("invalid non-membership leaf data size: got %d but min is %d", len(proof.NonMembershipLeafData), lps)
-	}
 
-	// Check that all supplied sidenodes are the correct size.
-	for _, v := range proof.SideNodes {
-		if len(v) != spec.hashSize() {
-			return fmt.Errorf("invalid side node size: got %d but want %d", len(v), spec.hashSize())
-		}
+	// Verify that the non-membership leaf data is of the correct size.
+	leafPathSize := len(leafNodePrefix) + spec.ph.PathSize()
+	if proof.NonMembershipLeafData != nil && len(proof.NonMembershipLeafData) < leafPathSize {
+		return fmt.Errorf("invalid non-membership leaf data size: got %d but min is %d", len(proof.NonMembershipLeafData), leafPathSize)
 	}
 
 	// Check that the sibling data hashes to the first side node if not nil
 	if proof.SiblingData == nil || len(proof.SideNodes) == 0 {
 		return nil
 	}
-	siblingHash := hashPreimage(spec, proof.SiblingData)
+
+	// Check that all supplied sideNodes are the correct size.
+	for _, sideNodeValue := range proof.SideNodes {
+		if len(sideNodeValue) != spec.hashSize() {
+			return fmt.Errorf("invalid side node size: got %d but want %d", len(sideNodeValue), spec.hashSize())
+		}
+	}
+
+	siblingHash := spec.hashPreimage(proof.SiblingData)
 	if eq := bytes.Equal(proof.SideNodes[0], siblingHash); !eq {
 		return fmt.Errorf("invalid sibling data hash: got %x but want %x", siblingHash, proof.SideNodes[0])
 	}
@@ -320,7 +321,13 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, spec)
 }
 
-func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, value []byte, spec *TrieSpec) (bool, [][][]byte, error) {
+// verifyProofWithUpdates
+func verifyProofWithUpdates(
+	proof *SparseMerkleProof,
+	root, key, value []byte,
+	spec *TrieSpec,
+) (bool, [][][]byte, error) {
+	// Retrieve the trie path for the give key
 	path := spec.ph.Path(key)
 
 	if err := proof.validateBasic(spec); err != nil {
@@ -336,7 +343,7 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 			currentHash = spec.placeholder()
 		} else { // Leaf is an unrelated leaf.
 			var actualPath, valueHash []byte
-			actualPath, valueHash = parseLeafNode(proof.NonMembershipLeafData, spec.ph)
+			actualPath, valueHash = spec.parseLeafNode(proof.NonMembershipLeafData)
 			if bytes.Equal(actualPath, path) {
 				// This is not an unrelated leaf; non-membership proof failed.
 				return false, nil, errors.Join(ErrBadProof, errors.New("non-membership proof on related leaf"))
@@ -347,7 +354,8 @@ func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, v
 			update[0], update[1] = currentHash, currentData
 			updates = append(updates, update)
 		}
-	} else { // Membership proof.
+	} else {
+		// Membership proof.
 		valueHash := spec.valueHash(value)
 		currentHash, currentData = spec.digestLeaf(path, valueHash)
 		update := make([][]byte, 2)

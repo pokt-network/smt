@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"encoding/binary"
 	"hash"
 )
 
@@ -93,8 +94,8 @@ func (th *trieHasher) digestData(data []byte) []byte {
 	return digest
 }
 
-// digestLeaf returns the encoded leaf data as well as its hash (i.e. digest)
-func (th *trieHasher) digestLeaf(path, data []byte) (digest, value []byte) {
+// digestLeafNode returns the encoded leaf data as well as its hash (i.e. digest)
+func (th *trieHasher) digestLeafNode(path, data []byte) (digest, value []byte) {
 	value = encodeLeafNode(path, data)
 	digest = th.digestData(value)
 	return
@@ -106,8 +107,8 @@ func (th *trieHasher) digestInnerNode(leftData, rightData []byte) (digest, value
 	return
 }
 
-func (th *trieHasher) digestSumLeaf(path, leafData []byte) (digest, value []byte) {
-	value = encodeLeafNode(path, leafData)
+func (th *trieHasher) digestSumLeafNode(path, data []byte) (digest, value []byte) {
+	value = encodeLeafNode(path, data)
 	digest = th.digestData(value)
 	digest = append(digest, value[len(value)-sumSizeBits:]...)
 	return
@@ -126,7 +127,13 @@ func (th *trieHasher) parseInnerNode(data []byte) (leftData, rightData []byte) {
 	return
 }
 
-func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte) {
+func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte, sum uint64) {
+	// Extract the sum from the encoded node data
+	var sumBz [sumSizeBits]byte
+	copy(sumBz[:], data[len(data)-sumSizeBits:])
+	binary.BigEndian.PutUint64(sumBz[:], sum)
+
+	// Extract the left and right children
 	dataWithoutSum := data[:len(data)-sumSizeBits]
 	leftData = dataWithoutSum[len(innerNodePrefix) : len(innerNodePrefix)+th.hashSize()+sumSizeBits]
 	rightData = dataWithoutSum[len(innerNodePrefix)+th.hashSize()+sumSizeBits:]

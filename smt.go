@@ -522,7 +522,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 	return proof, nil
 }
 
-// resolveLazy resolves resolves a stub into a cached node
+// resolveLazy resolves a lazy note into a cached node depending on the tree type
 func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	stub, ok := node.(*lazyNode)
 	if !ok {
@@ -550,7 +550,7 @@ func (smt *SMT) resolveNode(digest []byte) (trieNode, error) {
 
 	// Return the appropriate node type based on the first byte of the data
 	if isLeafNode(data) {
-		path, valueHash := parseLeafNode(data, smt.ph)
+		path, valueHash := smt.parseLeafNode(data)
 		return &leafNode{
 			path:      path,
 			valueHash: valueHash,
@@ -558,7 +558,7 @@ func (smt *SMT) resolveNode(digest []byte) (trieNode, error) {
 			digest:    digest,
 		}, nil
 	} else if isExtNode(data) {
-		pathBounds, path, childData := parseExtNode(data, smt.ph)
+		pathBounds, path, childData := smt.parseExtNode(data)
 		return &extensionNode{
 			path:       path,
 			pathBounds: [2]byte(pathBounds),
@@ -595,7 +595,7 @@ func (smt *SMT) resolveSumNode(digest []byte) (trieNode, error) {
 
 	// Return the appropriate node type based on the first byte of the data
 	if isLeafNode(data) {
-		path, valueHash := parseLeafNode(data, smt.ph)
+		path, valueHash := smt.parseLeafNode(data)
 		return &leafNode{
 			path:      path,
 			valueHash: valueHash,
@@ -603,7 +603,7 @@ func (smt *SMT) resolveSumNode(digest []byte) (trieNode, error) {
 			digest:    digest,
 		}, nil
 	} else if isExtNode(data) {
-		pathBounds, path, childData, _ := parseSumExtNode(data, smt.ph)
+		pathBounds, path, childData, _ := smt.parseSumExtNode(data)
 		return &extensionNode{
 			path:       path,
 			pathBounds: [2]byte(pathBounds),
@@ -612,7 +612,7 @@ func (smt *SMT) resolveSumNode(digest []byte) (trieNode, error) {
 			digest:     digest,
 		}, nil
 	} else if isInnerNode(data) {
-		leftData, rightData := smt.th.parseSumInnerNode(data)
+		leftData, rightData, _ := smt.th.parseSumInnerNode(data)
 		return &innerNode{
 			leftChild:  &lazyNode{leftData},
 			rightChild: &lazyNode{rightData},

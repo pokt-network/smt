@@ -50,44 +50,6 @@ func isInnerNode(data []byte) bool {
 	return bytes.Equal(data[:prefixLen], innerNodePrefix)
 }
 
-// parseLeafNode parses a leafNode into its components
-func parseLeafNode(data []byte, ph PathHasher) (path, value []byte) {
-	// panics if not a leaf node
-	checkPrefix(data, leafNodePrefix)
-
-	path = data[prefixLen : prefixLen+ph.PathSize()]
-	value = data[prefixLen+ph.PathSize():]
-	return
-}
-
-// parseExtNode parses an extNode into its components
-func parseExtNode(data []byte, ph PathHasher) (pathBounds, path, childData []byte) {
-	// panics if not an extension node
-	checkPrefix(data, extNodePrefix)
-
-	// +2 represents the length of the pathBounds
-	pathBounds = data[prefixLen : prefixLen+2]
-	path = data[prefixLen+2 : prefixLen+2+ph.PathSize()]
-	childData = data[prefixLen+2+ph.PathSize():]
-	return
-}
-
-// parseSumExtNode parses the pathBounds, path, child data and sum from the encoded extension node data
-func parseSumExtNode(data []byte, ph PathHasher) (pathBounds, path, childData []byte, sum [sumSizeBits]byte) {
-	// panics if not an extension node
-	checkPrefix(data, extNodePrefix)
-
-	// Extract the sum from the encoded node data
-	var sumBz [sumSizeBits]byte
-	copy(sumBz[:], data[len(data)-sumSizeBits:])
-
-	// +2 represents the length of the pathBounds
-	pathBounds = data[prefixLen : prefixLen+2]
-	path = data[prefixLen+2 : prefixLen+2+ph.PathSize()]
-	childData = data[prefixLen+2+ph.PathSize() : len(data)-sumSizeBits]
-	return
-}
-
 // encodeLeafNode encodes leaf nodes. This function applies to both the SMT and
 // SMST since the weight of the node is appended to the end of the valueHash.
 func encodeLeafNode(path, leafData []byte) (data []byte) {
@@ -130,7 +92,6 @@ func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
 
 // encodeSumExtensionNode encodes the data of a sum extension nodes
 func encodeSumExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
-
 	// Compute the sum of the current node
 	var sum [sumSizeBits]byte
 	copy(sum[:], childData[len(childData)-sumSizeBits:])

@@ -107,7 +107,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	binary.BigEndian.PutUint64(sum[:], 5)
 	tval := base.valueHash([]byte("testValue"))
 	tval = append(tval, sum[:]...)
-	_, leafData := base.th.digestSumLeaf(base.ph.Path([]byte("testKey2")), tval)
+	_, leafData := base.th.digestSumLeafNode(base.ph.Path([]byte("testKey2")), tval)
 	proof = &SparseMerkleProof{
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,

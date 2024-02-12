@@ -82,31 +82,67 @@ func exportToCSV(
 	nodeStore kvstore.MapStore,
 ) {
 	t.Helper()
-	rootHash := smst.Root()
-	rootNode, err := nodeStore.Get(rootHash)
+	/*
+		rootHash := smst.Root()
+		rootNode, err := nodeStore.Get(rootHash)
+		require.NoError(t, err)
+		leftData, rightData := smst.Spec().th.parseSumInnerNode(rootNode)
+		leftChild, err := nodeStore.Get(leftData)
+		require.NoError(t, err)
+		rightChild, err := nodeStore.Get(rightData)
+		require.NoError(t, err)
+		fmt.Println("Prefix", "isExt", "isLeaf", "isInner")
+		// false false true
+		fmt.Println("root", isExtNode(rootNode), isLeafNode(rootNode), isInnerNode(rootNode), rootNode)
+		fmt.Println()
+		// false false false
+		fmt.Println("left", isExtNode(leftChild), isLeafNode(leftChild), isInnerNode(leftChild), leftChild)
+		fmt.Println()
+		// false false false
+		fmt.Println("right", isExtNode(rightChild), isLeafNode(rightChild), isInnerNode(rightChild), rightChild)
+		fmt.Println()
+	*/
+
+	/*
+		for key, value := range innerMap {
+			v, s, err := smst.Get([]byte(key))
+			require.NoError(t, err)
+			fmt.Println(v, s, []byte(key))
+			fmt.Println(value)
+			fmt.Println("")
+			fmt.Println("")
+		}
+	*/
+
+	helper(t, smst, nodeStore, smst.Root())
+}
+
+func helper(t *testing.T, smst SparseMerkleSumTrie, nodeStore kvstore.MapStore, nodeDigest []byte) {
+	t.Helper()
+
+	node, err := nodeStore.Get(nodeDigest)
 	require.NoError(t, err)
 
-	leftChild, rightChild := smst.Spec().th.parseSumInnerNode(rootNode)
-	fmt.Println("Prefix", "isExt", "isLeaf", "isInner")
-	fmt.Println(rootNode[:1], isExtNode(rootNode), isLeafNode(rootNode), isInnerNode(rootNode))
-	fmt.Println(leftChild[:1], isExtNode(leftChild), isLeafNode(leftChild), isInnerNode(leftChild))
-	fmt.Println(rightChild[:1], isExtNode(rightChild), isLeafNode(rightChild), isInnerNode(rightChild))
-	// path, value := parseLeafNode(rightChild, smst.Spec().ph)
-	// path2, value2 := parseLeafNode(leftChild, smst.Spec().ph)
-	// fmt.Println(path, "~~~", value, "~~~", path2, "~~~", value2)
-
-	for key, value := range innerMap {
-		v, s, err := smst.Get([]byte(key))
-		require.NoError(t, err)
-		fmt.Println(v, s)
-		fmt.Println(value)
-		fmt.Println("")
-		fmt.Println("")
+	fmt.Println()
+	if isExtNode(node) {
+		pathBounds, path, childData, sum := smst.Spec().parseSumExtNode(node)
+		fmt.Println("ext node sum", sum)
+		fmt.Println(pathBounds, path)
+		helper(t, smst, nodeStore, childData)
+		return
+	} else if isLeafNode(node) {
+		path, value := smst.Spec().parseLeafNode(node)
+		fmt.Println("leaf node sum", 0)
+		fmt.Println(path, value)
+	} else if isInnerNode(node) {
+		leftData, rightData, sum := smst.Spec().th.parseSumInnerNode(node)
+		fmt.Println("inner node sum", sum)
+		helper(t, smst, nodeStore, leftData)
+		helper(t, smst, nodeStore, rightData)
 	}
 
-	// Export the trie to a CSV file
-	// err := smt.ExportToCSV("export.csv")
-	// if err != nil {
-	// 	panic(err)
-	// }
+	// v, s, err := smst.Get([]byte(key))
+	// require.NoError(t, err)
+	// require.Equal(t, []byte(value), v)
+	// require.Equal(t, sum, s)
 }
