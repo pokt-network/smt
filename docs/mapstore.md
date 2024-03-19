@@ -3,14 +3,18 @@
 <!-- toc -->
 
 - [Implementations](#implementations)
-  * [SimpleMap](#simplemap)
-  * [BadgerV4](#badgerv4)
+  - [SimpleMap](#simplemap)
+  - [BadgerV4](#badgerv4)
 
 <!-- tocstop -->
 
 The `MapStore` is a simple interface used by the SM(S)T to store, delete and
 retrieve key-value pairs. It is intentionally simple and minimalistic so as to
 enable different key-value engines to implement and back the trie database.
+
+Any key-value store used by the tries should **not** be able to be externally
+writeable in production. This opens the possibility to attacks where the writer
+can modify the trie database and prove values that were not inserted.
 
 See: [the interface](../kvstore/interfaces.go) for a more detailed description
 of the simple interface required by the SM(S)T.
@@ -31,11 +35,11 @@ See [simplemap.go](../kvstore/simplemap/simplemap.go) for more details.
 
 ### BadgerV4
 
-This library provides a wrapper around [dgraph-io/badger][badgerv4] to adhere
-to the `MapStore` interface. See the [full documentation](./badger-store.md)
-for additional functionality and implementation details.
+This library provides a wrapper around [dgraph-io/badger][badgerv4] to adhere to
+the `MapStore` interface. See the [full documentation](./badger-store.md) for
+additional functionality and implementation details.
 
-See: [badger](../kvstore/badger/) for more details on the implementation of
-this submodule.
+See: [badger](../kvstore/badger/) for more details on the implementation of this
+submodule.
 
 [badgerv4]: https://github.com/dgraph-io/badger
