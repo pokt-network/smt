@@ -193,17 +193,6 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 	return dec.Decode(proof)
 }
 
-// GetValueHash returns the value hash of the closest proof.
-func (proof *SparseMerkleClosestProof) GetValueHash(spec *TrieSpec) []byte {
-	if proof.ClosestValueHash == nil {
-		return nil
-	}
-	if spec.sumTrie {
-		return proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSize]
-	}
-	return proof.ClosestValueHash
-}
-
 func (proof *SparseMerkleClosestProof) validateBasic(spec *TrieSpec) error {
 	// ensure the depth of the leaf node being proven is within the path size
 	if proof.Depth < 0 || proof.Depth > spec.ph.PathSize()*8 {

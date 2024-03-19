@@ -178,19 +178,36 @@ func (smt *SMT) update(
 		}
 		// We insert an "extension" representing multiple single-branch inner nodes
 		last := &node
+		var newInner *innerNode
+		if getPathBit(path, prefixlen) == left {
+			newInner = &innerNode{
+				leftChild:  newLeaf,
+				rightChild: leaf,
+			}
+		} else {
+			newInner = &innerNode{
+				leftChild:  leaf,
+				rightChild: newLeaf,
+			}
+		}
+		// Determine if we need to insert an extension or a branch
 		if depth < prefixlen {
 			// note: this keeps path slice alive - GC inefficiency?
 			if depth > 0xff {
 				panic("invalid depth")
 			}
-			ext := extensionNode{path: path, pathBounds: [2]byte{byte(depth), byte(prefixlen)}}
+			ext := extensionNode{
+				child: newInner,
+				path:  path,
+				pathBounds: [2]byte{
+					byte(depth), byte(prefixlen),
+				},
+			}
+			// Dereference the last node to replace it with the extension node
 			*last = &ext
-			last = &ext.child
-		}
-		if getPathBit(path, prefixlen) == left {
-			*last = &innerNode{leftChild: newLeaf, rightChild: leaf}
 		} else {
-			*last = &innerNode{leftChild: leaf, rightChild: newLeaf}
+			// Dereference the last node to replace it with the new inner node
+			*last = newInner
 		}
 		return node, nil
 	}
