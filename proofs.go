@@ -186,6 +186,12 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 }
 
 func (proof *SparseMerkleClosestProof) validateBasic(spec *TrieSpec) error {
+	// ensure the proof length is the same size (in bytes) as the path
+	// hasher of the spec provided
+	if len(proof.Path) != spec.PathHasherSize() {
+		return fmt.Errorf("invalid path length: got %d, want %d", len(proof.Path), spec.PathHasherSize())
+	}
+
 	// ensure the depth of the leaf node being proven is within the path size
 	if proof.Depth < 0 || proof.Depth > spec.ph.PathSize()*8 {
 		return fmt.Errorf("invalid depth: got %d, outside of [0, %d]", proof.Depth, spec.ph.PathSize()*8)
@@ -231,6 +237,12 @@ type SparseCompactMerkleClosestProof struct {
 }
 
 func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TrieSpec) error {
+	// Ensure the proof length is the same size (in bytes) as the path
+	// hasher of the spec provided
+	if len(proof.Path) != spec.PathHasherSize() {
+		return fmt.Errorf("invalid path length: got %d, want %d", len(proof.Path), spec.PathHasherSize())
+	}
+
 	// Do a basic sanity check on the proof on the fields of the proof specific to
 	// the compact proof only.
 	//
