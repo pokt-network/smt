@@ -61,7 +61,11 @@ func (proof *SparseMerkleProof) validateBasic(spec *TrieSpec) error {
 	// Check that leaf data for non-membership proofs is a valid size.
 	lps := len(leafPrefix) + spec.ph.PathSize()
 	if proof.NonMembershipLeafData != nil && len(proof.NonMembershipLeafData) < lps {
-		return fmt.Errorf("invalid non-membership leaf data size: got %d but min is %d", len(proof.NonMembershipLeafData), lps)
+		return fmt.Errorf(
+			"invalid non-membership leaf data size: got %d but min is %d",
+			len(proof.NonMembershipLeafData),
+			lps,
+		)
 	}
 
 	// Check that all supplied sidenodes are the correct size.
@@ -133,7 +137,11 @@ func (proof *SparseCompactMerkleProof) validateBasic(spec *TrieSpec) error {
 
 	// Compact proofs: check that NumSideNodes is within the right range.
 	if proof.NumSideNodes < 0 || proof.NumSideNodes > spec.ph.PathSize()*8 {
-		return fmt.Errorf("invalid number of side nodes: got %d, min is 0 and max is %d", len(proof.SideNodes), spec.ph.PathSize()*8)
+		return fmt.Errorf(
+			"invalid number of side nodes: got %d, min is 0 and max is %d",
+			len(proof.SideNodes),
+			spec.ph.PathSize()*8,
+		)
 	}
 
 	// Compact proofs: check that the length of the bit mask is as expected
@@ -183,6 +191,17 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 	buf := bytes.NewBuffer(bz)
 	dec := gob.NewDecoder(buf)
 	return dec.Decode(proof)
+}
+
+// GetValueHash returns the value hash of the closest proof.
+func (proof *SparseMerkleClosestProof) GetValueHash(spec *TrieSpec) []byte {
+	if proof.ClosestValueHash == nil {
+		return nil
+	}
+	if spec.sumTrie {
+		return proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSize]
+	}
+	return proof.ClosestValueHash
 }
 
 func (proof *SparseMerkleClosestProof) validateBasic(spec *TrieSpec) error {
@@ -258,7 +277,12 @@ func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TrieSpec) erro
 	}
 	for i, b := range proof.FlippedBits {
 		if len(b) > maxSliceLen {
-			return fmt.Errorf("invalid compressed flipped bit index %d: got length %d, max is %d]", i, bytesToInt(b), maxSliceLen)
+			return fmt.Errorf(
+				"invalid compressed flipped bit index %d: got length %d, max is %d]",
+				i,
+				bytesToInt(b),
+				maxSliceLen,
+			)
 		}
 	}
 	// perform a sanity check on the closest proof
@@ -332,7 +356,13 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, spec)
 }
 
-func verifyProofWithUpdates(proof *SparseMerkleProof, root []byte, key []byte, value []byte, spec *TrieSpec) (bool, [][][]byte, error) {
+func verifyProofWithUpdates(
+	proof *SparseMerkleProof,
+	root []byte,
+	key []byte,
+	value []byte,
+	spec *TrieSpec,
+) (bool, [][][]byte, error) {
 	path := spec.ph.Path(key)
 
 	if err := proof.validateBasic(spec); err != nil {
@@ -396,7 +426,13 @@ func VerifyCompactProof(proof *SparseCompactMerkleProof, root []byte, key, value
 }
 
 // VerifyCompactSumProof is similar to VerifySumProof but for a compacted Merkle proof.
-func VerifyCompactSumProof(proof *SparseCompactMerkleProof, root []byte, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
+func VerifyCompactSumProof(
+	proof *SparseCompactMerkleProof,
+	root []byte,
+	key, value []byte,
+	sum uint64,
+	spec *TrieSpec,
+) (bool, error) {
 	decompactedProof, err := DecompactProof(proof, spec)
 	if err != nil {
 		return false, errors.Join(ErrBadProof, err)
