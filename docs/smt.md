@@ -4,31 +4,31 @@
 
 - [Overview](#overview)
 - [Implementation](#implementation)
-  * [Inner Nodes](#inner-nodes)
-  * [Extension Nodes](#extension-nodes)
-  * [Leaf Nodes](#leaf-nodes)
-  * [Lazy Nodes](#lazy-nodes)
-  * [Lazy Loading](#lazy-loading)
-  * [Visualisations](#visualisations)
-    + [General Trie Structure](#general-trie-structure)
-    + [Lazy Nodes](#lazy-nodes-1)
+  - [Inner Nodes](#inner-nodes)
+  - [Extension Nodes](#extension-nodes)
+  - [Leaf Nodes](#leaf-nodes)
+  - [Lazy Nodes](#lazy-nodes)
+  - [Lazy Loading](#lazy-loading)
+  - [Visualisations](#visualisations)
+    - [General Trie Structure](#general-trie-structure)
+    - [Lazy Nodes](#lazy-nodes-1)
 - [Paths](#paths)
-  * [Visualisation](#visualisation)
+  - [Visualisation](#visualisation)
 - [Values](#values)
-  * [Nil values](#nil-values)
+  - [Nil values](#nil-values)
 - [Hashers & Digests](#hashers--digests)
 - [Roots](#roots)
 - [Proofs](#proofs)
-  * [Verification](#verification)
-  * [Closest Proof](#closest-proof)
-    + [Closest Proof Use Cases](#closest-proof-use-cases)
-  * [Compression](#compression)
-  * [Serialisation](#serialisation)
+  - [Verification](#verification)
+  - [Closest Proof](#closest-proof)
+    - [Closest Proof Use Cases](#closest-proof-use-cases)
+  - [Compression](#compression)
+  - [Serialisation](#serialisation)
 - [Database](#database)
-  * [Database Submodules](#database-submodules)
-    + [SimpleMap](#simplemap)
-    + [Badger](#badger)
-  * [Data Loss](#data-loss)
+  - [Database Submodules](#database-submodules)
+    - [SimpleMap](#simplemap)
+    - [Badger](#badger)
+  - [Data Loss](#data-loss)
 - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 
 <!-- tocstop -->
@@ -43,6 +43,25 @@ specific key-value pairs by constructing cryptographic proofs. These properties
 make SMTs valuable in applications like blockchains, decentralized databases,
 and authenticated data structures, providing optimized and trustworthy data
 storage and verification.
+
+Although any hash function that satisfies the `hash.Hash` interface can be used
+to construct the trie it is **strongly recommended** to use a hashing function
+that provides the following properties:
+
+- **Collision resistance**: The hash function must be collision resistant, in
+  order for the inputs of the SMT to be unique.
+- **Preimage resistance**: The hash function must be preimage resistant, to
+  protect against the attack of the Merkle tree construction attacks where the
+  attacker can modify unknown data.
+- **Efficiency**: The hash function must be efficient, as it is used to compute
+  the hash of many nodes in the trie.
+
+Therefore it is recommended to use a hashing function such as:
+
+- `sha256`
+- `sha3_256`/`keccak256`
+
+Or another sufficiently secure hashing algorithm.
 
 See [smt.go](../smt.go) for more details on the implementation.
 
@@ -66,9 +85,9 @@ The SMT has 4 node types that are used to construct the trie:
 
 ### Inner Nodes
 
-Inner nodes represent a branch in the trie with two **non-nil** child nodes.
-The inner node has an internal `digest` which represents the hash of the child
-nodes concatenated hashes.
+Inner nodes represent a branch in the trie with two **non-nil** child nodes. The
+inner node has an internal `digest` which represents the hash of the child nodes
+concatenated hashes.
 
 ### Extension Nodes
 
@@ -307,8 +326,8 @@ described in the [implementation](#implementation) section.
 The following diagram represents the creation of a leaf node in an abstracted
 and simplified manner.
 
-_Note: This diagram is not entirely accurate regarding the process of creating
-a leaf node, but is a good representation of the process._
+_Note: This diagram is not entirely accurate regarding the process of creating a
+leaf node, but is a good representation of the process._
 
 ```mermaid
 graph TD
@@ -346,17 +365,17 @@ graph TD
 ## Roots
 
 The root of the tree is a slice of bytes. `MerkleRoot` is an alias for `[]byte`.
-This design enables easily passing around the data (e.g. on-chain)
-while maintaining primitive usage in different use cases (e.g. proofs).
+This design enables easily passing around the data (e.g. on-chain) while
+maintaining primitive usage in different use cases (e.g. proofs).
 
 `MerkleRoot` provides helpers, such as retrieving the `Sum() uint64` to
-interface with data it captures. However, for the SMT it **always** panics,
-as there is no sum.
+interface with data it captures. However, for the SMT it **always** panics, as
+there is no sum.
 
 ## Proofs
 
-The `SparseMerkleProof` type contains the information required for inclusion
-and exclusion proofs, depending on the key provided to the trie method
+The `SparseMerkleProof` type contains the information required for inclusion and
+exclusion proofs, depending on the key provided to the trie method
 `Prove(key []byte)` either an inclusion or exclusion proof will be generated.
 
 _NOTE: The inclusion and exclusion proof are the same type, just constructed
@@ -397,29 +416,29 @@ using the `VerifyClosestProof` function which requires the proof and root hash
 of the trie.
 
 Since the `ClosestProof` method takes a hash as input, it is possible to place a
-leaf in the trie according to the hash's path, if it is known. Depending on
-the use case of this function this may expose a vulnerability. **It is not
-intendend to be used as a general purpose proof mechanism**, but instead as a
-**Commit and Reveal** mechanism, as detailed below.
+leaf in the trie according to the hash's path, if it is known. Depending on the
+use case of this function this may expose a vulnerability. **It is not intendend
+to be used as a general purpose proof mechanism**, but instead as a **Commit and
+Reveal** mechanism, as detailed below.
 
 #### Closest Proof Use Cases
 
 The `CloestProof` function is intended for use as a `commit & reveal` mechanism.
 Where there are two actors involved, the **prover** and **verifier**.
 
-_NOTE: Throughout this document, `commitment` of the the trie's root hash is also
-referred to as closing the trie, such that no more updates are made to it once
-committed._
+_NOTE: Throughout this document, `commitment` of the the trie's root hash is
+also referred to as closing the trie, such that no more updates are made to it
+once committed._
 
 Consider the following attack vector (**without** a commit prior to a reveal)
 into consideration:
 
 1. The **verifier** picks the hash (i.e. a single branch) they intend to check
-1. The **prover** inserts a leaf (i.e. a value) whose key (determined via the
+2. The **prover** inserts a leaf (i.e. a value) whose key (determined via the
    hasher) has a longer common prefix than any other leaf in the trie.
-1. Due to the deterministic nature of the `ClosestProof`, method this leaf will
+3. Due to the deterministic nature of the `ClosestProof`, method this leaf will
    **always** be returned given the identified hash.
-1. The **verifier** then verifies the revealed `ClosestProof`, which returns a
+4. The **verifier** then verifies the revealed `ClosestProof`, which returns a
    branch the **prover** inserted after knowing which leaf was going to be
    checked.
 
@@ -428,16 +447,16 @@ Consider the following normal flow (**with** a commit prior to reveal) as
 1. The **prover** commits to the state of their trie by publishes their root
    hash, thereby _closing_ their trie and not being able to make further
    changes.
-1. The **verifier** selects a hash to be used in the `commit & reveal` process
+2. The **verifier** selects a hash to be used in the `commit & reveal` process
    that the **prover** must provide a closest proof for.
-1. The **prover** utilises this hash and computes the `ClosestProof` on their
+3. The **prover** utilises this hash and computes the `ClosestProof` on their
    _closed_ trie, producing a `ClosestProof`, thus revealing a deterministic,
    pseudo-random leaf that existed in the tree prior to commitment, yet
-1. The **verifier** verifies the proof, in turn, verifying the commitment
-   made by the **prover** to the state of the trie in the first step.
-1. The **prover** had no opportunity to insert a new leaf into the trie
-   after learning which hash the **verifier** was going to require a
-   `ClosestProof` for.
+4. The **verifier** verifies the proof, in turn, verifying the commitment made
+   by the **prover** to the state of the trie in the first step.
+5. The **prover** had no opportunity to insert a new leaf into the trie after
+   learning which hash the **verifier** was going to require a `ClosestProof`
+   for.
 
 ### Compression
 
@@ -497,7 +516,8 @@ database. It's interface exposes numerous extra methods not used by the trie,
 However it can still be used as a node-store with both in-memory and persistent
 options.
 
-See [badger-store.md](./badger-store.md.md) for the details of the implementation.
+See [badger-store.md](./badger-store.md.md) for the details of the
+implementation.
 
 ### Data Loss
 
