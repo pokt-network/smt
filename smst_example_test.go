@@ -32,6 +32,9 @@ func TestExampleSMST(t *testing.T) {
 	err = smst.Update([]byte("bin"), []byte("nib"), 3)
 	require.NoError(t, err)
 	dataMap["bin"] = "nib"
+	err = smst.Update([]byte("binn"), []byte("nnib"), 3)
+	require.NoError(t, err)
+	dataMap["binn"] = "nnib"
 
 	// Commit the changes to the nodeStore
 	err = smst.Commit()
@@ -39,7 +42,7 @@ func TestExampleSMST(t *testing.T) {
 
 	// Calculate the total sum of the trie
 	sum := smst.Sum()
-	require.Equal(t, uint64(20), sum)
+	require.Equal(t, uint64(23), sum)
 
 	// Generate a Merkle proof for "foo"
 	proof1, err := smst.Prove([]byte("foo"))
@@ -114,6 +117,7 @@ func exportToCSV(
 		}
 	*/
 
+	fmt.Println("Root sum", smst.Sum())
 	helper(t, smst, nodeStore, smst.Root())
 }
 
@@ -131,12 +135,19 @@ func helper(t *testing.T, smst SparseMerkleSumTrie, nodeStore kvstore.MapStore, 
 		helper(t, smst, nodeStore, childData)
 		return
 	} else if isLeafNode(node) {
-		path, value := smst.Spec().parseLeafNode(node)
-		fmt.Println("leaf node sum", 0)
-		fmt.Println(path, value)
+		path, valueHash, weight := smst.Spec().parseSumLeafNode(node)
+		fmt.Println("leaf node weight", weight)
+		fmt.Println(path, valueHash)
 	} else if isInnerNode(node) {
 		leftData, rightData, sum := smst.Spec().th.parseSumInnerNode(node)
 		fmt.Println("inner node sum", sum)
+
+		// leftChild, err := nodeStore.Get(leftData)
+		// require.NoError(t, err)
+
+		// rightChild, err := nodeStore.Get(rightData)
+		// require.NoError(t, err)
+
 		helper(t, smst, nodeStore, leftData)
 		helper(t, smst, nodeStore, rightData)
 	}

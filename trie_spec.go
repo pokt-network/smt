@@ -237,6 +237,22 @@ func (spec *TrieSpec) parseExtNode(data []byte) (pathBounds, path, childData []b
 	return
 }
 
+// parseSumLeafNode parses a leafNode and returns its weight as well
+func (spec *TrieSpec) parseSumLeafNode(data []byte) (path, value []byte, weight uint64) {
+	// panics if not a leaf node
+	checkPrefix(data, leafNodePrefix)
+
+	path = data[prefixLen : prefixLen+spec.ph.PathSize()]
+	value = data[prefixLen+spec.ph.PathSize():]
+
+	// Extract the sum from the encoded node data
+	var weightBz [sumSizeBits]byte
+	copy(weightBz[:], value[len(value)-sumSizeBits:])
+	binary.BigEndian.PutUint64(weightBz[:], weight)
+
+	return
+}
+
 // parseSumExtNode parses the pathBounds, path, child data and sum from the encoded extension node data
 func (spec *TrieSpec) parseSumExtNode(data []byte) (pathBounds, path, childData []byte, sum uint64) {
 	// panics if not an extension node

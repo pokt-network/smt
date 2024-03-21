@@ -327,7 +327,7 @@ func verifyProofWithUpdates(
 	root, key, value []byte,
 	spec *TrieSpec,
 ) (bool, [][][]byte, error) {
-	// Retrieve the trie path for the give key
+	// Retrieve the trie path for the key being proven
 	path := spec.ph.Path(key)
 
 	if err := proof.validateBasic(spec); err != nil {
@@ -338,10 +338,13 @@ func verifyProofWithUpdates(
 
 	// Determine what the leaf hash should be.
 	var currentHash, currentData []byte
-	if bytes.Equal(value, defaultEmptyValue) { // Non-membership proof.
-		if proof.NonMembershipLeafData == nil { // Leaf is a placeholder value.
+	if bytes.Equal(value, defaultEmptyValue) {
+		// Non-membership proof if `value` is empty.
+		if proof.NonMembershipLeafData == nil {
+			// Leaf is a placeholder value.
 			currentHash = spec.placeholder()
-		} else { // Leaf is an unrelated leaf.
+		} else {
+			// Leaf is an unrelated leaf.
 			var actualPath, valueHash []byte
 			actualPath, valueHash = spec.parseLeafNode(proof.NonMembershipLeafData)
 			if bytes.Equal(actualPath, path) {
@@ -349,19 +352,16 @@ func verifyProofWithUpdates(
 				return false, nil, errors.Join(ErrBadProof, errors.New("non-membership proof on related leaf"))
 			}
 			currentHash, currentData = spec.digestLeaf(actualPath, valueHash)
-
-			update := make([][]byte, 2)
-			update[0], update[1] = currentHash, currentData
-			updates = append(updates, update)
 		}
 	} else {
-		// Membership proof.
+		// Membership proof if `value` is non-empty.
 		valueHash := spec.valueHash(value)
 		currentHash, currentData = spec.digestLeaf(path, valueHash)
-		update := make([][]byte, 2)
-		update[0], update[1] = currentHash, currentData
-		updates = append(updates, update)
 	}
+
+	update := make([][]byte, 2)
+	update[0], update[1] = currentHash, currentData
+	updates = append(updates, update)
 
 	// Recompute root.
 	for i := 0; i < len(proof.SideNodes); i++ {
