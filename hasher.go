@@ -29,6 +29,8 @@ type PathHasher interface {
 type ValueHasher interface {
 	// HashValue hashes value data to produce the digest stored in leaf node.
 	HashValue([]byte) []byte
+	// ValueHashSize returns the length (in bytes) of digests produced by this hasher.
+	ValueHashSize() int
 }
 
 type trieHasher struct {
@@ -59,8 +61,17 @@ func (ph *pathHasher) PathSize() int {
 	return ph.hasher.Size()
 }
 
+// HashValue hashes the producdes a digest of the data provided by the value hasher
 func (vh *valueHasher) HashValue(data []byte) []byte {
 	return vh.digest(data)
+}
+
+// ValueHashSize returns the length (in bytes) of digests produced by the value hasher
+func (vh *valueHasher) ValueHashSize() int {
+	if vh.hasher == nil {
+		return 0
+	}
+	return vh.hasher.Size()
 }
 
 func (th *trieHasher) digest(data []byte) []byte {

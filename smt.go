@@ -407,6 +407,11 @@ func (smt *SMT) ProveClosest(path []byte) (
 	proof *SparseMerkleClosestProof, // proof of the key-value pair found
 	err error, // the error value encountered
 ) {
+	// Ensure the path provided is the correct length for the path hasher.
+	if len(path) != smt.Spec().PathHasherSize() {
+		return nil, ErrInvalidClosestPath
+	}
+
 	workingPath := make([]byte, len(path))
 	copy(workingPath, path)
 	var siblings []trieNode
