@@ -98,6 +98,18 @@ func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
 // Spec returns the TrieSpec associated with the given trie
 func (spec *TrieSpec) Spec() *TrieSpec { return spec }
 
+// PathHasherSize returns the length (in bytes) of digests produced by the
+// path hasher
+func (spec *TrieSpec) PathHasherSize() int { return spec.ph.PathSize() }
+
+// ValueHasherSize returns the length (in bytes) of digests produced by the
+// value hasher
+func (spec *TrieSpec) ValueHasherSize() int { return spec.vh.ValueHashSize() }
+
+// TrieHasherSize returns the length (in bytes) of digests produced by the
+// trie hasher
+func (spec *TrieSpec) TrieHasherSize() int { return spec.th.hashSize() }
+
 func (spec *TrieSpec) depth() int { return spec.ph.PathSize() * 8 }
 func (spec *TrieSpec) digestValue(data []byte) []byte {
 	if spec.vh == nil {
