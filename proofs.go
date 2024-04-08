@@ -341,9 +341,9 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	if err := proof.validateBasic(spec); err != nil {
 		return false, errors.Join(ErrBadProof, err)
 	}
-	// Create a new TrieSpec with a nil path hasher - as the ClosestProof
-	// already contains a hashed path, double hashing it will invalidate the
-	// proof.
+	// Create a new TrieSpec with a nil path hasher.
+	// Since the ClosestProof already contains a hashed path, double hashing it
+	// will invalidate the proof.
 	nilSpec := &TrieSpec{
 		th:      spec.th,
 		ph:      newNilPathHasher(spec.ph.PathSize()),

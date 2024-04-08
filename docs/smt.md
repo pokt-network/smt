@@ -1,6 +1,4 @@
-# smt
-
-<!-- toc -->
+# smt <!-- omit in toc -->
 
 - [Overview](#overview)
 - [Implementation](#implementation)
@@ -16,7 +14,8 @@
   - [Visualisation](#visualisation)
 - [Values](#values)
   - [Nil values](#nil-values)
-- [Hashers & Digests](#hashers--digests)
+- [Hashers \& Digests](#hashers--digests)
+  - [Hash Function Recommendations](#hash-function-recommendations)
 - [Roots](#roots)
 - [Proofs](#proofs)
   - [Verification](#verification)
@@ -31,8 +30,6 @@
   - [Data Loss](#data-loss)
 - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 
-<!-- tocstop -->
-
 ## Overview
 
 Sparse Merkle Tries (SMTs) are efficient and secure data structures for storing
@@ -43,25 +40,6 @@ specific key-value pairs by constructing cryptographic proofs. These properties
 make SMTs valuable in applications like blockchains, decentralized databases,
 and authenticated data structures, providing optimized and trustworthy data
 storage and verification.
-
-Although any hash function that satisfies the `hash.Hash` interface can be used
-to construct the trie it is **strongly recommended** to use a hashing function
-that provides the following properties:
-
-- **Collision resistance**: The hash function must be collision resistant, in
-  order for the inputs of the SMT to be unique.
-- **Preimage resistance**: The hash function must be preimage resistant, to
-  protect against the attack of the Merkle tree construction attacks where the
-  attacker can modify unknown data.
-- **Efficiency**: The hash function must be efficient, as it is used to compute
-  the hash of many nodes in the trie.
-
-Therefore it is recommended to use a hashing function such as:
-
-- `sha256`
-- `sha3_256`/`keccak256`
-
-Or another sufficiently secure hashing algorithm.
 
 See [smt.go](../smt.go) for more details on the implementation.
 
@@ -361,6 +339,20 @@ graph TD
 	PH --Path-->L
 	VH --ValueHash-->L
 ```
+
+### Hash Function Recommendations
+
+Although any hash function that satisfies the `hash.Hash` interface can be used
+to construct the trie, it is **strongly recommended** to use a hashing function
+that provides the following properties:
+
+- **Collision resistance**: The hash function must be collision resistant. This
+  is needed in order for the inputs of the SMT to be unique.
+- **Preimage resistance**: The hash function must be preimage resistant. This
+  is needed to protect against the Merkle tree construction attacks where
+  the attacker can modify unknown data.
+- **Efficiency**: The hash function must be efficient, as it is used to compute
+  the hash of many nodes in the trie.
 
 ## Roots
 
