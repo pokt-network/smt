@@ -79,7 +79,14 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, base) // wrong value and sum
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey"), []byte("testValue"), 5, base) // invalid proof
+	result, err = VerifySumProof(
+		randomizeSumProof(proof),
+		root,
+		[]byte("testKey"),
+		[]byte("testValue"),
+		5,
+		base,
+	) // invalid proof
 	require.NoError(t, err)
 	require.False(t, result)
 
@@ -98,7 +105,14 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	result, err = VerifySumProof(proof, root, []byte("testKey2"), []byte("badValue"), 10, base) // wrong value and sum
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey2"), []byte("testValue"), 5, base) // invalid proof
+	result, err = VerifySumProof(
+		randomizeSumProof(proof),
+		root,
+		[]byte("testKey2"),
+		[]byte("testValue"),
+		5,
+		base,
+	) // invalid proof
 	require.NoError(t, err)
 	require.False(t, result)
 
@@ -129,7 +143,14 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultEmptyValue, 5, base) // wrong sum
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifySumProof(randomiseSumProof(proof), root, []byte("testKey3"), defaultEmptyValue, 0, base) // invalid proof
+	result, err = VerifySumProof(
+		randomizeSumProof(proof),
+		root,
+		[]byte("testKey3"),
+		defaultEmptyValue,
+		0,
+		base,
+	) // invalid proof
 	require.NoError(t, err)
 	require.False(t, result)
 }
@@ -204,7 +225,6 @@ func TestSMST_Proof_ValidateBasic(t *testing.T) {
 func TestSMST_ClosestProof_ValidateBasic(t *testing.T) {
 	smn := simplemap.NewSimpleMap()
 	smst := NewSparseMerkleSumTrie(smn, sha256.New())
-	np := NoHasherSpec(sha256.New(), true)
 	base := smst.Spec()
 	path := sha256.Sum256([]byte("testKey2"))
 	flipPathBit(path[:], 3)
@@ -227,14 +247,14 @@ func TestSMST_ClosestProof_ValidateBasic(t *testing.T) {
 	require.NoError(t, err)
 	proof.Depth = -1
 	require.EqualError(t, proof.validateBasic(base), "invalid depth: got -1, outside of [0, 256]")
-	result, err := VerifyClosestProof(proof, root, np)
+	result, err := VerifyClosestProof(proof, root, smst.Spec())
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactClosestProof(proof, base)
 	require.Error(t, err)
 	proof.Depth = 257
 	require.EqualError(t, proof.validateBasic(base), "invalid depth: got 257, outside of [0, 256]")
-	result, err = VerifyClosestProof(proof, root, np)
+	result, err = VerifyClosestProof(proof, root, smst.Spec())
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactClosestProof(proof, base)
@@ -244,14 +264,14 @@ func TestSMST_ClosestProof_ValidateBasic(t *testing.T) {
 	require.NoError(t, err)
 	proof.FlippedBits[0] = -1
 	require.EqualError(t, proof.validateBasic(base), "invalid flipped bit index 0: got -1, outside of [0, 8]")
-	result, err = VerifyClosestProof(proof, root, np)
+	result, err = VerifyClosestProof(proof, root, smst.Spec())
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactClosestProof(proof, base)
 	require.Error(t, err)
 	proof.FlippedBits[0] = 9
 	require.EqualError(t, proof.validateBasic(base), "invalid flipped bit index 0: got 9, outside of [0, 8]")
-	result, err = VerifyClosestProof(proof, root, np)
+	result, err = VerifyClosestProof(proof, root, smst.Spec())
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactClosestProof(proof, base)
@@ -265,7 +285,7 @@ func TestSMST_ClosestProof_ValidateBasic(t *testing.T) {
 		proof.validateBasic(base),
 		"invalid closest path: 8d13809f932d0296b88c1913231ab4b403f05c88363575476204fef6930f22ae (not equal at bit: 3)",
 	)
-	result, err = VerifyClosestProof(proof, root, np)
+	result, err = VerifyClosestProof(proof, root, smst.Spec())
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 	_, err = CompactClosestProof(proof, base)
@@ -326,7 +346,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 		ClosestProof:     proof.ClosestProof, // copy of proof as we are checking equality of other fields
 	})
 
-	result, err = VerifyClosestProof(proof, root, NoHasherSpec(sha256.New(), true))
+	result, err = VerifyClosestProof(proof, root, smst.Spec())
 	require.NoError(t, err)
 	require.True(t, result)
 
@@ -352,7 +372,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 		ClosestProof:     proof.ClosestProof, // copy of proof as we are checking equality of other fields
 	})
 
-	result, err = VerifyClosestProof(proof, root, NoHasherSpec(sha256.New(), true))
+	result, err = VerifyClosestProof(proof, root, smst.Spec())
 	require.NoError(t, err)
 	require.True(t, result)
 }
@@ -381,7 +401,7 @@ func TestSMST_ProveClosest_Empty(t *testing.T) {
 		ClosestProof: &SparseMerkleProof{},
 	})
 
-	result, err := VerifyClosestProof(proof, smst.Root(), NoHasherSpec(sha256.New(), true))
+	result, err := VerifyClosestProof(proof, smst.Root(), smst.Spec())
 	require.NoError(t, err)
 	require.True(t, result)
 }
@@ -419,7 +439,7 @@ func TestSMST_ProveClosest_OneNode(t *testing.T) {
 		ClosestProof:     &SparseMerkleProof{},
 	})
 
-	result, err := VerifyClosestProof(proof, smst.Root(), NoHasherSpec(sha256.New(), true))
+	result, err := VerifyClosestProof(proof, smst.Root(), smst.Spec())
 	require.NoError(t, err)
 	require.True(t, result)
 }

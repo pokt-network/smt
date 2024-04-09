@@ -27,7 +27,7 @@ func NoHasherSpec(hasher hash.Hash, sumTrie bool) *TrieSpec {
 	spec := newTrieSpec(hasher, sumTrie)
 
 	// Set a nil path hasher
-	opt := WithPathHasher(NewNilPathHasher(hasher))
+	opt := WithPathHasher(NewNilPathHasher(hasher.Size()))
 	opt(&spec)
 
 	// Set a nil value hasher
