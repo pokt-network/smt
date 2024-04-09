@@ -9,10 +9,14 @@
 
 <!-- toc -->
 
-- [Overview](#overview)
-- [Documentation](#documentation)
-- [Tests](#tests)
-- [Benchmarks](#benchmarks)
+- [smt](#smt)
+  - [Overview](#overview)
+  - [Documentation](#documentation)
+  - [Tests](#tests)
+  - [Benchmarks](#benchmarks)
+  - [Release Tags](#release-tags)
+    - [Tagging a new release](#tagging-a-new-release)
+    - [Push and Release](#push-and-release)
 
 <!-- tocstop -->
 
@@ -60,3 +64,31 @@ To view pre-ran results of the entire benchmarking suite see
 
 [jmt whitepaper]: https://developers.diem.com/papers/jellyfish-merkle-tree/2021-01-14.pdf
 [libra whitepaper]: https://diem-developers-components.netlify.app/papers/the-diem-blockchain/2020-05-26.pdf
+
+## Release Tags
+
+You can tag and publish a new release by following the instructions bellow.
+
+### Tagging a new release
+
+For a bug fix:
+
+```bash
+make tag_bug_fix
+```
+
+For a minor release run:
+
+```bash
+make tag_minor_release
+```
+
+### Push and Release
+
+Then, push the tag to the repository:
+
+```bash
+git push origin v<release>
+```
+
+Create a release on GitHub with the tag and the release notes [here](https://github.com/pokt-network/smt/releases/new).
