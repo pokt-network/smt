@@ -177,20 +177,37 @@ func (smt *SMT) update(
 			return newLeaf, nil
 		}
 		// We insert an "extension" representing multiple single-branch inner nodes
+		var newInner *innerNode
+		if getPathBit(path, prefixlen) == left {
+			newInner = &innerNode{
+				leftChild:  newLeaf,
+				rightChild: leaf,
+			}
+		} else {
+			newInner = &innerNode{
+				leftChild:  leaf,
+				rightChild: newLeaf,
+			}
+		}
+		// Determine if we need to insert an extension or a branch
 		last := &node
 		if depth < prefixlen {
 			// note: this keeps path slice alive - GC inefficiency?
 			if depth > 0xff {
 				panic("invalid depth")
 			}
-			ext := extensionNode{path: path, pathBounds: [2]byte{byte(depth), byte(prefixlen)}}
+			ext := extensionNode{
+				child: newInner,
+				path:  path,
+				pathBounds: [2]byte{
+					byte(depth), byte(prefixlen),
+				},
+			}
+			// Dereference the last node to replace it with the extension node
 			*last = &ext
-			last = &ext.child
-		}
-		if getPathBit(path, prefixlen) == left {
-			*last = &innerNode{leftChild: newLeaf, rightChild: leaf}
 		} else {
-			*last = &innerNode{leftChild: leaf, rightChild: newLeaf}
+			// Dereference the last node to replace it with the new inner node
+			*last = newInner
 		}
 		return node, nil
 	}
@@ -402,7 +419,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 // node is encountered, the traversal backsteps and flips the path bit for that
 // depth (ie tries left if it tried right and vice versa). This guarantees that
 // a proof of inclusion is found that has the most common bits with the path
-// provided, biased to the longest common prefix
+// provided, biased to the longest common prefix.
 func (smt *SMT) ProveClosest(path []byte) (
 	proof *SparseMerkleClosestProof, // proof of the key-value pair found
 	err error, // the error value encountered

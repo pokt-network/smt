@@ -337,23 +337,29 @@ func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint6
 
 // VerifyClosestProof verifies a Merkle proof for a proof of inclusion for a leaf
 // found to have the closest path to the one provided to the proof structure
-//
-// TO_AUDITOR: This is akin to an inclusion proof with N (num flipped bits) exclusion
-// proof wrapped into one and needs to be reviewed from an algorithm POV.
 func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *TrieSpec) (bool, error) {
 	if err := proof.validateBasic(spec); err != nil {
 		return false, errors.Join(ErrBadProof, err)
 	}
-	if !spec.sumTrie {
-		return VerifyProof(proof.ClosestProof, root, proof.ClosestPath, proof.ClosestValueHash, spec)
+	// Create a new TrieSpec with a nil path hasher.
+	// Since the ClosestProof already contains a hashed path, double hashing it
+	// will invalidate the proof.
+	nilSpec := &TrieSpec{
+		th:      spec.th,
+		ph:      newNilPathHasher(spec.ph.PathSize()),
+		vh:      spec.vh,
+		sumTrie: spec.sumTrie,
+	}
+	if !nilSpec.sumTrie {
+		return VerifyProof(proof.ClosestProof, root, proof.ClosestPath, proof.ClosestValueHash, nilSpec)
 	}
 	if proof.ClosestValueHash == nil {
-		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, spec)
+		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, nilSpec)
 	}
 	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSize:]
 	sum := binary.BigEndian.Uint64(sumBz)
 	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSize]
-	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, spec)
+	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, nilSpec)
 }
 
 func verifyProofWithUpdates(
