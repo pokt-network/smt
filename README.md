@@ -1,4 +1,4 @@
-# smt
+# smt <!-- omit in toc -->
 
 [![Tag](https://img.shields.io/github/v/tag/pokt-network/smt.svg?sort=semver)](https://img.shields.io/github/v/tag/pokt-network/smt.svg?sort=semver)
 [![GoDoc](https://godoc.org/github.com/pokt-network/smt?status.svg)](https://godoc.org/github.com/pokt-network/smt)
@@ -9,14 +9,13 @@
 
 <!-- toc -->
 
-- [smt](#smt)
-  - [Overview](#overview)
-  - [Documentation](#documentation)
-  - [Tests](#tests)
-  - [Benchmarks](#benchmarks)
-  - [Release Tags](#release-tags)
-    - [Tagging a new release](#tagging-a-new-release)
-    - [Push and Release](#push-and-release)
+- [Overview](#overview)
+- [Documentation](#documentation)
+- [Tests](#tests)
+- [Benchmarks](#benchmarks)
+- [Release Tags](#release-tags)
+  - [Tagging a new release](#tagging-a-new-release)
+  - [Push and Release](#push-and-release)
 
 <!-- tocstop -->
 
