@@ -23,7 +23,7 @@ func NewSparseMerkleSumTrie(
 	options ...Option,
 ) *SMST {
 	smt := &SMT{
-		TrieSpec: newTrieSpec(hasher, true),
+		TrieSpec: NewTrieSpec(hasher, true),
 		nodes:    nodes,
 	}
 	for _, option := range options {
@@ -32,7 +32,7 @@ func NewSparseMerkleSumTrie(
 	nvh := WithValueHasher(nil)
 	nvh(&smt.TrieSpec)
 	smst := &SMST{
-		TrieSpec: newTrieSpec(hasher, true),
+		TrieSpec: NewTrieSpec(hasher, true),
 		SMT:      smt,
 	}
 	for _, option := range options {
