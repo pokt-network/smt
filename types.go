@@ -87,11 +87,16 @@ type TrieSpec struct {
 	sumTrie bool
 }
 
-func NewTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
+func NewTrieSpec(hasher hash.Hash, sumTrie bool, opts ...Option) TrieSpec {
 	spec := TrieSpec{th: *newTrieHasher(hasher)}
 	spec.ph = &pathHasher{spec.th}
 	spec.vh = &valueHasher{spec.th}
 	spec.sumTrie = sumTrie
+
+	for _, opt := range opts {
+		opt(&spec)
+	}
+
 	return spec
 }
 

@@ -10,8 +10,8 @@ type nilPathHasher struct {
 
 func (n *nilPathHasher) Path(key []byte) []byte { return key[:n.hashSize] }
 func (n *nilPathHasher) PathSize() int          { return n.hashSize }
-
-func newNilPathHasher(hashSize int) PathHasher {
+	
+func NewNilPathHasher(hashSize int) PathHasher {
 	return &nilPathHasher{hashSize: hashSize}
 }
 

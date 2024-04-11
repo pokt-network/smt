@@ -346,7 +346,7 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	// will invalidate the proof.
 	nilSpec := &TrieSpec{
 		th:      spec.th,
-		ph:      newNilPathHasher(spec.ph.PathSize()),
+		ph:      NewNilPathHasher(spec.ph.PathSize()),
 		vh:      spec.vh,
 		sumTrie: spec.sumTrie,
 	}
