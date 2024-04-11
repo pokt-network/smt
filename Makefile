@@ -100,15 +100,22 @@ benchmark_proof_sizes:  ## runs the benchmarks test the proof sizes for differen
 # Delete tag remotely: git push --delete origin v1.2.3
 
 .PHONY: tag_bug_fix
-tag_bug_fix: ## Tag a new bug fix release (e.g. v1.0.1 -> v1.0.2)
-	@$(eval LATEST_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`))
-	@$(eval NEW_TAG=$(shell echo $(LATEST_TAG) | awk -F. '{$$3 += 1; print $$1 "." $$2 "." $$3}'))
+tag_bug_fix: ## Tag a new bug fix release (e.g., v1.0.1 -> v1.0.2)
+	@$(eval LATEST_TAG=$(shell git tag --sort=-v:refname | head -n 1))
+	@$(eval NEW_TAG=$(shell echo $(LATEST_TAG) | awk -F. -v OFS=. '{ $$NF = sprintf("%d", $$NF + 1); print }'))
 	@git tag $(NEW_TAG)
-	@echo "New bug fix version: $(NEW_TAG)\nRun:\tgit push origin $(NEW_TAG)\nAnd draft a new release at https://github.com/pokt-network/smt/releases/new"
+	@echo "New bug fix version tagged: $(NEW_TAG)"
+	@echo "Run the following commands to push the new tag:"
+	@echo "  git push origin $(NEW_TAG)"
+	@echo "And draft a new release at https://github.com/pokt-network/smt/releases/new"
+
 
 .PHONY: tag_minor_release
 tag_minor_release: ## Tag a new minor release (e.g. v1.0.0 -> v1.1.0)
-	@$(eval LATEST_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`))
+	@$(eval LATEST_TAG=$(shell git tag --sort=-v:refname | head -n 1))
 	@$(eval NEW_TAG=$(shell echo $(LATEST_TAG) | awk -F. '{$$2 += 1; $$3 = 0; print $$1 "." $$2 "." $$3}'))
 	@git tag $(NEW_TAG)
-	@echo "New minor release version: $(NEW_TAG)\nRun:\tgit push origin $(NEW_TAG)\nAnd draft a new release at https://github.com/pokt-network/smt/releases/new"
+	@echo "New minor release version tagged: $(NEW_TAG)"
+	@echo "Run the following commands to push the new tag:"
+	@echo "  git push origin $(NEW_TAG)"
+	@echo "And draft a new release at https://github.com/pokt-network/smt/releases/new"
