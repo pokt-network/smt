@@ -73,7 +73,7 @@ func (ph *pathHasher) PathSize() int {
 	return ph.hasher.Size()
 }
 
-// HashValue hashes the data provided using the value hasher
+// HashValue hashes the produces a digest of the data provided by the value hasher
 func (vh *valueHasher) HashValue(data []byte) []byte {
 	return vh.digestData(data)
 }

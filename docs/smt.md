@@ -1,25 +1,34 @@
 # smt <!-- omit in toc -->
 
-- [nodes concatenated hashes.](#nodes-concatenated-hashes) - [Extension Nodes](#extension-nodes) - [Lazy Nodes](#lazy-nodes) - [Lazy Loading](#lazy-loading) - [Visualisations](#visualisations) - [General Trie Structure](#general-trie-structure) - [Lazy Nodes](#lazy-nodes-1)
-  - [Paths](#paths)
-    - [Visualisation](#visualisation)
-  - [Values](#values)
-    - [Nil values](#nil-values)
-  - [Hashers \& Digests](#hashers--digests)
-    - [Hash Function Recommendations](#hash-function-recommendations)
-  - [Roots](#roots)
-  - [Proofs](#proofs)
-    - [Verification](#verification)
-    - [Closest Proof](#closest-proof)
-      - [Closest Proof Use Cases](#closest-proof-use-cases)
-    - [Compression](#compression)
-    - [Serialisation](#serialisation)
-  - [Database](#database)
-    - [Database Submodules](#database-submodules)
-      - [SimpleMap](#simplemap)
-      - [Badger](#badger)
-    - [Data Loss](#data-loss)
-  - [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
+- [Overview](#overview)
+- [Implementation](#implementation)
+  - [Leaf Nodes](#leaf-nodes)
+  - [Inner Nodes](#inner-nodes)
+  - [Extension Nodes](#extension-nodes)
+  - [Lazy Nodes](#lazy-nodes)
+  - [Lazy Loading](#lazy-loading)
+  - [Visualizations](#visualizations)
+    - [General Trie Structure](#general-trie-structure)
+    - [Lazy Nodes](#lazy-nodes-1)
+- [Paths](#paths)
+  - [Visualization](#visualization)
+- [Values](#values)
+  - [Nil values](#nil-values)
+- [Hashers \& Digests](#hashers--digests)
+  - [Hash Function Recommendations](#hash-function-recommendations)
+- [Roots](#roots)
+- [Proofs](#proofs)
+  - [Verification](#verification)
+  - [Closest Proof](#closest-proof)
+    - [Closest Proof Use Cases](#closest-proof-use-cases)
+  - [Compression](#compression)
+  - [Serialisation](#serialisation)
+- [Database](#database)
+  - [Database Submodules](#database-submodules)
+    - [SimpleMap](#simplemap)
+    - [Badger](#badger)
+  - [Data Loss](#data-loss)
+- [Sparse Merkle Sum Trie](#sparse-merkle-sum-trie)
 
 ## Overview
 
@@ -110,7 +119,7 @@ Once the `Commit()` function is called the trie will delete any orphaned nodes
 from the database and write the key-value pairs of all the unpersisted leaf
 nodes' hashes and their values to the database.
 
-### Visualisations
+### Visualizations
 
 The following diagrams are representations of how the trie and its components
 can be visualised.
@@ -209,7 +218,7 @@ Inner nodes do **not** contain a path, as they represent a branch in the trie
 and not a path. As such their children, _if they are extension nodes or leaf
 nodes_, will hold a path value.
 
-### Visualisation
+### Visualization
 
 The following diagram shows how paths are stored in the different nodes of the
 trie. In the actual SMT paths are not 8 bit binary strings but are instead the
