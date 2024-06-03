@@ -1,6 +1,6 @@
 package smt
 
-// TODO_DISCUSS_IN_THIS_PR_IMPROVEMENTS:
+// TODO_DISCUSS_IN_THE_FUTURE:
 // 1. Should we rename all instances of digest to hash?
 // 2. Should we introduce a shared interface between SparseMerkleTrie and SparseMerkleSumTrie?
 // 3. Should we rename Commit to FlushToDisk?

@@ -23,5 +23,3 @@ The [SMT extension node](./smt.md#extension-nodes) is very similar to that of
 Ethereum's [Modified Merkle Patricia Trie](https://ethereum.org/developers/docs/data-structures-and-encoding/patricia-merkle-trie).
 
 A quick primer on it can be found in this [5P;1R post](https://olshansky.substack.com/p/5p1r-ethereums-modified-merkle-patricia).
-
-WIP

@@ -22,7 +22,7 @@ func WithValueHasher(vh ValueHasher) TrieSpecOption {
 // used instead of a key during proof verification. Otherwise, this will lead
 // double hashing and product an incorrect leaf digest, thereby invalidating
 // the proof.
-// TODO_IN_THIS_PR: Need to understand this part more.
+// TODO_TECHDEBT: Document better when/why this is needed.
 func NoHasherSpec(hasher hash.Hash, sumTrie bool) *TrieSpec {
 	spec := newTrieSpec(hasher, sumTrie)
 

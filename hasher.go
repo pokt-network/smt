@@ -5,8 +5,8 @@ import (
 	"hash"
 )
 
-// TODO_IN_THIS_PR: Improve how the `hasher` file is consolidated (or not)
-// with `node_encoders.go` since the two are very similar.
+// TODO_IMPROVE:: Improve how the `hasher` file is consolidated with
+// `node_encoders.go` since the two are very similar.
 
 // Ensure the hasher interfaces are satisfied
 var (

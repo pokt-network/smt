@@ -112,7 +112,7 @@ func (spec *TrieSpec) hashSumSerialization(data []byte) []byte {
 
 // depth returns the maximum depth of the trie.
 // Since this tree is a binary tree, the depth is the number of bits in the path
-// TODO_IN_THIS_PR: Try to understand why we're not taking the log of the output
+// TODO_UPNEXT(@Olshansk):: Try to understand why we're not taking the log of the output
 func (spec *TrieSpec) depth() int {
 	return spec.ph.PathSize() * 8 // path size is in bytes so multiply by 8 to get num bits
 }

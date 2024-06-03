@@ -33,8 +33,8 @@ func NewSparseMerkleSumTrie(
 	}
 
 	// Initialize a non-sum SMT and modify it to have a nil value hasher
-	// TODO_IN_THIS_PR: Understand the purpose of the nilValueHasher and why
-	// we're not applying it to the smst but we need it for the smt.
+	// TODO_UPNEXT(@Olshansk): Understand the purpose of the nilValueHasher and
+	// why we're not applying it to the smst but we need it for the smt.
 	smt := &SMT{
 		TrieSpec: trieSpec,
 		nodes:    nodes,
