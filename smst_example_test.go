@@ -1,159 +1,48 @@
-package smt
+package smt_test
 
 import (
 	"crypto/sha256"
 	"fmt"
-	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/pokt-network/smt/kvstore"
+	"github.com/pokt-network/smt"
 	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
-// TestExampleSMT is a test that aims to act as an example of how to use the SMST.
-func TestExampleSMST(t *testing.T) {
-	dataMap := make(map[string]string)
-
-	// Initialize a new in-memory key-value store to store the nodes of the trie.
-	// NB: The trie only stores hashed values and not raw value data.
+func ExampleSMST() {
+	// Initialise a new in-memory key-value store to store the nodes of the trie
+	// (Note: the trie only stores hashed values, not raw value data)
 	nodeStore := simplemap.NewSimpleMap()
 
-	// Initialize the smst
-	smst := NewSparseMerkleSumTrie(nodeStore, sha256.New())
+	// Initialise the trie
+	trie := smt.NewSparseMerkleSumTrie(nodeStore, sha256.New())
 
 	// Update trie with keys, values and their sums
-	err := smst.Update([]byte("foo"), []byte("oof"), 10)
-	require.NoError(t, err)
-	dataMap["foo"] = "oof"
-	err = smst.Update([]byte("baz"), []byte("zab"), 7)
-	require.NoError(t, err)
-	dataMap["baz"] = "zab"
-	err = smst.Update([]byte("bin"), []byte("nib"), 3)
-	require.NoError(t, err)
-	dataMap["bin"] = "nib"
-	err = smst.Update([]byte("binn"), []byte("nnib"), 3)
-	require.NoError(t, err)
-	dataMap["binn"] = "nnib"
+	_ = trie.Update([]byte("foo"), []byte("oof"), 10)
+	_ = trie.Update([]byte("baz"), []byte("zab"), 7)
+	_ = trie.Update([]byte("bin"), []byte("nib"), 3)
 
 	// Commit the changes to the nodeStore
-	err = smst.Commit()
-	require.NoError(t, err)
+	_ = trie.Commit()
 
 	// Calculate the total sum of the trie
-	sum := smst.Sum()
-	require.Equal(t, uint64(23), sum)
+	_ = trie.Sum() // 20
 
 	// Generate a Merkle proof for "foo"
-	proof1, err := smst.Prove([]byte("foo"))
-	require.NoError(t, err)
-	proof2, err := smst.Prove([]byte("baz"))
-	require.NoError(t, err)
-	proof3, err := smst.Prove([]byte("bin"))
-	require.NoError(t, err)
+	proof1, _ := trie.Prove([]byte("foo"))
+	proof2, _ := trie.Prove([]byte("baz"))
+	proof3, _ := trie.Prove([]byte("bin"))
 
 	// We also need the current trie root for the proof
-	root := smst.Root()
+	root := trie.Root()
 
 	// Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-	valid_true1, err := VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 10, smst.Spec())
-	require.NoError(t, err)
-	require.True(t, valid_true1)
-
+	valid_true1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 10, trie.Spec())
 	// Verify the Merkle proof for "baz"="zab" where "baz" has a sum of 7
-	valid_true2, err := VerifySumProof(proof2, root, []byte("baz"), []byte("zab"), 7, smst.Spec())
-	require.NoError(t, err)
-	require.True(t, valid_true2)
-
+	valid_true2, _ := smt.VerifySumProof(proof2, root, []byte("baz"), []byte("zab"), 7, trie.Spec())
 	// Verify the Merkle proof for "bin"="nib" where "bin" has a sum of 3
-	valid_true3, err := VerifySumProof(proof3, root, []byte("bin"), []byte("nib"), 3, smst.Spec())
-	require.NoError(t, err)
-	require.True(t, valid_true3)
-
+	valid_true3, _ := smt.VerifySumProof(proof3, root, []byte("bin"), []byte("nib"), 3, trie.Spec())
 	// Fail to verify the Merkle proof for "foo"="oof" where "foo" has a sum of 11
-	valid_false1, err := VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 11, smst.Spec())
-	require.NoError(t, err)
-	require.False(t, valid_false1)
-
-	exportToCSV(t, smst, dataMap, nodeStore)
-}
-
-func exportToCSV(
-	t *testing.T,
-	smst SparseMerkleSumTrie,
-	innerMap map[string]string,
-	nodeStore kvstore.MapStore,
-) {
-	t.Helper()
-	/*
-		rootHash := smst.Root()
-		rootNode, err := nodeStore.Get(rootHash)
-		require.NoError(t, err)
-		leftData, rightData := smst.Spec().th.parseSumInnerNode(rootNode)
-		leftChild, err := nodeStore.Get(leftData)
-		require.NoError(t, err)
-		rightChild, err := nodeStore.Get(rightData)
-		require.NoError(t, err)
-		fmt.Println("Prefix", "isExt", "isLeaf", "isInner")
-		// false false true
-		fmt.Println("root", isExtNode(rootNode), isLeafNode(rootNode), isInnerNode(rootNode), rootNode)
-		fmt.Println()
-		// false false false
-		fmt.Println("left", isExtNode(leftChild), isLeafNode(leftChild), isInnerNode(leftChild), leftChild)
-		fmt.Println()
-		// false false false
-		fmt.Println("right", isExtNode(rightChild), isLeafNode(rightChild), isInnerNode(rightChild), rightChild)
-		fmt.Println()
-	*/
-
-	/*
-		for key, value := range innerMap {
-			v, s, err := smst.Get([]byte(key))
-			require.NoError(t, err)
-			fmt.Println(v, s, []byte(key))
-			fmt.Println(value)
-			fmt.Println("")
-			fmt.Println("")
-		}
-	*/
-
-	fmt.Println("Root sum", smst.Sum())
-	helper(t, smst, nodeStore, smst.Root())
-}
-
-func helper(t *testing.T, smst SparseMerkleSumTrie, nodeStore kvstore.MapStore, nodeDigest []byte) {
-	t.Helper()
-
-	node, err := nodeStore.Get(nodeDigest)
-	require.NoError(t, err)
-
-	fmt.Println()
-	if isExtNode(node) {
-		pathBounds, path, childData, sum := smst.Spec().parseSumExtNode(node)
-		fmt.Println("ext node sum", sum)
-		fmt.Println(pathBounds, path)
-		helper(t, smst, nodeStore, childData)
-		return
-	} else if isLeafNode(node) {
-		path, valueHash, weight := smst.Spec().parseSumLeafNode(node)
-		fmt.Println("leaf node weight", weight)
-		fmt.Println(path, valueHash)
-	} else if isInnerNode(node) {
-		leftData, rightData, sum := smst.Spec().th.parseSumInnerNode(node)
-		fmt.Println("inner node sum", sum)
-
-		// leftChild, err := nodeStore.Get(leftData)
-		// require.NoError(t, err)
-
-		// rightChild, err := nodeStore.Get(rightData)
-		// require.NoError(t, err)
-
-		helper(t, smst, nodeStore, leftData)
-		helper(t, smst, nodeStore, rightData)
-	}
-
-	// v, s, err := smst.Get([]byte(key))
-	// require.NoError(t, err)
-	// require.Equal(t, []byte(value), v)
-	// require.Equal(t, sum, s)
+	valid_false1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 11, trie.Spec())
+	fmt.Println(valid_true1, valid_true2, valid_true3, valid_false1)
+	// Output: true true true false
 }
