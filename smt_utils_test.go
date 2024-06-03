@@ -24,7 +24,7 @@ func (smt *SMTWithStorage) Update(key, value []byte) error {
 	if err := smt.SMT.Update(key, value); err != nil {
 		return err
 	}
-	valueHash := smt.digestValue(value)
+	valueHash := smt.valueHash(value)
 	return smt.preimages.Set(valueHash, value)
 }
 
@@ -46,7 +46,7 @@ func (smt *SMTWithStorage) GetValue(key []byte) ([]byte, error) {
 	if err != nil {
 		if errors.Is(err, ErrKeyNotFound) {
 			// If key isn't found, return default value
-			value = defaultValue
+			value = defaultEmptyValue
 		} else {
 			// Otherwise percolate up any other error
 			return nil, err
@@ -59,7 +59,7 @@ func (smt *SMTWithStorage) GetValue(key []byte) ([]byte, error) {
 // otherwise.
 func (smt *SMTWithStorage) Has(key []byte) (bool, error) {
 	val, err := smt.GetValue(key)
-	return !bytes.Equal(defaultValue, val), err
+	return !bytes.Equal(defaultEmptyValue, val), err
 }
 
 // ProveCompact generates a compacted Merkle proof for a key against the

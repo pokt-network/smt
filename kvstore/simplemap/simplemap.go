@@ -19,6 +19,14 @@ func NewSimpleMap() kvstore.MapStore {
 	}
 }
 
+// NewSimpleMap creates a new SimpleMap instance using the map provided.
+// This is useful for testing & debugging purposes.
+func NewSimpleMapWithMap(m map[string][]byte) kvstore.MapStore {
+	return &simpleMap{
+		m: m,
+	}
+}
+
 // Get gets the value for a key.
 func (sm *simpleMap) Get(key []byte) ([]byte, error) {
 	if len(key) == 0 {

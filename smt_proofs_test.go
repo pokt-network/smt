@@ -32,7 +32,7 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	proof, err = smt.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifyProof(proof, base.th.placeholder(), []byte("testKey3"), defaultValue, base)
+	result, err = VerifyProof(proof, base.th.placeholder(), []byte("testKey3"), defaultEmptyValue, base)
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifyProof(proof, root, []byte("testKey3"), []byte("badValue"), base)
@@ -66,7 +66,7 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	result, err = VerifyProof(proof, root, []byte("testKey"), []byte("badValue"), base)
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifyProof(randomiseProof(proof), root, []byte("testKey"), []byte("testValue"), base)
+	result, err = VerifyProof(randomizeProof(proof), root, []byte("testKey"), []byte("testValue"), base)
 	require.NoError(t, err)
 	require.False(t, result)
 
@@ -79,17 +79,17 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	result, err = VerifyProof(proof, root, []byte("testKey2"), []byte("badValue"), base)
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifyProof(randomiseProof(proof), root, []byte("testKey2"), []byte("testValue"), base)
+	result, err = VerifyProof(randomizeProof(proof), root, []byte("testKey2"), []byte("testValue"), base)
 	require.NoError(t, err)
 	require.False(t, result)
 
 	// Try proving a default value for a non-default leaf.
-	_, leafData := base.th.digestLeaf(base.ph.Path([]byte("testKey2")), base.digestValue([]byte("testValue")))
+	_, leafData := base.th.digestLeafNode(base.ph.Path([]byte("testKey2")), base.valueHash([]byte("testValue")))
 	proof = &SparseMerkleProof{
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,
 	}
-	result, err = VerifyProof(proof, root, []byte("testKey2"), defaultValue, base)
+	result, err = VerifyProof(proof, root, []byte("testKey2"), defaultEmptyValue, base)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 
@@ -97,13 +97,13 @@ func TestSMT_Proof_Operations(t *testing.T) {
 	proof, err = smt.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifyProof(proof, root, []byte("testKey3"), defaultValue, base)
+	result, err = VerifyProof(proof, root, []byte("testKey3"), defaultEmptyValue, base)
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifyProof(proof, root, []byte("testKey3"), []byte("badValue"), base)
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifyProof(randomiseProof(proof), root, []byte("testKey3"), defaultValue, base)
+	result, err = VerifyProof(randomizeProof(proof), root, []byte("testKey3"), defaultEmptyValue, base)
 	require.NoError(t, err)
 	require.False(t, result)
 }
@@ -161,7 +161,7 @@ func TestSMT_Proof_ValidateBasic(t *testing.T) {
 
 	// Case: incorrect non-nil sibling data
 	proof, _ = smt.Prove([]byte("testKey1"))
-	proof.SiblingData = base.th.digest(proof.SiblingData)
+	proof.SiblingData = base.th.digestData(proof.SiblingData)
 	require.EqualError(
 		t,
 		proof.validateBasic(base),
@@ -331,7 +331,7 @@ func TestSMT_ProveClosest_Empty(t *testing.T) {
 		Path:         path[:],
 		FlippedBits:  []int{0},
 		Depth:        0,
-		ClosestPath:  placeholder(smt.Spec()),
+		ClosestPath:  smt.placeholder(),
 		ClosestProof: &SparseMerkleProof{},
 	})
 
