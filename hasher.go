@@ -47,6 +47,7 @@ type valueHasher struct {
 	trieHasher
 }
 
+// nilPathHasher is a dummy hasher that returns its input - it should not be used outside of the closest proof verification logic
 type nilPathHasher struct {
 	hashSize int
 }
