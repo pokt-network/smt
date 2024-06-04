@@ -238,6 +238,7 @@ func (spec *TrieSpec) parseExtNode(data []byte) (pathBounds, path, childData []b
 }
 
 // parseSumLeafNode parses a leafNode and returns its weight as well
+// // nolint: unused
 func (spec *TrieSpec) parseSumLeafNode(data []byte) (path, value []byte, weight uint64) {
 	// panics if not a leaf node
 	checkPrefix(data, leafNodePrefix)
