@@ -32,9 +32,14 @@ func NewSparseMerkleSumTrie(
 		option(&trieSpec)
 	}
 
-	// Initialize a non-sum SMT and modify it to have a nil value hasher
-	// TODO_UPNEXT(@Olshansk): Understand the purpose of the nilValueHasher and
-	// why we're not applying it to the smst but we need it for the smt.
+	// Initialize a non-sum SMT and modify it to have a nil value hasher.
+	// NB: We are using a nil value hasher because the SMST pre-hashes its paths.
+	//     This results result in double path hashing because the SMST is a wrapper
+	//     around the SMT. The reason the SMST uses its own path hashing logic is
+	//     to account for the additional sum in the encoding/decoding process.
+	//     Therefore, the underlying SMT underneath needs a nil path hasher, while
+	//     the outer SMST does all the (non nil) path hashing itself.
+	// TODO_TECHDEBT(@Olshansk): Look for ways to simplify / cleanup the above.
 	smt := &SMT{
 		TrieSpec: trieSpec,
 		nodes:    nodes,
@@ -146,8 +151,8 @@ func (smst *SMST) Root() MerkleRoot {
 // If the tree is not a sum tree, it will panic.
 func (smst *SMST) Sum() uint64 {
 	rootDigest := smst.Root()
-	if len(rootDigest) != smst.th.hashSize()+sumSizeBits {
-		panic("roo#sum: not a merkle sum trie")
+	if !smst.Spec().sumTrie {
+		panic("SMST: not a merkle sum trie")
 	}
 	var sumbz [sumSizeBits]byte
 	copy(sumbz[:], []byte(rootDigest)[len([]byte(rootDigest))-sumSizeBits:])

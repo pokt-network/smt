@@ -8,9 +8,11 @@ import (
 // TODO_TECHDEBT: All of the parsing, encoding and checking functions in this file
 // can be abstracted out into the `trieNode` interface.
 
-// TODO_IMPROVE: We should create well-defined types & structs for every type of node
-// (e.g. protobufs) to streamline the process of encoding & encoding and to improve
-// readability.
+// TODO_IMPROVE: We should create well-defined structs for every type of node
+// to streamline the process of encoding & encoding and to improve readability.
+// If decoding needs to be language agnostic (to implement POKT clients), in other
+// languages, protobufs should be considered. If decoding does not need to be
+// language agnostic, we can use Go's gob package for more efficient serialization.
 
 // NB: In this file, all references to the variable `data` should be treated as `encodedNodeData`.
 // It was abbreviated to `data` for brevity.

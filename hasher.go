@@ -59,7 +59,9 @@ func NewTrieHasher(hasher hash.Hash) *trieHasher {
 	return &th
 }
 
-func NewNilPathHasher(hasherSize int) PathHasher {
+// newNilPathHasher returns a new nil path hasher with the given hash size.
+// It is not exported  the validation logic for the ClosestProof automatically handles this.
+func newNilPathHasher(hasherSize int) PathHasher {
 	return &nilPathHasher{hashSize: hasherSize}
 }
 
@@ -112,12 +114,14 @@ func (th *trieHasher) digestLeafNode(path, data []byte) (digest, value []byte) {
 	return
 }
 
+// digestInnerNode returns the encoded inner node data as well as its hash (i.e. digest)
 func (th *trieHasher) digestInnerNode(leftData, rightData []byte) (digest, value []byte) {
 	value = encodeInnerNode(leftData, rightData)
 	digest = th.digestData(value)
 	return
 }
 
+// digestSumNode returns the encoded leaf node data as well as its hash (i.e. digest)
 func (th *trieHasher) digestSumLeafNode(path, data []byte) (digest, value []byte) {
 	value = encodeLeafNode(path, data)
 	digest = th.digestData(value)
@@ -125,6 +129,7 @@ func (th *trieHasher) digestSumLeafNode(path, data []byte) (digest, value []byte
 	return
 }
 
+// digestSumInnerNode returns the encoded inner node data as well as its hash (i.e. digest)
 func (th *trieHasher) digestSumInnerNode(leftData, rightData []byte) (digest, value []byte) {
 	value = encodeSumInnerNode(leftData, rightData)
 	digest = th.digestData(value)
@@ -132,12 +137,14 @@ func (th *trieHasher) digestSumInnerNode(leftData, rightData []byte) (digest, va
 	return
 }
 
+// parseInnerNode returns the encoded left and right nodes
 func (th *trieHasher) parseInnerNode(data []byte) (leftData, rightData []byte) {
 	leftData = data[len(innerNodePrefix) : th.hashSize()+len(innerNodePrefix)]
 	rightData = data[len(innerNodePrefix)+th.hashSize():]
 	return
 }
 
+// parseSumInnerNode returns the encoded left and right nodes as well as the sum of the current node
 func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte, sum uint64) {
 	// Extract the sum from the encoded node data
 	var sumBz [sumSizeBits]byte
