@@ -1,9 +1,12 @@
 package smt
 
-// TODO_DISCUSS_IN_THE_FUTURE:
+// TODO_DISCUSS_CONSIDERIN_THE_FUTURE:
 // 1. Should we rename all instances of digest to hash?
+// 	> digest is the correct term for the output of a hashing function IIRC
 // 2. Should we introduce a shared interface between SparseMerkleTrie and SparseMerkleSumTrie?
+// 	> Sum() would have to be no-op but could be done
 // 3. Should we rename Commit to FlushToDisk?
+// > No because what if this is an in memory trie?
 
 const (
 	// The bit value use to distinguish an inner nodes left child and right child

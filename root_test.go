@@ -59,6 +59,8 @@ func TestMerkleRoot_TrieTypes(t *testing.T) {
 					require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i)), i))
 				}
 				require.NotNil(t, trie.Sum())
+				require.EqualValues(t, 45, trie.Sum())
+
 				return
 			}
 			trie := smt.NewSparseMerkleTrie(nodeStore, tt.hasher)
