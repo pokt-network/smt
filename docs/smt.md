@@ -61,7 +61,7 @@ Leaf nodes store the full path associated with the `key`. A leaf node also
 store the hash of the `value` stored.
 
 The `digest` of a leaf node is the hash of concatenation of the leaf node's
-path and value.
+prefix, path and value.
 
 By default, the SMT only stores the hashes of the values in the trie, and not the
 raw values themselves. In order to store the raw values in the underlying database,
