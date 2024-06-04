@@ -558,7 +558,12 @@ func (smt *SMT) resolveNode(digest []byte) (trieNode, error) {
 		return nil, err
 	}
 
-	// Return the appropriate node type based on the first byte of the data
+	return smt.parseTrieNode(data, digest)
+}
+
+// parseTrieNode returns a trieNode (inner, leaf, or extension) based on the
+// first byte of the data.
+func (smt *SMT) parseTrieNode(data, digest []byte) (trieNode, error) {
 	if isLeafNode(data) {
 		path, valueHash := smt.parseLeafNode(data)
 		return &leafNode{
@@ -603,7 +608,12 @@ func (smt *SMT) resolveSumNode(digest []byte) (trieNode, error) {
 		return nil, err
 	}
 
-	// Return the appropriate node type based on the first byte of the data
+	return smt.parseSumTrieNode(data, digest)
+}
+
+// parseTrieNode returns a trieNode (inner, leaf, or extension) based on the
+// first byte of the data.
+func (smt *SMT) parseSumTrieNode(data, digest []byte) (trieNode, error) {
 	if isLeafNode(data) {
 		path, valueHash := smt.parseLeafNode(data)
 		return &leafNode{
