@@ -86,7 +86,7 @@ Extension nodes represent a singly linked chain of inner nodes, with a single
 child. In other words, they are an optimization to avoid having a long chain of
 inner nodes where each inner node only has one child.
 
-In other words, they are used to represent a common path in the trie and as such
+They are used to represent a common path in the trie and as such
 contain the path and bounds of the path they represent. The `digest` of an extension
 node is the hash of its path bounds, the path itself and the child nodes digest
 concatenated.
