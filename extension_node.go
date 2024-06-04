@@ -131,7 +131,7 @@ func (extNode *extensionNode) split(path []byte) (trieNode, *trieNode, int) {
 	return head, &b, pathIdx
 }
 
-// expand returns the inner node that represents the start of the singly
+// expand returns the inner node that represents the end of the singly
 // linked list that this extension node represents
 func (extNode *extensionNode) expand() trieNode {
 	last := extNode.child
