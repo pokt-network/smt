@@ -26,8 +26,8 @@ func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
 	}
-	valueHash := smst.digestValue(value)
-	var sumBz [sumSize]byte
+	valueHash := smst.valueHash(value)
+	var sumBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	value = append(value, sumBz[:]...)
 	return smst.preimages.Set(valueHash, value)
@@ -52,22 +52,22 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	if err != nil {
 		if errors.Is(err, ErrKeyNotFound) {
 			// If key isn't found, return default value and sum
-			return defaultValue, 0, nil
+			return defaultEmptyValue, 0, nil
 		}
 		// Otherwise percolate up any other error
 		return nil, 0, err
 	}
-	var sumBz [sumSize]byte
-	copy(sumBz[:], value[len(value)-sumSize:])
+	var sumBz [sumSizeBytes]byte
+	copy(sumBz[:], value[len(value)-sumSizeBytes:])
 	storedSum := binary.BigEndian.Uint64(sumBz[:])
 	if storedSum != sum {
 		return nil, 0, fmt.Errorf("sum mismatch for %s: got %d, expected %d", string(key), storedSum, sum)
 	}
-	return value[:len(value)-sumSize], storedSum, nil
+	return value[:len(value)-sumSizeBytes], storedSum, nil
 }
 
 // Has returns true if the value at the given key is non-default, false otherwise.
 func (smst *SMSTWithStorage) Has(key []byte) (bool, error) {
 	val, sum, err := smst.GetValueSum(key)
-	return !bytes.Equal(defaultValue, val) || sum != 0, err
+	return !bytes.Equal(defaultEmptyValue, val) || sum != 0, err
 }

@@ -1,33 +1,37 @@
 package smt
 
-import (
-	"encoding/binary"
-	"hash"
-)
+// TODO_DISCUSS_CONSIDERIN_THE_FUTURE:
+// 1. Should we rename all instances of digest to hash?
+// 	> digest is the correct term for the output of a hashing function IIRC
+// 2. Should we introduce a shared interface between SparseMerkleTrie and SparseMerkleSumTrie?
+// 	> Sum() would have to be no-op but could be done
+// 3. Should we rename Commit to FlushToDisk?
+// > No because what if this is an in memory trie?
 
 const (
-	left    = 0
-	sumSize = 8
+	// The bit value use to distinguish an inner nodes left child and right child
+	leftChildBit = 0
 )
 
 var (
-	defaultValue []byte
-	defaultSum   [sumSize]byte
+	// defaultEmptyValue is the default value for a leaf node
+	defaultEmptyValue []byte
+	// defaultEmptySum is the default sum value for a leaf node
+	defaultEmptySum [sumSizeBytes]byte
 )
 
 // MerkleRoot is a type alias for a byte slice returned from the Root method
 type MerkleRoot []byte
 
-// Sum returns the uint64 sum of the merkle root, it checks the length of the
-// merkle root and if it is no the same as the size of the SMST's expected
-// root hash it will panic.
-func (r MerkleRoot) Sum() uint64 {
-	if len(r)%32 == 0 {
-		panic("roo#sum: not a merkle sum trie")
-	}
-	var sumbz [sumSize]byte
-	copy(sumbz[:], []byte(r)[len([]byte(r))-sumSize:])
-	return binary.BigEndian.Uint64(sumbz[:])
+// A high-level interface that captures the behaviour of all types of nodes
+type trieNode interface {
+	// Persisted returns a boolean to determine whether or not the node
+	// has been persisted to disk or only held in memory.
+	// It can be used skip unnecessary iops if already persisted
+	Persisted() bool
+
+	// The digest of the node, returning a cached value if available.
+	CachedDigest() []byte
 }
 
 // SparseMerkleTrie represents a Sparse Merkle Trie.
@@ -76,138 +80,4 @@ type SparseMerkleSumTrie interface {
 	Commit() error
 	// Spec returns the TrieSpec for the trie
 	Spec() *TrieSpec
-}
-
-// TrieSpec specifies the hashing functions used by a trie instance to encode
-// leaf paths and stored values, and the corresponding maximum trie depth.
-type TrieSpec struct {
-	th      trieHasher
-	ph      PathHasher
-	vh      ValueHasher
-	sumTrie bool
-}
-
-func NewTrieSpec(hasher hash.Hash, sumTrie bool, opts ...Option) TrieSpec {
-	spec := TrieSpec{th: *newTrieHasher(hasher)}
-	spec.ph = &pathHasher{spec.th}
-	spec.vh = &valueHasher{spec.th}
-	spec.sumTrie = sumTrie
-
-	for _, opt := range opts {
-		opt(&spec)
-	}
-
-	return spec
-}
-
-// Spec returns the TrieSpec associated with the given trie
-func (spec *TrieSpec) Spec() *TrieSpec { return spec }
-
-// PathHasherSize returns the length (in bytes) of digests produced by the
-// path hasher
-func (spec *TrieSpec) PathHasherSize() int { return spec.ph.PathSize() }
-
-// ValueHasherSize returns the length (in bytes) of digests produced by the
-// value hasher
-func (spec *TrieSpec) ValueHasherSize() int { return spec.vh.ValueHashSize() }
-
-// TrieHasherSize returns the length (in bytes) of digests produced by the
-// trie hasher
-func (spec *TrieSpec) TrieHasherSize() int { return spec.th.hashSize() }
-
-func (spec *TrieSpec) depth() int { return spec.ph.PathSize() * 8 }
-func (spec *TrieSpec) digestValue(data []byte) []byte {
-	if spec.vh == nil {
-		return data
-	}
-	return spec.vh.HashValue(data)
-}
-
-func (spec *TrieSpec) serialize(node trieNode) (data []byte) {
-	switch n := node.(type) {
-	case *lazyNode:
-		panic("serialize(lazyNode)")
-	case *leafNode:
-		return encodeLeaf(n.path, n.valueHash)
-	case *innerNode:
-		lchild := spec.hashNode(n.leftChild)
-		rchild := spec.hashNode(n.rightChild)
-		return encodeInner(lchild, rchild)
-	case *extensionNode:
-		child := spec.hashNode(n.child)
-		return encodeExtension(n.pathBounds, n.path, child)
-	}
-	return nil
-}
-
-func (spec *TrieSpec) hashNode(node trieNode) []byte {
-	if node == nil {
-		return spec.th.placeholder()
-	}
-	var cache *[]byte
-	switch n := node.(type) {
-	case *lazyNode:
-		return n.digest
-	case *leafNode:
-		cache = &n.digest
-	case *innerNode:
-		cache = &n.digest
-	case *extensionNode:
-		if n.digest == nil {
-			n.digest = spec.hashNode(n.expand())
-		}
-		return n.digest
-	}
-	if *cache == nil {
-		*cache = spec.th.digest(spec.serialize(node))
-	}
-	return *cache
-}
-
-// sumSerialize serializes a node returning the preimage hash, its sum and any
-// errors encountered
-func (spec *TrieSpec) sumSerialize(node trieNode) (preimage []byte) {
-	switch n := node.(type) {
-	case *lazyNode:
-		panic("serialize(lazyNode)")
-	case *leafNode:
-		return encodeLeaf(n.path, n.valueHash)
-	case *innerNode:
-		lchild := spec.hashSumNode(n.leftChild)
-		rchild := spec.hashSumNode(n.rightChild)
-		preimage = encodeSumInner(lchild, rchild)
-		return preimage
-	case *extensionNode:
-		child := spec.hashSumNode(n.child)
-		return encodeSumExtension(n.pathBounds, n.path, child)
-	}
-	return nil
-}
-
-// hashSumNode hashes a node returning its digest in the following form
-// digest = [node hash]+[8 byte sum]
-func (spec *TrieSpec) hashSumNode(node trieNode) []byte {
-	if node == nil {
-		return placeholder(spec)
-	}
-	var cache *[]byte
-	switch n := node.(type) {
-	case *lazyNode:
-		return n.digest
-	case *leafNode:
-		cache = &n.digest
-	case *innerNode:
-		cache = &n.digest
-	case *extensionNode:
-		if n.digest == nil {
-			n.digest = spec.hashSumNode(n.expand())
-		}
-		return n.digest
-	}
-	if *cache == nil {
-		preimage := spec.sumSerialize(node)
-		*cache = spec.th.digest(preimage)
-		*cache = append(*cache, preimage[len(preimage)-sumSize:]...)
-	}
-	return *cache
 }

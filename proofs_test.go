@@ -28,7 +28,7 @@ func TestSparseMerkleProof_Marshal(t *testing.T) {
 	require.Greater(t, len(bz2), 0)
 	require.NotEqual(t, bz, bz2)
 
-	proof3 := randomiseProof(proof)
+	proof3 := randomizeProof(proof)
 	bz3, err := proof3.Marshal()
 	require.NoError(t, err)
 	require.NotNil(t, bz3)
@@ -59,7 +59,7 @@ func TestSparseMerkleProof_Unmarshal(t *testing.T) {
 	require.NoError(t, uproof2.Unmarshal(bz2))
 	require.Equal(t, proof2, uproof2)
 
-	proof3 := randomiseProof(proof)
+	proof3 := randomizeProof(proof)
 	bz3, err := proof3.Marshal()
 	require.NoError(t, err)
 	require.NotNil(t, bz3)
@@ -91,7 +91,7 @@ func TestSparseCompactMerkleProof_Marshal(t *testing.T) {
 	require.Greater(t, len(bz2), 0)
 	require.NotEqual(t, bz, bz2)
 
-	proof3 := randomiseProof(proof)
+	proof3 := randomizeProof(proof)
 	compactProof3, err := CompactProof(proof3, trie.Spec())
 	require.NoError(t, err)
 	bz3, err := compactProof3.Marshal()
@@ -134,7 +134,7 @@ func TestSparseCompactMerkleProof_Unmarshal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, proof2, uproof2)
 
-	proof3 := randomiseProof(proof)
+	proof3 := randomizeProof(proof)
 	compactProof3, err := CompactProof(proof3, trie.Spec())
 	require.NoError(t, err)
 	bz3, err := compactProof3.Marshal()
@@ -162,7 +162,7 @@ func setupTrie(t *testing.T) *SMT {
 	return trie
 }
 
-func randomiseProof(proof *SparseMerkleProof) *SparseMerkleProof {
+func randomizeProof(proof *SparseMerkleProof) *SparseMerkleProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
 		sideNodes[i] = make([]byte, len(proof.SideNodes[i]))
@@ -174,12 +174,12 @@ func randomiseProof(proof *SparseMerkleProof) *SparseMerkleProof {
 	}
 }
 
-func randomiseSumProof(proof *SparseMerkleProof) *SparseMerkleProof {
+func randomizeSumProof(proof *SparseMerkleProof) *SparseMerkleProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
-		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumSize)
+		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumSizeBytes)
 		rand.Read(sideNodes[i]) // nolint: errcheck
-		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumSize:]...)
+		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumSizeBytes:]...)
 	}
 	return &SparseMerkleProof{
 		SideNodes:             sideNodes,

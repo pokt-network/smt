@@ -3,7 +3,6 @@ package smt_test
 import (
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/binary"
 	"fmt"
 	"hash"
 	"testing"
@@ -59,8 +58,9 @@ func TestMerkleRoot_TrieTypes(t *testing.T) {
 				for i := uint64(0); i < 10; i++ {
 					require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i)), i))
 				}
-				root := trie.Root()
-				require.Equal(t, root.Sum(), getSumBzHelper(t, root))
+				require.NotNil(t, trie.Sum())
+				require.EqualValues(t, 45, trie.Sum())
+
 				return
 			}
 			trie := smt.NewSparseMerkleTrie(nodeStore, tt.hasher)
@@ -72,11 +72,4 @@ func TestMerkleRoot_TrieTypes(t *testing.T) {
 			}
 		})
 	}
-}
-
-func getSumBzHelper(t *testing.T, r []byte) uint64 {
-	sumSize := len(r) % 32
-	sumBz := make([]byte, sumSize)
-	copy(sumBz[:], []byte(r)[len([]byte(r))-sumSize:])
-	return binary.BigEndian.Uint64(sumBz[:])
 }

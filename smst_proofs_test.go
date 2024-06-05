@@ -33,7 +33,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifySumProof(proof, placeholder(base), []byte("testKey3"), defaultValue, 0, base)
+	result, err = VerifySumProof(proof, base.placeholder(), []byte("testKey3"), defaultEmptyValue, 0, base)
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 5, base)
@@ -80,7 +80,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, result)
 	result, err = VerifySumProof(
-		randomiseSumProof(proof),
+		randomizeSumProof(proof),
 		root,
 		[]byte("testKey"),
 		[]byte("testValue"),
@@ -106,7 +106,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, result)
 	result, err = VerifySumProof(
-		randomiseSumProof(proof),
+		randomizeSumProof(proof),
 		root,
 		[]byte("testKey2"),
 		[]byte("testValue"),
@@ -117,16 +117,16 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	require.False(t, result)
 
 	// Try proving a default value for a non-default leaf.
-	var sum [sumSize]byte
+	var sum [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(sum[:], 5)
-	tval := base.digestValue([]byte("testValue"))
+	tval := base.valueHash([]byte("testValue"))
 	tval = append(tval, sum[:]...)
-	_, leafData := base.th.digestSumLeaf(base.ph.Path([]byte("testKey2")), tval)
+	_, leafData := base.th.digestSumLeafNode(base.ph.Path([]byte("testKey2")), tval)
 	proof = &SparseMerkleProof{
 		SideNodes:             proof.SideNodes,
 		NonMembershipLeafData: leafData,
 	}
-	result, err = VerifySumProof(proof, root, []byte("testKey2"), defaultValue, 0, base)
+	result, err = VerifySumProof(proof, root, []byte("testKey2"), defaultEmptyValue, 0, base)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
 
@@ -134,20 +134,20 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	proof, err = smst.Prove([]byte("testKey3"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
-	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 0, base) // valid
+	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultEmptyValue, 0, base) // valid
 	require.NoError(t, err)
 	require.True(t, result)
 	result, err = VerifySumProof(proof, root, []byte("testKey3"), []byte("badValue"), 0, base) // wrong value
 	require.NoError(t, err)
 	require.False(t, result)
-	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultValue, 5, base) // wrong sum
+	result, err = VerifySumProof(proof, root, []byte("testKey3"), defaultEmptyValue, 5, base) // wrong sum
 	require.NoError(t, err)
 	require.False(t, result)
 	result, err = VerifySumProof(
-		randomiseSumProof(proof),
+		randomizeSumProof(proof),
 		root,
 		[]byte("testKey3"),
-		defaultValue,
+		defaultEmptyValue,
 		0,
 		base,
 	) // invalid proof
@@ -208,7 +208,7 @@ func TestSMST_Proof_ValidateBasic(t *testing.T) {
 
 	// Case: incorrect non-nil sibling data
 	proof, _ = smst.Prove([]byte("testKey1"))
-	proof.SiblingData = base.th.digest(proof.SiblingData)
+	proof.SiblingData = base.th.digestData(proof.SiblingData)
 	require.EqualError(
 		t,
 		proof.validateBasic(base),
@@ -301,7 +301,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	var result bool
 	var root []byte
 	var err error
-	var sumBz [sumSize]byte
+	var sumBz [sumSizeBytes]byte
 
 	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
@@ -397,7 +397,7 @@ func TestSMST_ProveClosest_Empty(t *testing.T) {
 		Path:         path[:],
 		FlippedBits:  []int{0},
 		Depth:        0,
-		ClosestPath:  placeholder(smst.Spec()),
+		ClosestPath:  smst.placeholder(),
 		ClosestProof: &SparseMerkleProof{},
 	})
 
@@ -427,7 +427,7 @@ func TestSMST_ProveClosest_OneNode(t *testing.T) {
 
 	closestPath := sha256.Sum256([]byte("foo"))
 	closestValueHash := []byte("bar")
-	var sumBz [sumSize]byte
+	var sumBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(sumBz[:], 5)
 	closestValueHash = append(closestValueHash, sumBz[:]...)
 	require.Equal(t, proof, &SparseMerkleClosestProof{

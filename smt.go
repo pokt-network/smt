@@ -7,59 +7,18 @@ import (
 	"github.com/pokt-network/smt/kvstore"
 )
 
-var (
-	_ trieNode         = (*innerNode)(nil)
-	_ trieNode         = (*leafNode)(nil)
-	_ SparseMerkleTrie = (*SMT)(nil)
-)
-
-type trieNode interface {
-	// when committing a node to disk, skip if already persisted
-	Persisted() bool
-	CachedDigest() []byte
-}
-
-// A branch within the trie
-type innerNode struct {
-	// Both child nodes are always non-nil
-	leftChild, rightChild trieNode
-	persisted             bool
-	digest                []byte
-}
-
-// Stores data and full path
-type leafNode struct {
-	path      []byte
-	valueHash []byte
-	persisted bool
-	digest    []byte
-}
-
-// A compressed chain of singly-linked inner nodes
-type extensionNode struct {
-	path []byte
-	// Offsets into path slice of bounds defining actual path segment.
-	// Note: assumes path is <=256 bits
-	pathBounds [2]byte
-	// Child is always an inner node, or lazy.
-	child     trieNode
-	persisted bool
-	digest    []byte
-}
-
-// Represents an uncached, persisted node
-type lazyNode struct {
-	digest []byte
-}
+// Ensure the `SMT` struct implements the `SparseMerkleTrie` interface
+var _ SparseMerkleTrie = (*SMT)(nil)
 
 // SMT is a Sparse Merkle Trie object that implements the SparseMerkleTrie interface
 type SMT struct {
 	TrieSpec
+	// Backing key-value store for the node
 	nodes kvstore.MapStore
 	// Last persisted root hash
-	savedRoot []byte
-	// Current state of trie
-	trie trieNode
+	rootHash []byte
+	// The current view of the SMT
+	root trieNode
 	// Lists of per-operation orphan sets
 	orphans []orphanNodes
 }
@@ -72,10 +31,10 @@ type orphanNodes = [][]byte
 func NewSparseMerkleTrie(
 	nodes kvstore.MapStore,
 	hasher hash.Hash,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMT {
 	smt := SMT{
-		TrieSpec: NewTrieSpec(hasher, false),
+		TrieSpec: newTrieSpec(hasher, false),
 		nodes:    nodes,
 	}
 	for _, option := range options {
@@ -90,75 +49,96 @@ func ImportSparseMerkleTrie(
 	nodes kvstore.MapStore,
 	hasher hash.Hash,
 	root []byte,
-	options ...Option,
+	options ...TrieSpecOption,
 ) *SMT {
 	smt := NewSparseMerkleTrie(nodes, hasher, options...)
-	smt.trie = &lazyNode{root}
-	smt.savedRoot = root
+	smt.root = &lazyNode{root}
+	smt.rootHash = root
 	return smt
 }
 
-// Get returns the digest of the value stored at the given key
+// Root returns the root hash of the trie
+func (smt *SMT) Root() MerkleRoot {
+	return smt.digest(smt.root)
+}
+
+// Get returns the hash (i.e. digest) of the leaf value stored at the given key
 func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
+	// The leaf node whose value will be returned
 	var leaf *leafNode
 	var err error
-	for node, depth := &smt.trie, 0; ; depth++ {
-		*node, err = smt.resolveLazy(*node)
+
+	// Loop throughout the entire trie to find the corresponding leaf for the
+	// given key.
+	for currNode, depth := &smt.root, 0; ; depth++ {
+		*currNode, err = smt.resolveLazy(*currNode)
 		if err != nil {
 			return nil, err
 		}
-		if *node == nil {
+		if *currNode == nil {
 			break
 		}
-		if n, ok := (*node).(*leafNode); ok {
+		if n, ok := (*currNode).(*leafNode); ok {
 			if bytes.Equal(path, n.path) {
 				leaf = n
 			}
 			break
 		}
-		if ext, ok := (*node).(*extensionNode); ok {
-			if _, match := ext.match(path, depth); !match {
+		if extNode, ok := (*currNode).(*extensionNode); ok {
+			if _, fullMatch := extNode.boundsMatch(path, depth); !fullMatch {
 				break
 			}
-			depth += ext.length()
-			node = &ext.child
-			*node, err = smt.resolveLazy(*node)
+			depth += extNode.length()
+			currNode = &extNode.child
+			*currNode, err = smt.resolveLazy(*currNode)
 			if err != nil {
 				return nil, err
 			}
 		}
-		inner := (*node).(*innerNode)
-		if getPathBit(path, depth) == left {
-			node = &inner.leftChild
+		inner := (*currNode).(*innerNode)
+		if getPathBit(path, depth) == leftChildBit {
+			currNode = &inner.leftChild
 		} else {
-			node = &inner.rightChild
+			currNode = &inner.rightChild
 		}
 	}
 	if leaf == nil {
-		return defaultValue, nil
+		return defaultEmptyValue, nil
 	}
 	return leaf.valueHash, nil
 }
 
-// Update sets the value for the given key, to the digest of the provided value
-func (smt *SMT) Update(key []byte, value []byte) error {
+// Update inserts the `value` for the given `key` into the SMT
+func (smt *SMT) Update(key, value []byte) error {
+	// Convert the key into a path by computing its digest
 	path := smt.ph.Path(key)
-	valueHash := smt.digestValue(value)
+
+	// Convert the value into a hash by computing its digest
+	valueHash := smt.valueHash(value)
+
+	// Update the trie with the new key-value pair
 	var orphans orphanNodes
-	trie, err := smt.update(smt.trie, 0, path, valueHash, &orphans)
+
+	// Compute the new root by inserting (path, valueHash) starting from the
+	// root of the tree in order to find the correct position of the new leaf.
+	newRoot, err := smt.update(smt.root, 0, path, valueHash, &orphans)
 	if err != nil {
 		return err
 	}
-	smt.trie = trie
+	smt.root = newRoot
 	if len(orphans) > 0 {
 		smt.orphans = append(smt.orphans, orphans)
 	}
 	return nil
 }
 
+// Internal helper to the `Update` method
 func (smt *SMT) update(
-	node trieNode, depth int, path, value []byte, orphans *orphanNodes,
+	node trieNode,
+	depth int,
+	path, value []byte,
+	orphans *orphanNodes,
 ) (trieNode, error) {
 	node, err := smt.resolveLazy(node)
 	if err != nil {
@@ -171,14 +151,16 @@ func (smt *SMT) update(
 		return newLeaf, nil
 	}
 	if leaf, ok := node.(*leafNode); ok {
-		prefixlen := countCommonPrefixBits(path, leaf.path, depth)
-		if prefixlen == smt.depth() { // replace leaf if paths are equal
+		prefixLen := countCommonPrefixBits(path, leaf.path, depth)
+		// replace leaf if paths are equal
+		if prefixLen == smt.depth() {
 			smt.addOrphan(orphans, node)
 			return newLeaf, nil
 		}
-		// We insert an "extension" representing multiple single-branch inner nodes
+		// Create a new innerNode where a previous leafNode was, branching
+		// based on the path bit at the current depth in the path.
 		var newInner *innerNode
-		if getPathBit(path, prefixlen) == left {
+		if getPathBit(path, prefixLen) == leftChildBit {
 			newInner = &innerNode{
 				leftChild:  newLeaf,
 				rightChild: leaf,
@@ -189,9 +171,11 @@ func (smt *SMT) update(
 				rightChild: newLeaf,
 			}
 		}
-		// Determine if we need to insert an extension or a branch
+		// Determine if we need to insert the new innerNode as the child
+		// of an extensionNode or a insert a the new innerNode in place of
+		// a pre-existing leafNode with a common prefix.
 		last := &node
-		if depth < prefixlen {
+		if depth < prefixLen {
 			// note: this keeps path slice alive - GC inefficiency?
 			if depth > 0xff {
 				panic("invalid depth")
@@ -200,7 +184,7 @@ func (smt *SMT) update(
 				child: newInner,
 				path:  path,
 				pathBounds: [2]byte{
-					byte(depth), byte(prefixlen),
+					byte(depth), byte(prefixLen),
 				},
 			}
 			// Dereference the last node to replace it with the extension node
@@ -214,20 +198,24 @@ func (smt *SMT) update(
 
 	smt.addOrphan(orphans, node)
 
-	if ext, ok := node.(*extensionNode); ok {
+	// If the node is an extensionNode split it by the path provided, we
+	// call update() on the results to place the newLeaf correctly.
+	if extNode, ok := node.(*extensionNode); ok {
 		var branch *trieNode
-		node, branch, depth = ext.split(path, depth)
+		node, branch, depth = extNode.split(path)
 		*branch, err = smt.update(*branch, depth, path, value, orphans)
 		if err != nil {
 			return node, err
 		}
-		ext.setDirty()
+		extNode.setDirty()
 		return node, nil
 	}
 
+	// The node must be an innerNode. Depending on which side of the branch inner
+	// node the newLeaf should be added to, call update() accordingly.
 	inner := node.(*innerNode)
 	var child *trieNode
-	if getPathBit(path, depth) == left {
+	if getPathBit(path, depth) == leftChildBit {
 		child = &inner.leftChild
 	} else {
 		child = &inner.rightChild
@@ -244,11 +232,11 @@ func (smt *SMT) update(
 func (smt *SMT) Delete(key []byte) error {
 	path := smt.ph.Path(key)
 	var orphans orphanNodes
-	trie, err := smt.delete(smt.trie, 0, path, &orphans)
+	trie, err := smt.delete(smt.root, 0, path, &orphans)
 	if err != nil {
 		return err
 	}
-	smt.trie = trie
+	smt.root = trie
 	if len(orphans) > 0 {
 		smt.orphans = append(smt.orphans, orphans)
 	}
@@ -275,30 +263,30 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 
 	smt.addOrphan(orphans, node)
 
-	if ext, ok := node.(*extensionNode); ok {
-		if _, match := ext.match(path, depth); !match {
+	if extNode, ok := node.(*extensionNode); ok {
+		if _, fullMatch := extNode.boundsMatch(path, depth); !fullMatch {
 			return node, ErrKeyNotFound
 		}
-		ext.child, err = smt.delete(ext.child, depth+ext.length(), path, orphans)
+		extNode.child, err = smt.delete(extNode.child, depth+extNode.length(), path, orphans)
 		if err != nil {
 			return node, err
 		}
-		switch n := ext.child.(type) {
+		switch n := extNode.child.(type) {
 		case *leafNode:
 			return n, nil
 		case *extensionNode:
 			// Join this extension with the child
 			smt.addOrphan(orphans, n)
-			n.pathBounds[0] = ext.pathBounds[0]
+			n.pathBounds[0] = extNode.pathBounds[0]
 			node = n
 		}
-		ext.setDirty()
+		extNode.setDirty()
 		return node, nil
 	}
 
 	inner := node.(*innerNode)
 	var child, sib *trieNode
-	if getPathBit(path, depth) == left {
+	if getPathBit(path, depth) == leftChildBit {
 		child, sib = &inner.leftChild, &inner.rightChild
 	} else {
 		child, sib = &inner.rightChild, &inner.leftChild
@@ -338,7 +326,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	var siblings []trieNode
 	var sib trieNode
 
-	node := smt.trie
+	node := smt.root
 	for depth := 0; depth < smt.depth(); depth++ {
 		node, err = smt.resolveLazy(node)
 		if err != nil {
@@ -350,24 +338,24 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if _, ok := node.(*leafNode); ok {
 			break
 		}
-		if ext, ok := node.(*extensionNode); ok {
-			length, match := ext.match(path, depth)
-			if match {
-				for i := 0; i < length; i++ {
+		if extNode, ok := node.(*extensionNode); ok {
+			matchLen, fullMatch := extNode.boundsMatch(path, depth)
+			if fullMatch {
+				for i := 0; i < matchLen; i++ {
 					siblings = append(siblings, nil)
 				}
-				depth += length
-				node = ext.child
+				depth += matchLen
+				node = extNode.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
 					return nil, err
 				}
 			} else {
-				node = ext.expand()
+				node = extNode.expand()
 			}
 		}
 		inner := node.(*innerNode)
-		if getPathBit(path, depth) == left {
+		if getPathBit(path, depth) == leftChildBit {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -383,7 +371,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if !bytes.Equal(leaf.path, path) {
 			// This is a non-membership proof that involves showing a different leaf.
 			// Add the leaf data to the proof.
-			leafData = encodeLeaf(leaf.path, leaf.valueHash)
+			leafData = encodeLeafNode(leaf.path, leaf.valueHash)
 		}
 	}
 	// Hash siblings from bottom up.
@@ -391,7 +379,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	for i := range siblings {
 		var sideNode []byte
 		sibling := siblings[len(siblings)-i-1]
-		sideNode = hashNode(smt.Spec(), sibling)
+		sideNode = smt.digest(sibling)
 		sideNodes = append(sideNodes, sideNode)
 	}
 
@@ -404,7 +392,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if err != nil {
 			return nil, err
 		}
-		proof.SiblingData = serialize(smt.Spec(), sib)
+		proof.SiblingData = smt.encode(sib)
 	}
 	return proof, nil
 }
@@ -425,7 +413,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 	err error, // the error value encountered
 ) {
 	// Ensure the path provided is the correct length for the path hasher.
-	if len(path) != smt.Spec().PathHasherSize() {
+	if len(path) != smt.Spec().ph.PathSize() {
 		return nil, ErrInvalidClosestPath
 	}
 
@@ -443,7 +431,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 		FlippedBits: make([]int, 0),
 	}
 
-	node := smt.trie
+	node := smt.root
 	depth := 0
 	// continuously traverse the trie until we hit a leaf node
 	for depth < smt.depth() {
@@ -483,21 +471,21 @@ func (smt *SMT) ProveClosest(path []byte) (
 			proof.Depth = depth
 			break
 		}
-		if ext, ok := node.(*extensionNode); ok {
-			length, match := ext.match(workingPath, depth)
+		if extNode, ok := node.(*extensionNode); ok {
+			matchLen, fullMatch := extNode.boundsMatch(workingPath, depth)
 			// workingPath from depth to end of extension node's path bounds
 			// is a perfect match
-			if !match {
-				node = ext.expand()
+			if !fullMatch {
+				node = extNode.expand()
 			} else {
 				// extension nodes represent a singly linked list of inner nodes
 				// add nil siblings to represent the empty neighbours
-				for i := 0; i < length; i++ {
+				for i := 0; i < matchLen; i++ {
 					siblings = append(siblings, nil)
 				}
-				depth += length
-				depthDelta += length
-				node = ext.child
+				depth += matchLen
+				depthDelta += matchLen
+				node = extNode.child
 				node, err = smt.resolveLazy(node)
 				if err != nil {
 					return nil, err
@@ -509,7 +497,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			proof.Depth = depth
 			break
 		}
-		if getPathBit(workingPath, depth) == left {
+		if getPathBit(workingPath, depth) == leftChildBit {
 			node, sib = inner.leftChild, inner.rightChild
 		} else {
 			node, sib = inner.rightChild, inner.leftChild
@@ -521,7 +509,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 
 	// Retrieve the closest path and value hash if found
 	if node == nil { // trie was empty
-		proof.ClosestPath, proof.ClosestValueHash = placeholder(smt.Spec()), nil
+		proof.ClosestPath, proof.ClosestValueHash = smt.placeholder(), nil
 		proof.ClosestProof = &SparseMerkleProof{}
 		return proof, nil
 	}
@@ -536,7 +524,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 	for i := range siblings {
 		var sideNode []byte
 		sibling := siblings[len(siblings)-i-1]
-		sideNode = hashNode(smt.Spec(), sibling)
+		sideNode = smt.digest(sibling)
 		sideNodes = append(sideNodes, sideNode)
 	}
 	proof.ClosestProof = &SparseMerkleProof{
@@ -547,107 +535,122 @@ func (smt *SMT) ProveClosest(path []byte) (
 		if err != nil {
 			return nil, err
 		}
-		proof.ClosestProof.SiblingData = serialize(smt.Spec(), sib)
+		proof.ClosestProof.SiblingData = smt.encode(sib)
 	}
 
 	return proof, nil
 }
 
-//nolint:unused
-func (smt *SMT) recursiveLoad(hash []byte) (trieNode, error) {
-	return smt.resolve(hash, smt.recursiveLoad)
-}
-
-// resolves a stub into a cached node
+// resolveLazy resolves a lazy note into a cached node depending on the tree type
 func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	stub, ok := node.(*lazyNode)
 	if !ok {
 		return node, nil
 	}
-	resolver := func(hash []byte) (trieNode, error) {
-		return &lazyNode{hash}, nil
+	if smt.sumTrie {
+		return smt.resolveSumNode(stub.digest)
 	}
-	ret, err := resolve(smt, stub.digest, resolver)
-	if err != nil {
-		return node, err
-	}
-	return ret, nil
+	return smt.resolveNode(stub.digest)
 }
 
-func (smt *SMT) resolve(hash []byte, resolver func([]byte) (trieNode, error),
-) (ret trieNode, err error) {
-	if bytes.Equal(smt.th.placeholder(), hash) {
-		return
+// resolveNode returns a trieNode (inner, leaf, or extension) based on what they
+// keyHash points to.
+func (smt *SMT) resolveNode(digest []byte) (trieNode, error) {
+	// Check if the keyHash is the empty zero value of an empty subtree
+	if bytes.Equal(smt.placeholder(), digest) {
+		return nil, nil
 	}
-	data, err := smt.nodes.Get(hash)
-	if err != nil {
-		return
-	}
-	if isLeaf(data) {
-		leaf := leafNode{persisted: true, digest: hash}
-		leaf.path, leaf.valueHash = parseLeaf(data, smt.ph)
-		return &leaf, nil
-	}
-	if isExtension(data) {
-		ext := extensionNode{persisted: true, digest: hash}
-		pathBounds, path, childHash := parseExtension(data, smt.ph)
-		ext.path = path
-		copy(ext.pathBounds[:], pathBounds)
-		ext.child, err = resolver(childHash)
-		if err != nil {
-			return
-		}
-		return &ext, nil
-	}
-	leftHash, rightHash := smt.th.parseNode(data)
-	inner := innerNode{persisted: true, digest: hash}
-	inner.leftChild, err = resolver(leftHash)
-	if err != nil {
-		return
-	}
-	inner.rightChild, err = resolver(rightHash)
-	if err != nil {
-		return
-	}
-	return &inner, nil
-}
 
-func (smt *SMT) resolveSum(hash []byte, resolver func([]byte) (trieNode, error),
-) (ret trieNode, err error) {
-	if bytes.Equal(placeholder(smt.Spec()), hash) {
-		return
-	}
-	data, err := smt.nodes.Get(hash)
+	// Retrieve the encoded noe data
+	data, err := smt.nodes.Get(digest)
 	if err != nil {
 		return nil, err
 	}
-	if isLeaf(data) {
-		leaf := leafNode{persisted: true, digest: hash}
-		leaf.path, leaf.valueHash = parseLeaf(data, smt.ph)
-		return &leaf, nil
+
+	return smt.parseTrieNode(data, digest)
+}
+
+// parseTrieNode returns a trieNode (inner, leaf, or extension) based on the
+// first byte of the data.
+func (smt *SMT) parseTrieNode(data, digest []byte) (trieNode, error) {
+	if isLeafNode(data) {
+		path, valueHash := smt.parseLeafNode(data)
+		return &leafNode{
+			path:      path,
+			valueHash: valueHash,
+			persisted: true,
+			digest:    digest,
+		}, nil
+	} else if isExtNode(data) {
+		pathBounds, path, childData := smt.parseExtNode(data)
+		return &extensionNode{
+			path:       path,
+			pathBounds: [2]byte(pathBounds),
+			child:      &lazyNode{childData},
+			persisted:  true,
+			digest:     digest,
+		}, nil
+	} else if isInnerNode(data) {
+		leftData, rightData := smt.th.parseInnerNode(data)
+		return &innerNode{
+			leftChild:  &lazyNode{leftData},
+			rightChild: &lazyNode{rightData},
+			persisted:  true,
+			digest:     digest,
+		}, nil
+	} else {
+		panic("invalid node type")
 	}
-	if isExtension(data) {
-		ext := extensionNode{persisted: true, digest: hash}
-		pathBounds, path, childHash, _ := parseSumExtension(data, smt.ph)
-		ext.path = path
-		copy(ext.pathBounds[:], pathBounds)
-		ext.child, err = resolver(childHash)
-		if err != nil {
-			return
-		}
-		return &ext, nil
+}
+
+// resolveNode returns a trieNode (inner, leaf, or extension) based on what they
+// keyHash points to.
+func (smt *SMT) resolveSumNode(digest []byte) (trieNode, error) {
+	// Check if the keyHash is the empty zero value of an empty subtree
+	if bytes.Equal(smt.placeholder(), digest) {
+		return nil, nil
 	}
-	leftHash, rightHash := smt.th.parseSumNode(data)
-	inner := innerNode{persisted: true, digest: hash}
-	inner.leftChild, err = resolver(leftHash)
+
+	// Retrieve the encoded noe data
+	data, err := smt.nodes.Get(digest)
 	if err != nil {
-		return
+		return nil, err
 	}
-	inner.rightChild, err = resolver(rightHash)
-	if err != nil {
-		return
+
+	return smt.parseSumTrieNode(data, digest)
+}
+
+// parseTrieNode returns a trieNode (inner, leaf, or extension) based on the
+// first byte of the data.
+func (smt *SMT) parseSumTrieNode(data, digest []byte) (trieNode, error) {
+	if isLeafNode(data) {
+		path, valueHash := smt.parseLeafNode(data)
+		return &leafNode{
+			path:      path,
+			valueHash: valueHash,
+			persisted: true,
+			digest:    digest,
+		}, nil
+	} else if isExtNode(data) {
+		pathBounds, path, childData, _ := smt.parseSumExtNode(data)
+		return &extensionNode{
+			path:       path,
+			pathBounds: [2]byte(pathBounds),
+			child:      &lazyNode{childData},
+			persisted:  true,
+			digest:     digest,
+		}, nil
+	} else if isInnerNode(data) {
+		leftData, rightData, _ := smt.th.parseSumInnerNode(data)
+		return &innerNode{
+			leftChild:  &lazyNode{leftData},
+			rightChild: &lazyNode{rightData},
+			persisted:  true,
+			digest:     digest,
+		}, nil
+	} else {
+		panic("invalid node type")
 	}
-	return &inner, nil
 }
 
 // Commit persists all dirty nodes in the trie, deletes all orphaned
@@ -662,10 +665,10 @@ func (smt *SMT) Commit() (err error) {
 		}
 	}
 	smt.orphans = nil
-	if err = smt.commit(smt.trie); err != nil {
+	if err = smt.commit(smt.root); err != nil {
 		return
 	}
-	smt.savedRoot = smt.Root()
+	smt.rootHash = smt.Root()
 	return
 }
 
@@ -692,139 +695,12 @@ func (smt *SMT) commit(node trieNode) error {
 	default:
 		return nil
 	}
-	preimage := serialize(smt.Spec(), node)
-	return smt.nodes.Set(hashNode(smt.Spec(), node), preimage)
-}
-
-// Root returns the root hash of the trie
-func (smt *SMT) Root() MerkleRoot {
-	return hashNode(smt.Spec(), smt.trie)
+	preimage := smt.encode(node)
+	return smt.nodes.Set(smt.digest(node), preimage)
 }
 
 func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {
 	if node.Persisted() {
 		*orphans = append(*orphans, node.CachedDigest())
 	}
-}
-
-func (node *leafNode) Persisted() bool      { return node.persisted }
-func (node *innerNode) Persisted() bool     { return node.persisted }
-func (node *lazyNode) Persisted() bool      { return true }
-func (node *extensionNode) Persisted() bool { return node.persisted }
-
-func (node *leafNode) CachedDigest() []byte      { return node.digest }
-func (node *innerNode) CachedDigest() []byte     { return node.digest }
-func (node *lazyNode) CachedDigest() []byte      { return node.digest }
-func (node *extensionNode) CachedDigest() []byte { return node.digest }
-
-func (inner *innerNode) setDirty() {
-	inner.persisted = false
-	inner.digest = nil
-}
-
-func (ext *extensionNode) length() int { return int(ext.pathBounds[1] - ext.pathBounds[0]) }
-
-func (ext *extensionNode) setDirty() {
-	ext.persisted = false
-	ext.digest = nil
-}
-
-// Returns length of matching prefix, and whether it's a full match
-func (ext *extensionNode) match(path []byte, depth int) (int, bool) {
-	if depth != ext.pathStart() {
-		panic("depth != path_begin")
-	}
-	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if getPathBit(ext.path, i) != getPathBit(path, i) {
-			return i - ext.pathStart(), false
-		}
-	}
-	return ext.length(), true
-}
-
-//nolint:unused
-func (ext *extensionNode) commonPrefix(path []byte) int {
-	count := 0
-	for i := ext.pathStart(); i < ext.pathEnd(); i++ {
-		if getPathBit(ext.path, i) != getPathBit(path, i) {
-			break
-		}
-		count++
-	}
-	return count
-}
-
-func (ext *extensionNode) pathStart() int { return int(ext.pathBounds[0]) }
-func (ext *extensionNode) pathEnd() int   { return int(ext.pathBounds[1]) }
-
-// Splits the node in-place; returns replacement node, child node at the split, and split depth
-func (ext *extensionNode) split(path []byte, depth int) (trieNode, *trieNode, int) {
-	if depth != ext.pathStart() {
-		panic("depth != path_begin")
-	}
-	index := ext.pathStart()
-	var myBit, branchBit int
-	for ; index < ext.pathEnd(); index++ {
-		myBit = getPathBit(ext.path, index)
-		branchBit = getPathBit(path, index)
-		if myBit != branchBit {
-			break
-		}
-	}
-	if index == ext.pathEnd() {
-		return ext, &ext.child, index
-	}
-
-	child := ext.child
-	var branch innerNode
-	var head trieNode
-	var tail *trieNode
-	if myBit == left {
-		tail = &branch.leftChild
-	} else {
-		tail = &branch.rightChild
-	}
-
-	// Split at first bit: chain starts with new node
-	if index == ext.pathStart() {
-		head = &branch
-		ext.pathBounds[0]++ // Shrink the extension from front
-		if ext.length() == 0 {
-			*tail = child
-		} else {
-			*tail = ext
-		}
-	} else {
-		// Split inside: chain ends at index
-		head = ext
-		ext.child = &branch
-		if index == ext.pathEnd()-1 {
-			*tail = child
-		} else {
-			*tail = &extensionNode{
-				path:       ext.path,
-				pathBounds: [2]byte{byte(index + 1), ext.pathBounds[1]},
-				child:      child,
-			}
-		}
-		ext.pathBounds[1] = byte(index)
-	}
-	var b trieNode = &branch
-	return head, &b, index
-}
-
-// expand returns the inner node that represents the start of the singly
-// linked list that this extension node represents
-func (ext *extensionNode) expand() trieNode {
-	last := ext.child
-	for i := ext.pathEnd() - 1; i >= ext.pathStart(); i-- {
-		var next innerNode
-		if getPathBit(ext.path, i) == left {
-			next.leftChild = last
-		} else {
-			next.rightChild = last
-		}
-		last = &next
-	}
-	return last
 }
