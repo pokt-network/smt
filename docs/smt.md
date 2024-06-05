@@ -209,7 +209,7 @@ Paths are **only** stored in two types of nodes: `Leaf` nodes and `Extension` no
 
 - `Leaf` nodes contain:
   - The full path which it represent
-  - The value stored at that path
+  - The (hashed) value stored at that path
 - `Extension` nodes contain:
   - not only the path they represent but also the path
     bounds (ie. the start and end of the path they cover).
