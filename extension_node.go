@@ -8,7 +8,9 @@ var _ trieNode = (*extensionNode)(nil)
 // Extension nodes are used to captures a series of inner nodes that only
 // have one child in a succinct `pathBounds` for optimization purposes.
 //
-// Assumption: the path is <=256 bits
+// TODO_TECHDEBT(@Olshansk): Does this assumption still hold?
+//
+//	Assumption: the path is <=256 bits
 type extensionNode struct {
 	// The path (starting at the root) to this extension node.
 	path []byte
