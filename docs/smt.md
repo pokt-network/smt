@@ -212,7 +212,7 @@ Paths are **only** stored in two types of nodes: `Leaf` nodes and `Extension` no
   - The (hashed) value stored at that path
 - `Extension` nodes contain:
   - not only the path they represent but also the path
-    bounds (ie. the start and end of the path they cover).
+    bounds (ie. the start and end of the path that they cover).
 
 Inner nodes do **not** contain a path, as they represent a branch in the trie
 and not a path. As such their children, _if they are extension nodes or leaf
