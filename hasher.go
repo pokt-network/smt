@@ -60,7 +60,7 @@ func NewTrieHasher(hasher hash.Hash) *trieHasher {
 }
 
 // newNilPathHasher returns a new nil path hasher with the given hash size.
-// It is not exported  the validation logic for the ClosestProof automatically handles this.
+// It is not exported as the validation logic for the ClosestProof automatically handles this case.
 func newNilPathHasher(hasherSize int) PathHasher {
 	return &nilPathHasher{hashSize: hasherSize}
 }
