@@ -111,7 +111,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 
 // Update inserts the `value` for the given `key` into the SMT
 func (smt *SMT) Update(key, value []byte) error {
-	// Expand the key into a path by computing its digest
+	// Convert the key into a path by computing its digest
 	path := smt.ph.Path(key)
 
 	// Convert the value into a hash by computing its digest
@@ -119,7 +119,9 @@ func (smt *SMT) Update(key, value []byte) error {
 
 	// Update the trie with the new key-value pair
 	var orphans orphanNodes
-	// Compute the new root by inserting (path, valueHash) starting
+
+	// Compute the new root by inserting (path, valueHash) starting from the
+	// root of the tree in order to find the correct position of the new leaf.
 	newRoot, err := smt.update(smt.root, 0, path, valueHash, &orphans)
 	if err != nil {
 		return err
@@ -155,7 +157,8 @@ func (smt *SMT) update(
 			smt.addOrphan(orphans, node)
 			return newLeaf, nil
 		}
-		// We insert an "extension" representing multiple single-branch inner nodes
+		// Create a new innerNode where a previous leafNode was, branching
+		// based on the path bit at the current depth in the path.
 		var newInner *innerNode
 		if getPathBit(path, prefixLen) == leftChildBit {
 			newInner = &innerNode{
@@ -168,7 +171,9 @@ func (smt *SMT) update(
 				rightChild: newLeaf,
 			}
 		}
-		// Determine if we need to insert an extension or a branch
+		// Determine if we need to insert the new innerNode as the child
+		// of an extensionNode or a insert a the new innerNode in place of
+		// a pre-existing leafNode with a common prefix.
 		last := &node
 		if depth < prefixLen {
 			// note: this keeps path slice alive - GC inefficiency?
@@ -193,6 +198,8 @@ func (smt *SMT) update(
 
 	smt.addOrphan(orphans, node)
 
+	// If the node is an extensionNode split it by the path provided, we
+	// call update() on the results to place the newLeaf correctly.
 	if extNode, ok := node.(*extensionNode); ok {
 		var branch *trieNode
 		node, branch, depth = extNode.split(path)
@@ -204,6 +211,8 @@ func (smt *SMT) update(
 		return node, nil
 	}
 
+	// The node must be an innerNode. Depending on which side of the branch inner
+	// node the newLeaf should be added to, call update() accordingly.
 	inner := node.(*innerNode)
 	var child *trieNode
 	if getPathBit(path, depth) == leftChildBit {

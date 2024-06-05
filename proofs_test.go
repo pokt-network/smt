@@ -177,9 +177,9 @@ func randomizeProof(proof *SparseMerkleProof) *SparseMerkleProof {
 func randomizeSumProof(proof *SparseMerkleProof) *SparseMerkleProof {
 	sideNodes := make([][]byte, len(proof.SideNodes))
 	for i := range sideNodes {
-		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumSizeBits)
+		sideNodes[i] = make([]byte, len(proof.SideNodes[i])-sumSizeBytes)
 		rand.Read(sideNodes[i]) // nolint: errcheck
-		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumSizeBits:]...)
+		sideNodes[i] = append(sideNodes[i], proof.SideNodes[i][len(proof.SideNodes[i])-sumSizeBytes:]...)
 	}
 	return &SparseMerkleProof{
 		SideNodes:             sideNodes,

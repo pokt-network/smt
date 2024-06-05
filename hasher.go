@@ -125,7 +125,7 @@ func (th *trieHasher) digestInnerNode(leftData, rightData []byte) (digest, value
 func (th *trieHasher) digestSumLeafNode(path, data []byte) (digest, value []byte) {
 	value = encodeLeafNode(path, data)
 	digest = th.digestData(value)
-	digest = append(digest, value[len(value)-sumSizeBits:]...)
+	digest = append(digest, value[len(value)-sumSizeBytes:]...)
 	return
 }
 
@@ -133,7 +133,7 @@ func (th *trieHasher) digestSumLeafNode(path, data []byte) (digest, value []byte
 func (th *trieHasher) digestSumInnerNode(leftData, rightData []byte) (digest, value []byte) {
 	value = encodeSumInnerNode(leftData, rightData)
 	digest = th.digestData(value)
-	digest = append(digest, value[len(value)-sumSizeBits:]...)
+	digest = append(digest, value[len(value)-sumSizeBytes:]...)
 	return
 }
 
@@ -147,14 +147,14 @@ func (th *trieHasher) parseInnerNode(data []byte) (leftData, rightData []byte) {
 // parseSumInnerNode returns the encoded left and right nodes as well as the sum of the current node
 func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte, sum uint64) {
 	// Extract the sum from the encoded node data
-	var sumBz [sumSizeBits]byte
-	copy(sumBz[:], data[len(data)-sumSizeBits:])
+	var sumBz [sumSizeBytes]byte
+	copy(sumBz[:], data[len(data)-sumSizeBytes:])
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 
 	// Extract the left and right children
-	dataWithoutSum := data[:len(data)-sumSizeBits]
-	leftData = dataWithoutSum[len(innerNodePrefix) : len(innerNodePrefix)+th.hashSize()+sumSizeBits]
-	rightData = dataWithoutSum[len(innerNodePrefix)+th.hashSize()+sumSizeBits:]
+	dataWithoutSum := data[:len(data)-sumSizeBytes]
+	leftData = dataWithoutSum[len(innerNodePrefix) : len(innerNodePrefix)+th.hashSize()+sumSizeBytes]
+	rightData = dataWithoutSum[len(innerNodePrefix)+th.hashSize()+sumSizeBytes:]
 	return
 }
 

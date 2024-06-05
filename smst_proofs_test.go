@@ -117,7 +117,7 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	require.False(t, result)
 
 	// Try proving a default value for a non-default leaf.
-	var sum [sumSizeBits]byte
+	var sum [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(sum[:], 5)
 	tval := base.valueHash([]byte("testValue"))
 	tval = append(tval, sum[:]...)
@@ -301,7 +301,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	var result bool
 	var root []byte
 	var err error
-	var sumBz [sumSizeBits]byte
+	var sumBz [sumSizeBytes]byte
 
 	smn = simplemap.NewSimpleMap()
 	require.NoError(t, err)
@@ -427,7 +427,7 @@ func TestSMST_ProveClosest_OneNode(t *testing.T) {
 
 	closestPath := sha256.Sum256([]byte("foo"))
 	closestValueHash := []byte("bar")
-	var sumBz [sumSizeBits]byte
+	var sumBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(sumBz[:], 5)
 	closestValueHash = append(closestValueHash, sumBz[:]...)
 	require.Equal(t, proof, &SparseMerkleClosestProof{

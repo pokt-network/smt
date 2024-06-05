@@ -16,7 +16,7 @@ type extensionNode struct {
 	// inner nodes that this single extension node replaces.
 	pathBounds [2]byte
 	// A child node from this extension node.
-	// It MUST be either an innerNode or a lazyNode.
+	// It will always be an innerNode, leafNode or lazyNode.
 	child trieNode
 	// Bool whether or not the node has been flushed to disk
 	persisted bool
@@ -72,8 +72,8 @@ func (extNode *extensionNode) boundsMatch(path []byte, depth int) (int, bool) {
 	return extNode.length(), true
 }
 
-// split splits the node in-place by returning a new node at the extension node,
-// a child node at the split and split depth.
+// split splits the node in-place by returning a new extensionNode and a child
+// node at the split and split depth.
 func (extNode *extensionNode) split(path []byte) (trieNode, *trieNode, int) {
 	// Start path to extNode.pathBounds until there is no match
 	var extNodeBit, pathBit int

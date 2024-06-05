@@ -41,7 +41,7 @@ func (spec *TrieSpec) placeholder() []byte {
 // hashSize returns the hash size depending on the trie type
 func (spec *TrieSpec) hashSize() int {
 	if spec.sumTrie {
-		return spec.th.hashSize() + sumSizeBits
+		return spec.th.hashSize() + sumSizeBytes
 	}
 	return spec.th.hashSize()
 }
@@ -106,7 +106,7 @@ func (spec *TrieSpec) hashSumSerialization(data []byte) []byte {
 		return spec.digestSumNode(&ext)
 	}
 	digest := spec.th.digestData(data)
-	digest = append(digest, data[len(data)-sumSizeBits:]...)
+	digest = append(digest, data[len(data)-sumSizeBytes:]...)
 	return digest
 }
 
@@ -210,7 +210,7 @@ func (spec *TrieSpec) digestSumNode(node trieNode) []byte {
 	if *cache == nil {
 		preImage := spec.encodeSumNode(node)
 		*cache = spec.th.digestData(preImage)
-		*cache = append(*cache, preImage[len(preImage)-sumSizeBits:]...)
+		*cache = append(*cache, preImage[len(preImage)-sumSizeBytes:]...)
 	}
 	return *cache
 }
@@ -247,8 +247,8 @@ func (spec *TrieSpec) parseSumLeafNode(data []byte) (path, value []byte, weight 
 	value = data[prefixLen+spec.ph.PathSize():]
 
 	// Extract the sum from the encoded node data
-	var weightBz [sumSizeBits]byte
-	copy(weightBz[:], value[len(value)-sumSizeBits:])
+	var weightBz [sumSizeBytes]byte
+	copy(weightBz[:], value[len(value)-sumSizeBytes:])
 	binary.BigEndian.PutUint64(weightBz[:], weight)
 
 	return
@@ -260,13 +260,13 @@ func (spec *TrieSpec) parseSumExtNode(data []byte) (pathBounds, path, childData 
 	checkPrefix(data, extNodePrefix)
 
 	// Extract the sum from the encoded node data
-	var sumBz [sumSizeBits]byte
-	copy(sumBz[:], data[len(data)-sumSizeBits:])
+	var sumBz [sumSizeBytes]byte
+	copy(sumBz[:], data[len(data)-sumSizeBytes:])
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 
 	// +2 represents the length of the pathBounds
 	pathBounds = data[prefixLen : prefixLen+2]
 	path = data[prefixLen+2 : prefixLen+2+spec.ph.PathSize()]
-	childData = data[prefixLen+2+spec.ph.PathSize() : len(data)-sumSizeBits]
+	childData = data[prefixLen+2+spec.ph.PathSize() : len(data)-sumSizeBytes]
 	return
 }

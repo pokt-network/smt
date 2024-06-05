@@ -81,9 +81,11 @@ func encodeExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byt
 // encodeSumInnerNode encodes an inner node for an smst given the data for both children
 func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
 	// Compute the sum of the current node
-	var sum [sumSizeBits]byte
+	var sum [sumSizeBytes]byte
 	leftSum := parseSum(leftData)
 	rightSum := parseSum(rightData)
+	// TODO_CONSIDERATION: ` I chose BigEndian for readability but most computers
+	// now are optimized for LittleEndian encoding could be a micro optimization one day.`
 	binary.BigEndian.PutUint64(sum[:], leftSum+rightSum)
 
 	// Prepare and return the encoded inner node data
@@ -95,8 +97,8 @@ func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
 // encodeSumExtensionNode encodes the data of a sum extension nodes
 func encodeSumExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
 	// Compute the sum of the current node
-	var sum [sumSizeBits]byte
-	copy(sum[:], childData[len(childData)-sumSizeBits:])
+	var sum [sumSizeBytes]byte
+	copy(sum[:], childData[len(childData)-sumSizeBytes:])
 
 	// Prepare and return the encoded inner node data
 	data = encodeExtensionNode(pathBounds, path, childData)
@@ -114,7 +116,7 @@ func checkPrefix(data, prefix []byte) {
 // parseSum parses the sum from the encoded node data
 func parseSum(data []byte) uint64 {
 	sum := uint64(0)
-	sumBz := data[len(data)-sumSizeBits:]
+	sumBz := data[len(data)-sumSizeBytes:]
 	if !bytes.Equal(sumBz, defaultEmptySum[:]) {
 		sum = binary.BigEndian.Uint64(sumBz)
 	}

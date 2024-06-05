@@ -206,7 +206,7 @@ func (proof *SparseMerkleClosestProof) GetValueHash(spec *TrieSpec) []byte {
 		return nil
 	}
 	if spec.sumTrie {
-		return proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSizeBits]
+		return proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSizeBytes]
 	}
 	return proof.ClosestValueHash
 }
@@ -324,7 +324,7 @@ func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TrieSp
 
 // VerifySumProof verifies a Merkle proof for a sum trie.
 func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
-	var sumBz [sumSizeBits]byte
+	var sumBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	valueHash := spec.valueHash(value)
 	valueHash = append(valueHash, sumBz[:]...)
@@ -363,10 +363,10 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	if proof.ClosestValueHash == nil {
 		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, nilSpec)
 	}
-	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSizeBits:]
+	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSizeBytes:]
 	sum := binary.BigEndian.Uint64(sumBz)
 
-	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSizeBits]
+	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSizeBytes]
 	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, nilSpec)
 }
 

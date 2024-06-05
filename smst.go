@@ -10,7 +10,7 @@ import (
 
 const (
 	// The number of bits used to represent the sum of a node
-	sumSizeBits = 8
+	sumSizeBytes = 8
 )
 
 var _ SparseMerkleSumTrie = (*SMST)(nil)
@@ -34,7 +34,7 @@ func NewSparseMerkleSumTrie(
 
 	// Initialize a non-sum SMT and modify it to have a nil value hasher.
 	// NB: We are using a nil value hasher because the SMST pre-hashes its paths.
-	//     This results result in double path hashing because the SMST is a wrapper
+	//     This results in double path hashing because the SMST is a wrapper
 	//     around the SMT. The reason the SMST uses its own path hashing logic is
 	//     to account for the additional sum in the encoding/decoding process.
 	//     Therefore, the underlying SMT underneath needs a nil path hasher, while
@@ -86,12 +86,12 @@ func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error)
 	}
 
 	// Retrieve the node weight
-	var weightBz [sumSizeBits]byte
-	copy(weightBz[:], valueDigest[len(valueDigest)-sumSizeBits:])
+	var weightBz [sumSizeBytes]byte
+	copy(weightBz[:], valueDigest[len(valueDigest)-sumSizeBytes:])
 	weight = binary.BigEndian.Uint64(weightBz[:])
 
 	// Remove the weight from the value digest
-	valueDigest = valueDigest[:len(valueDigest)-sumSizeBits]
+	valueDigest = valueDigest[:len(valueDigest)-sumSizeBytes]
 
 	// Return the value digest and weight
 	return valueDigest, weight, nil
@@ -106,7 +106,7 @@ func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error)
 // up to the total sum of the trie.
 func (smst *SMST) Update(key, value []byte, weight uint64) error {
 	// Convert the node weight to a byte slice
-	var weightBz [sumSizeBits]byte
+	var weightBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(weightBz[:], weight)
 
 	// Compute the digest of the value and append the weight to it
@@ -154,7 +154,7 @@ func (smst *SMST) Sum() uint64 {
 	if !smst.Spec().sumTrie {
 		panic("SMST: not a merkle sum trie")
 	}
-	var sumbz [sumSizeBits]byte
-	copy(sumbz[:], []byte(rootDigest)[len([]byte(rootDigest))-sumSizeBits:])
-	return binary.BigEndian.Uint64(sumbz[:])
+	var sumBz [sumSizeBytes]byte
+	copy(sumBz[:], []byte(rootDigest)[len([]byte(rootDigest))-sumSizeBytes:])
+	return binary.BigEndian.Uint64(sumBz[:])
 }
