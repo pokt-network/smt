@@ -51,7 +51,7 @@ The SMT has 4 node types that are used to construct the trie:
 - [Extension Nodes](#extension-nodes)
 - [Leaf Nodes](#leaf-nodes)
 - [Lazy Nodes](#lazy-nodes)
-  - Prefix of the actual node type is stored in the persisted digest as
+  - Prefix of the actual node type is stored in the persisted preimage as
     determined above
   - `digest = persistedDigest`
 
