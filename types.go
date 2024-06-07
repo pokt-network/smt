@@ -18,6 +18,8 @@ var (
 	defaultEmptyValue []byte
 	// defaultEmptySum is the default sum value for a leaf node
 	defaultEmptySum [sumSizeBytes]byte
+	// defaultEmptyCount is the default count value for a leaf node
+	defaultEmptyCount [countSizeBytes]byte
 )
 
 // MerkleRoot is a type alias for a byte slice returned from the Root method

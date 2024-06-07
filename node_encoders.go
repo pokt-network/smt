@@ -87,6 +87,8 @@ func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
 	// TODO_CONSIDERATION: ` I chose BigEndian for readability but most computers
 	// now are optimized for LittleEndian encoding could be a micro optimization one day.`
 	binary.BigEndian.PutUint64(sum[:], leftSum+rightSum)
+	var count [countSizeBytes]byte
+	binary.BigEndian.PutUint64(count[:], parseCount(leftData)+parseCount(rightData))
 
 	// Prepare and return the encoded inner node data
 	data = encodeInnerNode(leftData, rightData)
@@ -100,9 +102,14 @@ func encodeSumExtensionNode(pathBounds [2]byte, path, childData []byte) (data []
 	var sum [sumSizeBytes]byte
 	copy(sum[:], childData[len(childData)-sumSizeBytes:])
 
+	// Compute the count of the current node
+	var count [countSizeBytes]byte
+	binary.BigEndian.PutUint64(count[:], parseCount(childData))
+
 	// Prepare and return the encoded inner node data
 	data = encodeExtensionNode(pathBounds, path, childData)
 	data = append(data, sum[:]...)
+	data = append(data, count[:]...)
 	return
 }
 
@@ -121,4 +128,13 @@ func parseSum(data []byte) uint64 {
 		sum = binary.BigEndian.Uint64(sumBz)
 	}
 	return sum
+}
+
+func parseCount(data []byte) uint64 {
+	count := uint64(0)
+	countBz := data[len(data)-sumSizeBytes-countSizeBytes : len(data)-sumSizeBytes]
+	if !bytes.Equal(countBz, defaultEmptyCount[:]) {
+		count = binary.BigEndian.Uint64(countBz)
+	}
+	return count
 }

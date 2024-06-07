@@ -10,7 +10,8 @@ import (
 
 const (
 	// The number of bits used to represent the sum of a node
-	sumSizeBytes = 8
+	sumSizeBytes   = 8
+	countSizeBytes = 8
 )
 
 var _ SparseMerkleSumTrie = (*SMST)(nil)
@@ -85,13 +86,20 @@ func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error)
 		return defaultEmptyValue, 0, nil
 	}
 
+	// Check if it is an empty branch
+	if bytes.Equal(valueDigest, defaultEmptyValue) {
+		return defaultEmptyValue, 0, nil
+	}
+
 	// Retrieve the node weight
 	var weightBz [sumSizeBytes]byte
 	copy(weightBz[:], valueDigest[len(valueDigest)-sumSizeBytes:])
+	// countBz := valueDigest[len(valueDigest)-sumSizeBytes-countSizeBytes : len(valueDigest)-sumSizeBytes]
+	// count := binary.BigEndian.Uint64(countBz[:])
 	weight = binary.BigEndian.Uint64(weightBz[:])
 
 	// Remove the weight from the value digest
-	valueDigest = valueDigest[:len(valueDigest)-sumSizeBytes]
+	valueDigest = valueDigest[:len(valueDigest)-sumSizeBytes-countSizeBytes]
 
 	// Return the value digest and weight
 	return valueDigest, weight, nil
@@ -108,10 +116,13 @@ func (smst *SMST) Update(key, value []byte, weight uint64) error {
 	// Convert the node weight to a byte slice
 	var weightBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(weightBz[:], weight)
-
+	var countBz [countSizeBytes]byte
+	count := uint64(1)
+	binary.BigEndian.PutUint64(countBz[:], count)
 	// Compute the digest of the value and append the weight to it
 	valueDigest := smst.valueHash(value)
 	valueDigest = append(valueDigest, weightBz[:]...)
+	valueDigest = append(valueDigest, countBz[:]...)
 
 	// Return the result of the trie update
 	return smst.SMT.Update(key, valueDigest)
