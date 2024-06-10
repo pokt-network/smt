@@ -43,19 +43,28 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	// Add a key, generate and verify a Merkle proof.
 	err = smst.Update([]byte("testKey"), []byte("testValue"), 5)
 	require.NoError(t, err)
+
 	root = smst.Root()
 	proof, err = smst.Prove([]byte("testKey"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
+
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, 1, base) // valid
 	require.NoError(t, err)
 	require.True(t, result)
+
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, 2, base) // wrong count
+	require.NoError(t, err)
+	require.False(t, result)
+
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 5, 1, base) // wrong value
 	require.NoError(t, err)
 	require.False(t, result)
+
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 10, 1, base) // wrong sum
 	require.NoError(t, err)
 	require.False(t, result)
+
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, 1, base) // wrong value and sum
 	require.NoError(t, err)
 	require.False(t, result)
@@ -63,22 +72,32 @@ func TestSMST_Proof_Operations(t *testing.T) {
 	// Add a key, generate and verify both Merkle proofs.
 	err = smst.Update([]byte("testKey2"), []byte("testValue"), 5)
 	require.NoError(t, err)
+
 	root = smst.Root()
 	proof, err = smst.Prove([]byte("testKey"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, base)
+
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, 1, base) // valid
 	require.NoError(t, err)
 	require.True(t, result)
+
+	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 5, 2, base) // wrong count
+	require.NoError(t, err)
+	require.False(t, result)
+
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 5, 1, base) // wrong value
 	require.NoError(t, err)
 	require.False(t, result)
+
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("testValue"), 10, 1, base) // wrong sum
 	require.NoError(t, err)
 	require.False(t, result)
+
 	result, err = VerifySumProof(proof, root, []byte("testKey"), []byte("badValue"), 10, 1, base) // wrong value and sum
 	require.NoError(t, err)
 	require.False(t, result)
+
 	result, err = VerifySumProof(
 		randomizeSumProof(proof),
 		root,
