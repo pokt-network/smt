@@ -202,14 +202,15 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 
 // GetValueHash returns the value hash of the closest proof.
 func (proof *SparseMerkleClosestProof) GetValueHash(spec *TrieSpec) []byte {
-	if proof.ClosestValueHash == nil {
+	data := proof.ClosestValueHash
+	if data == nil {
 		return nil
 	}
 	if spec.sumTrie {
-		firstSumByteIdx, _ := GetFirstMetaByteIdx(proof.ClosestValueHash)
-		return proof.ClosestValueHash[:firstSumByteIdx]
+		firstSumByteIdx, _ := GetFirstMetaByteIdx(data)
+		return data[:firstSumByteIdx]
 	}
-	return proof.ClosestValueHash
+	return data
 }
 
 func (proof *SparseMerkleClosestProof) validateBasic(spec *TrieSpec) error {

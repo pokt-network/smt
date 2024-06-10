@@ -77,34 +77,39 @@ func (smst *SMST) Spec() *TrieSpec {
 	return &smst.TrieSpec
 }
 
-// Get retrieves the value digest for the given key and the digest of the value
-// along with its weight provided a leaf node exists.
+// Get retrieves the value digest for the given key, along with its weight and count
+// of non-empty leafs assuming the node exists.
 func (smst *SMST) Get(key []byte) (valueDigest []byte, weight, count uint64, err error) {
 	// Retrieve the value digest from the trie for the given key
-	valueDigest, err = smst.SMT.Get(key)
+	value, err := smst.SMT.Get(key)
 	if err != nil {
 		return nil, 0, 0, err
 	}
 
 	// Check if it ias an empty branch
-	if bytes.Equal(valueDigest, defaultEmptyValue) {
+	if bytes.Equal(value, defaultEmptyValue) {
 		return defaultEmptyValue, 0, 0, nil
 	}
 
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(valueDigest)
+	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(value)
 
 	// Extract the value digest only
-	valueDigest = valueDigest[:firstSumByteIdx]
+	valueDigest = value[:firstSumByteIdx]
 
 	// Retrieve the node weight
 	var weightBz [sumSizeBytes]byte
-	copy(weightBz[:], valueDigest[firstSumByteIdx:firstCountByteIdx])
+	copy(weightBz[:], value[firstSumByteIdx:firstCountByteIdx])
 	weight = binary.BigEndian.Uint64(weightBz[:])
 
 	// Retrieve the number of non-empty nodes in the sub trie
 	var countBz [countSizeBytes]byte
-	copy(countBz[:], valueDigest[firstCountByteIdx:])
+	copy(countBz[:], value[firstCountByteIdx:])
 	count = binary.BigEndian.Uint64(countBz[:])
+
+	// TODO_IN_THIS_PR: Consider not retuning count here because it should always be 1
+	if count != 1 {
+		panic("count for leaf node should always be 1")
+	}
 
 	// Return the value digest and weight
 	return valueDigest, weight, count, nil

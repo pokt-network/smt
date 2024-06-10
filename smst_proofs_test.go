@@ -202,7 +202,7 @@ func TestSMST_Proof_ValidateBasic(t *testing.T) {
 	// Case: unexpected side node size.
 	proof, _ = smst.Prove([]byte("testKey1"))
 	proof.SideNodes[0] = make([]byte, 1)
-	require.EqualError(t, proof.validateBasic(base), "invalid side node size: got 1 but want 40")
+	require.EqualError(t, proof.validateBasic(base), "invalid side node size: got 1 but want 48")
 	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, 1, base)
 	require.ErrorIs(t, err, ErrBadProof)
 	require.False(t, result)
@@ -215,7 +215,7 @@ func TestSMST_Proof_ValidateBasic(t *testing.T) {
 	require.EqualError(
 		t,
 		proof.validateBasic(base),
-		"invalid sibling data hash: got 437437455c0f5ca33597b9dd2a307bdfcc6833d3c272e101f30ed6358783fc247f0b9966865746c1 but want 1dc9a3da748c53b22c9e54dcafe9e872341babda9b3e50577f0b9966865746c10000000000000009",
+		"invalid sibling data hash: got 30ecfc36781633f6765088e69165733d7192483b4468ca53ef21794bb035f72f799a6026c448b3eacafa2b82ca1ff7f2 but want 3c54b08cc0074a44a12cb0ea0486d29d799a6026c448b3eacafa2b82ca1ff7f200000000000000090000000000000003",
 	)
 
 	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, 1, base)
@@ -341,7 +341,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	closestValueHash := []byte("testValue2")
 	binary.BigEndian.PutUint64(sumBz[:], 24)
 	closestValueHash = append(closestValueHash, sumBz[:]...)
-	binary.BigEndian.PutUint64(countBz[:], 10)
+	binary.BigEndian.PutUint64(countBz[:], 1)
 	closestValueHash = append(closestValueHash, countBz[:]...)
 	require.Equal(t, proof, &SparseMerkleClosestProof{
 		Path:             path[:],
@@ -369,6 +369,7 @@ func TestSMST_ProveClosest(t *testing.T) {
 	closestValueHash = []byte("testValue4")
 	binary.BigEndian.PutUint64(sumBz[:], 30)
 	closestValueHash = append(closestValueHash, sumBz[:]...)
+	closestValueHash = append(closestValueHash, countBz[:]...)
 	require.Equal(t, proof, &SparseMerkleClosestProof{
 		Path:             path2[:],
 		FlippedBits:      []int{3},

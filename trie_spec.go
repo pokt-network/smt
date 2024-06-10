@@ -33,6 +33,7 @@ func (spec *TrieSpec) placeholder() []byte {
 	if spec.sumTrie {
 		placeholder := spec.th.placeholder()
 		placeholder = append(placeholder, defaultEmptySum[:]...)
+		placeholder = append(placeholder, defaultEmptyCount[:]...)
 		return placeholder
 	}
 	return spec.th.placeholder()

@@ -54,7 +54,6 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	if valueHash == nil {
 		return nil, 0, nil
 	}
-
 	// Extract the value from the preimages KVStore
 	value, err := smst.preimages.Get(valueHash)
 	if err != nil {

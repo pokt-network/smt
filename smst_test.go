@@ -443,16 +443,20 @@ func TestSMST_TotalSum(t *testing.T) {
 	root1 := smst.Root()
 	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(root1)
 
-	// Retrieve and compare the sum
+	// Get the sum from the root hash
 	sumBz := root1[firstSumByteIdx:firstCountByteIdx]
 	rootSum := binary.BigEndian.Uint64(sumBz)
+
+	// Get the count from the root hash
+	countBz := root1[firstCountByteIdx:]
+	rootCount := binary.BigEndian.Uint64(countBz)
+
+	// Retrieve and compare the sum
 	sum := smst.Sum()
 	require.Equal(t, sum, uint64(15))
 	require.Equal(t, sum, rootSum)
 
 	// Retrieve and compare the count
-	countBz := root1[firstCountByteIdx:]
-	rootCount := binary.BigEndian.Uint64(countBz)
 	count := smst.Count()
 	require.Equal(t, count, uint64(3))
 	require.Equal(t, count, rootCount)
