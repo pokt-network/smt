@@ -1,5 +1,7 @@
 # Sparse Merkle Sum Trie (smst)
 
+TODO_IN_THIS_PR(@Olshansk): Document the new `count` addition.
+
 <!-- toc -->
 
 - [Sparse Merkle Sum Trie (smst)](#sparse-merkle-sum-trie-smst)
