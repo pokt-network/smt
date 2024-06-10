@@ -36,13 +36,13 @@ func ExampleSMST() {
 	root := trie.Root()
 
 	// Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-	valid_true1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 10, trie.Spec())
+	valid_true1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 10, 1, trie.Spec())
 	// Verify the Merkle proof for "baz"="zab" where "baz" has a sum of 7
-	valid_true2, _ := smt.VerifySumProof(proof2, root, []byte("baz"), []byte("zab"), 7, trie.Spec())
+	valid_true2, _ := smt.VerifySumProof(proof2, root, []byte("baz"), []byte("zab"), 7, 1, trie.Spec())
 	// Verify the Merkle proof for "bin"="nib" where "bin" has a sum of 3
-	valid_true3, _ := smt.VerifySumProof(proof3, root, []byte("bin"), []byte("nib"), 3, trie.Spec())
+	valid_true3, _ := smt.VerifySumProof(proof3, root, []byte("bin"), []byte("nib"), 3, 1, trie.Spec())
 	// Fail to verify the Merkle proof for "foo"="oof" where "foo" has a sum of 11
-	valid_false1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 11, trie.Spec())
+	valid_false1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 11, 1, trie.Spec())
 	fmt.Println(valid_true1, valid_true2, valid_true3, valid_false1)
 	// Output: true true true false
 }

@@ -632,7 +632,7 @@ func (smt *SMT) parseSumTrieNode(data, digest []byte) (trieNode, error) {
 			digest:    digest,
 		}, nil
 	} else if isExtNode(data) {
-		pathBounds, path, childData, _ := smt.parseSumExtNode(data)
+		pathBounds, path, childData, _, _ := smt.parseSumExtNode(data)
 		return &extensionNode{
 			path:       path,
 			pathBounds: [2]byte(pathBounds),
@@ -641,7 +641,7 @@ func (smt *SMT) parseSumTrieNode(data, digest []byte) (trieNode, error) {
 			digest:     digest,
 		}, nil
 	} else if isInnerNode(data) {
-		leftData, rightData, _ := smt.th.parseSumInnerNode(data)
+		leftData, rightData, _, _ := smt.th.parseSumInnerNode(data)
 		return &innerNode{
 			leftChild:  &lazyNode{leftData},
 			rightChild: &lazyNode{rightData},

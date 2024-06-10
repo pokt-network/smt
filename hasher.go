@@ -125,15 +125,23 @@ func (th *trieHasher) digestInnerNode(leftData, rightData []byte) (digest, value
 func (th *trieHasher) digestSumLeafNode(path, data []byte) (digest, value []byte) {
 	value = encodeLeafNode(path, data)
 	digest = th.digestData(value)
-	digest = append(digest, value[len(value)-sumSizeBytes:]...)
+
+	firstSumByteIdx, _ := GetFirstMetaByteIdx(value)
+	digest = append(digest, value[:firstSumByteIdx]...)
+
 	return
 }
 
 // digestSumInnerNode returns the encoded inner node data as well as its hash (i.e. digest)
 func (th *trieHasher) digestSumInnerNode(leftData, rightData []byte) (digest, value []byte) {
 	value = encodeSumInnerNode(leftData, rightData)
+
+	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(value)
+
 	digest = th.digestData(value)
-	digest = append(digest, value[len(value)-sumSizeBytes:]...)
+	digest = append(digest, value[firstSumByteIdx:firstCountByteIdx]...)
+	digest = append(digest, value[firstCountByteIdx:]...)
+
 	return
 }
 
@@ -144,17 +152,27 @@ func (th *trieHasher) parseInnerNode(data []byte) (leftData, rightData []byte) {
 	return
 }
 
-// parseSumInnerNode returns the encoded left and right nodes as well as the sum of the current node
-func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte, sum uint64) {
+// parseSumInnerNode returns the encoded left & right nodes, as well as the sum
+// and non-empty leafs in the sub-trie of the current node.
+func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte, sum, count uint64) {
+	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(data)
+
 	// Extract the sum from the encoded node data
 	var sumBz [sumSizeBytes]byte
-	copy(sumBz[:], data[len(data)-sumSizeBytes:])
+	copy(sumBz[:], data[firstSumByteIdx:firstCountByteIdx])
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 
+	// Extract the count from the encoded node data
+	var countBz [countSizeBytes]byte
+	copy(countBz[:], data[firstCountByteIdx:])
+	binary.BigEndian.PutUint64(countBz[:], count)
+
 	// Extract the left and right children
-	dataWithoutSum := data[:len(data)-sumSizeBytes]
-	leftData = dataWithoutSum[len(innerNodePrefix) : len(innerNodePrefix)+th.hashSize()+sumSizeBytes]
-	rightData = dataWithoutSum[len(innerNodePrefix)+th.hashSize()+sumSizeBytes:]
+	leftIdxLastByte := len(innerNodePrefix) + th.hashSize() + sumSizeBytes + countSizeBytes
+	dataValue := data[:firstSumByteIdx]
+	leftData = dataValue[len(innerNodePrefix):leftIdxLastByte]
+	rightData = dataValue[leftIdxLastByte:]
+
 	return
 }
 

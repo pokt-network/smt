@@ -441,20 +441,27 @@ func TestSMST_TotalSum(t *testing.T) {
 
 	// Check root hash contains the correct hex sum
 	root1 := smst.Root()
-	sumBz := root1[len(root1)-sumSizeBytes:]
-	rootSum := binary.BigEndian.Uint64(sumBz)
-	require.NoError(t, err)
+	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(root1)
 
-	// Calculate total sum of the trie
+	// Retrieve and compare the sum
+	sumBz := root1[firstSumByteIdx:firstCountByteIdx]
+	rootSum := binary.BigEndian.Uint64(sumBz)
 	sum := smst.Sum()
 	require.Equal(t, sum, uint64(15))
 	require.Equal(t, sum, rootSum)
+
+	// Retrieve and compare the count
+	countBz := root1[firstCountByteIdx:]
+	rootCount := binary.BigEndian.Uint64(countBz)
+	count := smst.Count()
+	require.Equal(t, count, uint64(3))
+	require.Equal(t, count, rootCount)
 
 	// Prove inclusion
 	proof, err := smst.Prove([]byte("key1"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, smst.Spec())
-	valid, err := VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, smst.Spec())
+	valid, err := VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, 1, smst.Spec())
 	require.NoError(t, err)
 	require.True(t, valid)
 
@@ -494,37 +501,43 @@ func TestSMST_Retrieval(t *testing.T) {
 	err = smst.Update([]byte("key3"), []byte("value3"), 5)
 	require.NoError(t, err)
 
-	value, sum, err := smst.Get([]byte("key1"))
+	value, sum, count, err := smst.Get([]byte("key1"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value1"), value)
 	require.Equal(t, uint64(5), sum)
+	require.Equal(t, uint64(1), count)
 
-	value, sum, err = smst.Get([]byte("key2"))
+	value, sum, count, err = smst.Get([]byte("key2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value2"), value)
 	require.Equal(t, uint64(5), sum)
+	require.Equal(t, uint64(1), count)
 
-	value, sum, err = smst.Get([]byte("key3"))
+	value, sum, count, err = smst.Get([]byte("key3"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value3"), value)
 	require.Equal(t, uint64(5), sum)
+	require.Equal(t, uint64(1), count)
 
 	require.NoError(t, smst.Commit())
 
-	value, sum, err = smst.Get([]byte("key1"))
+	value, sum, count, err = smst.Get([]byte("key1"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value1"), value)
 	require.Equal(t, uint64(5), sum)
+	require.Equal(t, uint64(1), count)
 
-	value, sum, err = smst.Get([]byte("key2"))
+	value, sum, count, err = smst.Get([]byte("key2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value2"), value)
 	require.Equal(t, uint64(5), sum)
+	require.Equal(t, uint64(1), count)
 
-	value, sum, err = smst.Get([]byte("key3"))
+	value, sum, count, err = smst.Get([]byte("key3"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value3"), value)
 	require.Equal(t, uint64(5), sum)
+	require.Equal(t, uint64(1), count)
 
 	root := smst.Root()
 	sum = smst.Sum()
@@ -532,20 +545,22 @@ func TestSMST_Retrieval(t *testing.T) {
 
 	lazy := ImportSparseMerkleSumTrie(snm, sha256.New(), root, WithValueHasher(nil))
 
-	value, sum, err = lazy.Get([]byte("key1"))
+	value, sum, count, err = lazy.Get([]byte("key1"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value1"), value)
 	require.Equal(t, uint64(5), sum)
+	require.Equal(t, uint64(1), count)
 
-	value, sum, err = lazy.Get([]byte("key2"))
+	value, sum, count, err = lazy.Get([]byte("key2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value2"), value)
 	require.Equal(t, uint64(5), sum)
 
-	value, sum, err = lazy.Get([]byte("key3"))
+	value, sum, count, err = lazy.Get([]byte("key3"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value3"), value)
 	require.Equal(t, uint64(5), sum)
+	require.Equal(t, uint64(1), count)
 
 	sum = lazy.Sum()
 	require.Equal(t, sum, uint64(15))

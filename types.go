@@ -18,6 +18,8 @@ var (
 	defaultEmptyValue []byte
 	// defaultEmptySum is the default sum value for a leaf node
 	defaultEmptySum [sumSizeBytes]byte
+	// defaultEmptyCount is the default count value for a leaf node
+	defaultEmptyCount [countSizeBytes]byte
 )
 
 // MerkleRoot is a type alias for a byte slice returned from the Root method
@@ -64,7 +66,7 @@ type SparseMerkleSumTrie interface {
 	// Delete deletes a value from the SMST. Raises an error if the key is not present.
 	Delete(key []byte) error
 	// Get descends the trie to access a value. Returns nil if key is not present.
-	Get(key []byte) ([]byte, uint64, error)
+	Get(key []byte) (data []byte, sum uint64, count uint64, err error)
 	// Root computes the Merkle root digest.
 	Root() MerkleRoot
 	// Sum computes the total sum of the Merkle trie
