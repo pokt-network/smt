@@ -71,6 +71,8 @@ type SparseMerkleSumTrie interface {
 	Root() MerkleRoot
 	// Sum computes the total sum of the Merkle trie
 	Sum() uint64
+	// Count returns the total number of non-empty leaves in the trie
+	Count() uint64
 	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
 	// ProveClosest computes a Merkle proof of inclusion for a key in the trie
