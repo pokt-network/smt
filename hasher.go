@@ -153,7 +153,7 @@ func (th *trieHasher) parseInnerNode(data []byte) (leftData, rightData []byte) {
 }
 
 // parseSumInnerNode returns the encoded left & right nodes, as well as the sum
-// and non-empty leafs in the sub-trie of the current node.
+// and non-empty leaf count in the sub-trie of the current node.
 func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte, sum, count uint64) {
 	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(data)
 
