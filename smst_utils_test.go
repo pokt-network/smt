@@ -47,7 +47,7 @@ func (smst *SMSTWithStorage) Delete(key []byte) error {
 // GetValueSum returns the value and sum of the key stored in the trie, by
 // looking up the value hash in the preimages KVStore and extracting the sum
 func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
-	valueHash, sum, _, err := smst.Get(key)
+	valueHash, sum, err := smst.Get(key)
 	if err != nil {
 		return nil, 0, err
 	}

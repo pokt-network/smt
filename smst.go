@@ -77,18 +77,17 @@ func (smst *SMST) Spec() *TrieSpec {
 	return &smst.TrieSpec
 }
 
-// Get retrieves the value digest for the given key, along with its weight and count
-// of non-empty leafs assuming the node exists.
-func (smst *SMST) Get(key []byte) (valueDigest []byte, weight, count uint64, err error) {
+// Get retrieves the value digest for the given key, along with its weight assuming the node exists.
+func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error) {
 	// Retrieve the value digest from the trie for the given key
 	value, err := smst.SMT.Get(key)
 	if err != nil {
-		return nil, 0, 0, err
+		return nil, 0, err
 	}
 
 	// Check if it has an empty branch
 	if bytes.Equal(value, defaultEmptyValue) {
-		return defaultEmptyValue, 0, 0, nil
+		return defaultEmptyValue, 0, nil
 	}
 
 	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(value)
@@ -104,7 +103,7 @@ func (smst *SMST) Get(key []byte) (valueDigest []byte, weight, count uint64, err
 	// Retrieve the number of non-empty nodes in the sub trie
 	var countBz [countSizeBytes]byte
 	copy(countBz[:], value[firstCountByteIdx:])
-	count = binary.BigEndian.Uint64(countBz[:])
+	count := binary.BigEndian.Uint64(countBz[:])
 
 	// TODO_IN_THIS_PR: Consider not retuning count here because it should always be 1
 	if count != 1 {
@@ -112,7 +111,7 @@ func (smst *SMST) Get(key []byte) (valueDigest []byte, weight, count uint64, err
 	}
 
 	// Return the value digest and weight
-	return valueDigest, weight, count, nil
+	return valueDigest, weight, nil
 }
 
 // Update inserts the value and weight into the trie for the given key.

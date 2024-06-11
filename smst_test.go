@@ -551,43 +551,37 @@ func TestSMST_Retrieval(t *testing.T) {
 	err = smst.Update([]byte("key3"), []byte("value3"), 5)
 	require.NoError(t, err)
 
-	value, sum, count, err := smst.Get([]byte("key1"))
+	value, sum, err := smst.Get([]byte("key1"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value1"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
-	value, sum, count, err = smst.Get([]byte("key2"))
+	value, sum, err = smst.Get([]byte("key2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value2"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
-	value, sum, count, err = smst.Get([]byte("key3"))
+	value, sum, err = smst.Get([]byte("key3"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value3"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
 	require.NoError(t, smst.Commit())
 
-	value, sum, count, err = smst.Get([]byte("key1"))
+	value, sum, err = smst.Get([]byte("key1"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value1"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
-	value, sum, count, err = smst.Get([]byte("key2"))
+	value, sum, err = smst.Get([]byte("key2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value2"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
-	value, sum, count, err = smst.Get([]byte("key3"))
+	value, sum, err = smst.Get([]byte("key3"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value3"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
 	root := smst.Root()
 	sum = smst.Sum()
@@ -595,27 +589,24 @@ func TestSMST_Retrieval(t *testing.T) {
 
 	lazy := ImportSparseMerkleSumTrie(snm, sha256.New(), root, WithValueHasher(nil))
 
-	value, sum, count, err = lazy.Get([]byte("key1"))
+	value, sum, err = lazy.Get([]byte("key1"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value1"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
-	value, sum, count, err = lazy.Get([]byte("key2"))
+	value, sum, err = lazy.Get([]byte("key2"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value2"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
-	value, sum, count, err = lazy.Get([]byte("key3"))
+	value, sum, err = lazy.Get([]byte("key3"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("value3"), value)
 	require.Equal(t, uint64(5), sum)
-	require.Equal(t, uint64(1), count)
 
 	sum = lazy.Sum()
 	require.Equal(t, sum, uint64(15))
 
-	count = lazy.Count()
+	count := lazy.Count()
 	require.Equal(t, count, uint64(3))
 }
