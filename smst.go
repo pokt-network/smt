@@ -86,7 +86,7 @@ func (smst *SMST) Get(key []byte) (valueDigest []byte, weight, count uint64, err
 		return nil, 0, 0, err
 	}
 
-	// Check if it ias an empty branch
+	// Check if it has an empty branch
 	if bytes.Equal(value, defaultEmptyValue) {
 		return defaultEmptyValue, 0, 0, nil
 	}
