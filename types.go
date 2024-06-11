@@ -66,7 +66,7 @@ type SparseMerkleSumTrie interface {
 	// Delete deletes a value from the SMST. Raises an error if the key is not present.
 	Delete(key []byte) error
 	// Get descends the trie to access a value. Returns nil if key is not present.
-	Get(key []byte) (data []byte, sum uint64, count uint64, err error)
+	Get(key []byte) (data []byte, sum, count uint64, err error)
 	// Root computes the Merkle root digest.
 	Root() MerkleRoot
 	// Sum computes the total sum of the Merkle trie
