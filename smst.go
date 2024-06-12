@@ -77,7 +77,8 @@ func (smst *SMST) Spec() *TrieSpec {
 	return &smst.TrieSpec
 }
 
-// Get retrieves the value digest for the given key, along with its weight assuming the node exists.
+// Get retrieves the value digest for the given key, along with its weight assuming
+// the node exists, otherwise the default placeholder values are returned 
 func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error) {
 	// Retrieve the value digest from the trie for the given key
 	value, err := smst.SMT.Get(key)
