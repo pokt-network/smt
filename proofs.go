@@ -373,7 +373,7 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 		return VerifyProof(proof.ClosestProof, root, proof.ClosestPath, proof.ClosestValueHash, nilSpec)
 	}
 
-	// TODO_IN_THIS_PR: What is this case?
+	// TODO_DOCUMENT: Understand and explain (in comments) why this case is needed
 	if proof.ClosestValueHash == nil {
 		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, 0, nilSpec)
 	}

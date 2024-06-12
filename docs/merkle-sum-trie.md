@@ -1,6 +1,6 @@
 # Sparse Merkle Sum Trie (smst)
 
-TODO_IN_THIS_PR(@Olshansk): Document the new `count` addition.
+TODO_IN_THIS_PR(#47): Document the new `count` addition.
 
 <!-- toc -->
 
