@@ -13,9 +13,14 @@ const (
 	sumSizeBytes = 8
 
 	// The number of bytes used to track the count of non-empty nodes in the trie.
+	//
 	// TODO_TECHDEBT: Since we are using sha256, we could theoretically have
 	// 2^256 leaves. This would require 32 bytes, and would not fit in a uint64.
 	// For now, we are assuming that we will not have more than 2^64 leaves.
+	//
+	// This need for this variable could be removed, but is kept around to enable
+	// a simpler transition to little endian encoding if/when necessary.
+	// Ref: https://github.com/pokt-network/smt/pull/46#discussion_r1636975124
 	countSizeBytes = 8
 )
 
@@ -78,7 +83,7 @@ func (smst *SMST) Spec() *TrieSpec {
 }
 
 // Get retrieves the value digest for the given key, along with its weight assuming
-// the node exists, otherwise the default placeholder values are returned 
+// the node exists, otherwise the default placeholder values are returned
 func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error) {
 	// Retrieve the value digest from the trie for the given key
 	value, err := smst.SMT.Get(key)
