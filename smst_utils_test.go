@@ -65,7 +65,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 		return nil, 0, err
 	}
 
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(value)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(value)
 
 	// Extract the sum from the value
 	var sumBz [sumSizeBytes]byte

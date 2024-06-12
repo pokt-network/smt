@@ -124,7 +124,7 @@ func (th *trieHasher) digestInnerNode(leftData, rightData []byte) (digest, value
 // digestSumNode returns the encoded leaf node data as well as its hash (i.e. digest)
 func (th *trieHasher) digestSumLeafNode(path, data []byte) (digest, value []byte) {
 	value = encodeLeafNode(path, data)
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(value)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(value)
 
 	digest = th.digestData(value)
 	digest = append(digest, value[firstSumByteIdx:firstCountByteIdx]...)
@@ -136,7 +136,7 @@ func (th *trieHasher) digestSumLeafNode(path, data []byte) (digest, value []byte
 // digestSumInnerNode returns the encoded inner node data as well as its hash (i.e. digest)
 func (th *trieHasher) digestSumInnerNode(leftData, rightData []byte) (digest, value []byte) {
 	value = encodeSumInnerNode(leftData, rightData)
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(value)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(value)
 
 	digest = th.digestData(value)
 	digest = append(digest, value[firstSumByteIdx:firstCountByteIdx]...)
@@ -155,7 +155,7 @@ func (th *trieHasher) parseInnerNode(data []byte) (leftData, rightData []byte) {
 // parseSumInnerNode returns the encoded left & right nodes, as well as the sum
 // and non-empty leaf count in the sub-trie of the current node.
 func (th *trieHasher) parseSumInnerNode(data []byte) (leftData, rightData []byte, sum, count uint64) {
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(data)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
 
 	// Extract the sum from the encoded node data
 	var sumBz [sumSizeBytes]byte

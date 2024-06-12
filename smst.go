@@ -91,7 +91,7 @@ func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error)
 		return defaultEmptyValue, 0, nil
 	}
 
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(value)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(value)
 
 	// Extract the value digest only
 	valueDigest = value[:firstSumByteIdx]
@@ -179,7 +179,7 @@ func (smst *SMST) Sum() uint64 {
 		panic("SMST: not a merkle sum trie")
 	}
 
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(rootDigest)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(rootDigest)
 
 	var sumBz [sumSizeBytes]byte
 	copy(sumBz[:], rootDigest[firstSumByteIdx:firstCountByteIdx])
@@ -194,17 +194,17 @@ func (smst *SMST) Count() uint64 {
 		panic("SMST: not a merkle sum trie")
 	}
 
-	_, firstCountByteIdx := GetFirstMetaByteIdx(rootDigest)
+	_, firstCountByteIdx := getFirstMetaByteIdx(rootDigest)
 
 	var countBz [countSizeBytes]byte
 	copy(countBz[:], rootDigest[firstCountByteIdx:])
 	return binary.BigEndian.Uint64(countBz[:])
 }
 
-// GetFirstByte returns the index of the first count byte and the first sum byte
+// getFirstMetaByteIdx returns the index of the first count byte and the first sum byte
 // in the data slice provided. This is useful metadata when parsing the data
 // of any node in the trie.
-func GetFirstMetaByteIdx(data []byte) (firstSumByteIdx, firstCountByteIdx int) {
+func getFirstMetaByteIdx(data []byte) (firstSumByteIdx, firstCountByteIdx int) {
 	firstCountByteIdx = len(data) - countSizeBytes
 	firstSumByteIdx = firstCountByteIdx - sumSizeBytes
 	return

@@ -100,7 +100,7 @@ func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
 
 // encodeSumExtensionNode encodes the data of a sum extension node
 func encodeSumExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(childData)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(childData)
 
 	// Compute the sumBz of the current node
 	var sumBz [sumSizeBytes]byte
@@ -126,7 +126,7 @@ func checkPrefix(data, prefix []byte) {
 
 // parseSum parses the sum from the encoded node data
 func parseSumAndCount(data []byte) (sum, count uint64) {
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(data)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
 
 	sumBz := data[firstSumByteIdx:firstCountByteIdx]
 	if !bytes.Equal(sumBz, defaultEmptySum[:]) {

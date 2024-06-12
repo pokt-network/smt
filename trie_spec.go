@@ -107,7 +107,7 @@ func (spec *TrieSpec) hashSumSerialization(data []byte) []byte {
 		return spec.digestSumNode(&ext)
 	}
 
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(data)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
 
 	digest := spec.th.digestData(data)
 	digest = append(digest, data[firstSumByteIdx:firstCountByteIdx]...)
@@ -214,7 +214,7 @@ func (spec *TrieSpec) digestSumNode(node trieNode) []byte {
 	}
 	if *cache == nil {
 		preImage := spec.encodeSumNode(node)
-		firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(preImage)
+		firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(preImage)
 		*cache = spec.th.digestData(preImage)
 		*cache = append(*cache, preImage[firstSumByteIdx:firstCountByteIdx]...)
 		*cache = append(*cache, preImage[firstCountByteIdx:]...)
@@ -253,7 +253,7 @@ func (spec *TrieSpec) parseSumLeafNode(data []byte) (path, value []byte, weight,
 	path = data[prefixLen : prefixLen+spec.ph.PathSize()]
 	value = data[prefixLen+spec.ph.PathSize():]
 
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(data)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
 
 	// Extract the sum from the encoded node data
 	var weightBz [sumSizeBytes]byte
@@ -276,7 +276,7 @@ func (spec *TrieSpec) parseSumExtNode(data []byte) (pathBounds, path, childData 
 	// panics if not an extension node
 	checkPrefix(data, extNodePrefix)
 
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(data)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
 
 	// Extract the sum from the encoded node data
 	var sumBz [sumSizeBytes]byte

@@ -207,7 +207,7 @@ func (proof *SparseMerkleClosestProof) GetValueHash(spec *TrieSpec) []byte {
 		return nil
 	}
 	if spec.sumTrie {
-		firstSumByteIdx, _ := GetFirstMetaByteIdx(data)
+		firstSumByteIdx, _ := getFirstMetaByteIdx(data)
 		return data[:firstSumByteIdx]
 	}
 	return data
@@ -379,7 +379,7 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	}
 
 	data := proof.ClosestValueHash
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(data)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
 
 	sumBz := data[firstSumByteIdx:firstCountByteIdx]
 	sum := binary.BigEndian.Uint64(sumBz)

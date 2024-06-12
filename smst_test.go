@@ -475,7 +475,7 @@ func TestSMST_TotalSum(t *testing.T) {
 
 	// Check root hash contains the correct hex sum
 	root1 := smst.Root()
-	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(root1)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(root1)
 
 	// Get the sum from the root hash
 	sumBz := root1[firstSumByteIdx:firstCountByteIdx]
