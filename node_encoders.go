@@ -98,7 +98,7 @@ func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
 	return
 }
 
-// encodeSumExtensionNode encodes the data of a sum extension nodes
+// encodeSumExtensionNode encodes the data of a sum extension node
 func encodeSumExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
 	firstSumByteIdx, firstCountByteIdx := GetFirstMetaByteIdx(childData)
 
