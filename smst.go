@@ -16,7 +16,7 @@ const (
 	//
 	// TODO_TECHDEBT: Since we are using sha256, we could theoretically have
 	// 2^256 leaves. This would require 32 bytes, and would not fit in a uint64.
-	// For now, we are assuming that we will not have more than 2^64 leaves.
+	// For now, we are assuming that we will not have more than 2^64 - 1 leaves.
 	//
 	// This need for this variable could be removed, but is kept around to enable
 	// a simpler transition to little endian encoding if/when necessary.
