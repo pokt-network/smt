@@ -402,13 +402,13 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 	// sha256(foo)      = 0010... common prefix len 2; 5 nodes (3 inner + 2 leaf)
 	cases := []testCase{
 		{
-			desc:              "insert a single key (testKey2) which DOES HAVE a similar prefix to the already present key (testKey)",
+			desc:              "insert a single key (testKey2) which DOES NOT HAVE a similar prefix to the already present key (testKey)",
 			keys:              []string{"testKey2"},
 			expectedNodeCount: 3,
 			expectedLeafCount: 2,
 		},
 		{
-			desc:              "insert a single key (foo) which DOES NOT HAVE a similar prefix to the already present key (testKey)",
+			desc:              "insert a single key (foo) which DOES HAVE a similar prefix to the already present key (testKey)",
 			keys:              []string{"foo"},
 			expectedNodeCount: 4,
 			expectedLeafCount: 2,

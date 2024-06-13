@@ -111,7 +111,6 @@ func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error)
 	copy(countBz[:], value[firstCountByteIdx:])
 	count := binary.BigEndian.Uint64(countBz[:])
 
-	// TODO_IN_THIS_PR: Consider not retuning count here because it should always be 1
 	if count != 1 {
 		panic("count for leaf node should always be 1")
 	}
