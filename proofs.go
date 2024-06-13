@@ -202,13 +202,15 @@ func (proof *SparseMerkleClosestProof) Unmarshal(bz []byte) error {
 
 // GetValueHash returns the value hash of the closest proof.
 func (proof *SparseMerkleClosestProof) GetValueHash(spec *TrieSpec) []byte {
-	if proof.ClosestValueHash == nil {
+	data := proof.ClosestValueHash
+	if data == nil {
 		return nil
 	}
 	if spec.sumTrie {
-		return proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSizeBytes]
+		firstSumByteIdx, _ := getFirstMetaByteIdx(data)
+		return data[:firstSumByteIdx]
 	}
-	return proof.ClosestValueHash
+	return data
 }
 
 func (proof *SparseMerkleClosestProof) validateBasic(spec *TrieSpec) error {
@@ -323,22 +325,30 @@ func VerifyProof(proof *SparseMerkleProof, root, key, value []byte, spec *TrieSp
 }
 
 // VerifySumProof verifies a Merkle proof for a sum trie.
-func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum uint64, spec *TrieSpec) (bool, error) {
+func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum, count uint64, spec *TrieSpec) (bool, error) {
 	var sumBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
+
+	var countBz [countSizeBytes]byte
+	binary.BigEndian.PutUint64(countBz[:], count)
+
 	valueHash := spec.valueHash(value)
 	valueHash = append(valueHash, sumBz[:]...)
+	valueHash = append(valueHash, countBz[:]...)
 	if bytes.Equal(value, defaultEmptyValue) && sum == 0 {
 		valueHash = defaultEmptyValue
 	}
+
 	smtSpec := &TrieSpec{
 		th:      spec.th,
 		ph:      spec.ph,
 		vh:      spec.vh,
 		sumTrie: spec.sumTrie,
 	}
+
 	nvh := WithValueHasher(nil)
 	nvh(smtSpec)
+
 	return VerifyProof(proof, root, key, valueHash, smtSpec)
 }
 
@@ -348,26 +358,37 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	if err := proof.validateBasic(spec); err != nil {
 		return false, errors.Join(ErrBadProof, err)
 	}
+
 	// Create a new TrieSpec with a nil path hasher.
-	// Since the ClosestProof already contains a hashed path, double hashing it
-	// will invalidate the proof.
+	// Since the ClosestProof already contains a hashed path, double hashing it will invalidate the proof.
 	nilSpec := &TrieSpec{
 		th:      spec.th,
 		ph:      newNilPathHasher(spec.ph.PathSize()),
 		vh:      spec.vh,
 		sumTrie: spec.sumTrie,
 	}
+
+	// Verify the closest proof for a basic SMT
 	if !nilSpec.sumTrie {
 		return VerifyProof(proof.ClosestProof, root, proof.ClosestPath, proof.ClosestValueHash, nilSpec)
 	}
+
+	// TODO_DOCUMENT: Understand and explain (in comments) why this case is needed
 	if proof.ClosestValueHash == nil {
-		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, nilSpec)
+		return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, nil, 0, 0, nilSpec)
 	}
-	sumBz := proof.ClosestValueHash[len(proof.ClosestValueHash)-sumSizeBytes:]
+
+	data := proof.ClosestValueHash
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
+
+	sumBz := data[firstSumByteIdx:firstCountByteIdx]
 	sum := binary.BigEndian.Uint64(sumBz)
 
-	valueHash := proof.ClosestValueHash[:len(proof.ClosestValueHash)-sumSizeBytes]
-	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, nilSpec)
+	countBz := data[firstCountByteIdx:]
+	count := binary.BigEndian.Uint64(countBz)
+
+	valueHash := data[:firstSumByteIdx]
+	return VerifySumProof(proof.ClosestProof, root, proof.ClosestPath, valueHash, sum, count, nilSpec)
 }
 
 // verifyProofWithUpdates
@@ -445,14 +466,14 @@ func VerifyCompactSumProof(
 	proof *SparseCompactMerkleProof,
 	root []byte,
 	key, value []byte,
-	sum uint64,
+	sum, count uint64,
 	spec *TrieSpec,
 ) (bool, error) {
 	decompactedProof, err := DecompactProof(proof, spec)
 	if err != nil {
 		return false, errors.Join(ErrBadProof, err)
 	}
-	return VerifySumProof(decompactedProof, root, key, value, sum, spec)
+	return VerifySumProof(decompactedProof, root, key, value, sum, count, spec)
 }
 
 // VerifyCompactClosestProof is similar to VerifyClosestProof but for a compacted merkle proof

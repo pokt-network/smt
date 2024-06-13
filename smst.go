@@ -9,8 +9,19 @@ import (
 )
 
 const (
-	// The number of bits used to represent the sum of a node
+	// The number of bytes used to represent the sum of a node
 	sumSizeBytes = 8
+
+	// The number of bytes used to track the count of non-empty nodes in the trie.
+	//
+	// TODO_TECHDEBT: Since we are using sha256, we could theoretically have
+	// 2^256 leaves. This would require 32 bytes, and would not fit in a uint64.
+	// For now, we are assuming that we will not have more than 2^64 - 1 leaves.
+	//
+	// This need for this variable could be removed, but is kept around to enable
+	// a simpler transition to little endian encoding if/when necessary.
+	// Ref: https://github.com/pokt-network/smt/pull/46#discussion_r1636975124
+	countSizeBytes = 8
 )
 
 var _ SparseMerkleSumTrie = (*SMST)(nil)
@@ -71,27 +82,38 @@ func (smst *SMST) Spec() *TrieSpec {
 	return &smst.TrieSpec
 }
 
-// Get retrieves the value digest for the given key and the digest of the value
-// along with its weight provided a leaf node exists.
+// Get retrieves the value digest for the given key, along with its weight assuming
+// the node exists, otherwise the default placeholder values are returned
 func (smst *SMST) Get(key []byte) (valueDigest []byte, weight uint64, err error) {
 	// Retrieve the value digest from the trie for the given key
-	valueDigest, err = smst.SMT.Get(key)
+	value, err := smst.SMT.Get(key)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Check if it ias an empty branch
-	if bytes.Equal(valueDigest, defaultEmptyValue) {
+	// Check if it is an empty branch
+	if bytes.Equal(value, defaultEmptyValue) {
 		return defaultEmptyValue, 0, nil
 	}
 
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(value)
+
+	// Extract the value digest only
+	valueDigest = value[:firstSumByteIdx]
+
 	// Retrieve the node weight
 	var weightBz [sumSizeBytes]byte
-	copy(weightBz[:], valueDigest[len(valueDigest)-sumSizeBytes:])
+	copy(weightBz[:], value[firstSumByteIdx:firstCountByteIdx])
 	weight = binary.BigEndian.Uint64(weightBz[:])
 
-	// Remove the weight from the value digest
-	valueDigest = valueDigest[:len(valueDigest)-sumSizeBytes]
+	// Retrieve the number of non-empty nodes in the sub trie
+	var countBz [countSizeBytes]byte
+	copy(countBz[:], value[firstCountByteIdx:])
+	count := binary.BigEndian.Uint64(countBz[:])
+
+	if count != 1 {
+		panic("count for leaf node should always be 1")
+	}
 
 	// Return the value digest and weight
 	return valueDigest, weight, nil
@@ -109,9 +131,14 @@ func (smst *SMST) Update(key, value []byte, weight uint64) error {
 	var weightBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(weightBz[:], weight)
 
+	// Convert the node count (1 for a single leaf) to a byte slice
+	var countBz [countSizeBytes]byte
+	binary.BigEndian.PutUint64(countBz[:], 1)
+
 	// Compute the digest of the value and append the weight to it
 	valueDigest := smst.valueHash(value)
 	valueDigest = append(valueDigest, weightBz[:]...)
+	valueDigest = append(valueDigest, countBz[:]...)
 
 	// Return the result of the trie update
 	return smst.SMT.Update(key, valueDigest)
@@ -150,11 +177,39 @@ func (smst *SMST) Root() MerkleRoot {
 // Sum returns the sum of the entire trie stored in the root.
 // If the tree is not a sum tree, it will panic.
 func (smst *SMST) Sum() uint64 {
-	rootDigest := smst.Root()
+	rootDigest := []byte(smst.Root())
+
 	if !smst.Spec().sumTrie {
 		panic("SMST: not a merkle sum trie")
 	}
+
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(rootDigest)
+
 	var sumBz [sumSizeBytes]byte
-	copy(sumBz[:], []byte(rootDigest)[len([]byte(rootDigest))-sumSizeBytes:])
+	copy(sumBz[:], rootDigest[firstSumByteIdx:firstCountByteIdx])
 	return binary.BigEndian.Uint64(sumBz[:])
+}
+
+// Count returns the number of non-empty nodes in the entire trie stored in the root.
+func (smst *SMST) Count() uint64 {
+	rootDigest := []byte(smst.Root())
+
+	if !smst.Spec().sumTrie {
+		panic("SMST: not a merkle sum trie")
+	}
+
+	_, firstCountByteIdx := getFirstMetaByteIdx(rootDigest)
+
+	var countBz [countSizeBytes]byte
+	copy(countBz[:], rootDigest[firstCountByteIdx:])
+	return binary.BigEndian.Uint64(countBz[:])
+}
+
+// getFirstMetaByteIdx returns the index of the first count byte and the first sum byte
+// in the data slice provided. This is useful metadata when parsing the data
+// of any node in the trie.
+func getFirstMetaByteIdx(data []byte) (firstSumByteIdx, firstCountByteIdx int) {
+	firstCountByteIdx = len(data) - countSizeBytes
+	firstSumByteIdx = firstCountByteIdx - sumSizeBytes
+	return
 }

@@ -2,13 +2,16 @@ package smt_test
 
 import (
 	"crypto/sha256"
-	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/pokt-network/smt"
 	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
-func ExampleSMST() {
+// TestExampleSMT is a test that aims to act as an example of how to use the SMST.
+func TestExampleSMST(t *testing.T) {
 	// Initialise a new in-memory key-value store to store the nodes of the trie
 	// (Note: the trie only stores hashed values, not raw value data)
 	nodeStore := simplemap.NewSimpleMap()
@@ -36,13 +39,21 @@ func ExampleSMST() {
 	root := trie.Root()
 
 	// Verify the Merkle proof for "foo"="oof" where "foo" has a sum of 10
-	valid_true1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 10, trie.Spec())
+	valid_true1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 10, 1, trie.Spec())
+	require.True(t, valid_true1)
 	// Verify the Merkle proof for "baz"="zab" where "baz" has a sum of 7
-	valid_true2, _ := smt.VerifySumProof(proof2, root, []byte("baz"), []byte("zab"), 7, trie.Spec())
+	valid_true2, _ := smt.VerifySumProof(proof2, root, []byte("baz"), []byte("zab"), 7, 1, trie.Spec())
+	require.True(t, valid_true2)
 	// Verify the Merkle proof for "bin"="nib" where "bin" has a sum of 3
-	valid_true3, _ := smt.VerifySumProof(proof3, root, []byte("bin"), []byte("nib"), 3, trie.Spec())
+	valid_true3, _ := smt.VerifySumProof(proof3, root, []byte("bin"), []byte("nib"), 3, 1, trie.Spec())
+	require.True(t, valid_true3)
 	// Fail to verify the Merkle proof for "foo"="oof" where "foo" has a sum of 11
-	valid_false1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 11, trie.Spec())
-	fmt.Println(valid_true1, valid_true2, valid_true3, valid_false1)
-	// Output: true true true false
+	valid_false1, _ := smt.VerifySumProof(proof1, root, []byte("foo"), []byte("oof"), 11, 1, trie.Spec())
+	require.False(t, valid_false1)
+
+	// Verify the total sum of the trie
+	require.EqualValues(t, 20, trie.Sum())
+
+	// Verify the number of non-empty leafs in the trie
+	require.EqualValues(t, 3, trie.Count())
 }

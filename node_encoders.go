@@ -80,29 +80,40 @@ func encodeExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byt
 
 // encodeSumInnerNode encodes an inner node for an smst given the data for both children
 func encodeSumInnerNode(leftData, rightData []byte) (data []byte) {
-	// Compute the sum of the current node
-	var sum [sumSizeBytes]byte
-	leftSum := parseSum(leftData)
-	rightSum := parseSum(rightData)
-	// TODO_CONSIDERATION: ` I chose BigEndian for readability but most computers
-	// now are optimized for LittleEndian encoding could be a micro optimization one day.`
-	binary.BigEndian.PutUint64(sum[:], leftSum+rightSum)
+	leftSum, leftCount := parseSumAndCount(leftData)
+	rightSum, rightCount := parseSumAndCount(rightData)
+
+	// Compute the SumBz of the current node
+	var SumBz [sumSizeBytes]byte
+	binary.BigEndian.PutUint64(SumBz[:], leftSum+rightSum)
+
+	// Compute the count of the current node
+	var countBz [countSizeBytes]byte
+	binary.BigEndian.PutUint64(countBz[:], leftCount+rightCount)
 
 	// Prepare and return the encoded inner node data
 	data = encodeInnerNode(leftData, rightData)
-	data = append(data, sum[:]...)
+	data = append(data, SumBz[:]...)
+	data = append(data, countBz[:]...)
 	return
 }
 
-// encodeSumExtensionNode encodes the data of a sum extension nodes
+// encodeSumExtensionNode encodes the data of a sum extension node
 func encodeSumExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
-	// Compute the sum of the current node
-	var sum [sumSizeBytes]byte
-	copy(sum[:], childData[len(childData)-sumSizeBytes:])
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(childData)
+
+	// Compute the sumBz of the current node
+	var sumBz [sumSizeBytes]byte
+	copy(sumBz[:], childData[firstSumByteIdx:firstCountByteIdx])
+
+	// Compute the count of the current node
+	var countBz [countSizeBytes]byte
+	copy(countBz[:], childData[firstCountByteIdx:])
 
 	// Prepare and return the encoded inner node data
 	data = encodeExtensionNode(pathBounds, path, childData)
-	data = append(data, sum[:]...)
+	data = append(data, sumBz[:]...)
+	data = append(data, countBz[:]...)
 	return
 }
 
@@ -114,11 +125,20 @@ func checkPrefix(data, prefix []byte) {
 }
 
 // parseSum parses the sum from the encoded node data
-func parseSum(data []byte) uint64 {
-	sum := uint64(0)
-	sumBz := data[len(data)-sumSizeBytes:]
+func parseSumAndCount(data []byte) (sum, count uint64) {
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
+
+	sumBz := data[firstSumByteIdx:firstCountByteIdx]
 	if !bytes.Equal(sumBz, defaultEmptySum[:]) {
+		// TODO_CONSIDERATION: We chose BigEndian for readability but most computers
+		// now are optimized for LittleEndian encoding could be a micro optimization one day.`
 		sum = binary.BigEndian.Uint64(sumBz)
 	}
-	return sum
+
+	countBz := data[firstCountByteIdx:]
+	if !bytes.Equal(countBz, defaultEmptyCount[:]) {
+		count = binary.BigEndian.Uint64(countBz)
+	}
+
+	return
 }

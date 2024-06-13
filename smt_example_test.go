@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/pokt-network/smt"
 	"github.com/pokt-network/smt/kvstore/simplemap"
 )
@@ -29,9 +31,8 @@ func TestExampleSMT(t *testing.T) {
 
 	// Verify the Merkle proof for "foo"="bar"
 	valid, _ := smt.VerifyProof(proof, root, []byte("foo"), []byte("bar"), trie.Spec())
+	require.True(t, valid)
 	// Attempt to verify the Merkle proof for "foo"="baz"
 	invalid, _ := smt.VerifyProof(proof, root, []byte("foo"), []byte("baz"), trie.Spec())
-
-	// Output: true false
-	t.Log(valid, invalid)
+	require.False(t, invalid)
 }

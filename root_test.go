@@ -60,6 +60,7 @@ func TestMerkleRoot_TrieTypes(t *testing.T) {
 				}
 				require.NotNil(t, trie.Sum())
 				require.EqualValues(t, 45, trie.Sum())
+				require.EqualValues(t, 10, trie.Count())
 
 				return
 			}

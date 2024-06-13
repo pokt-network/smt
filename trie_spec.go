@@ -33,6 +33,7 @@ func (spec *TrieSpec) placeholder() []byte {
 	if spec.sumTrie {
 		placeholder := spec.th.placeholder()
 		placeholder = append(placeholder, defaultEmptySum[:]...)
+		placeholder = append(placeholder, defaultEmptyCount[:]...)
 		return placeholder
 	}
 	return spec.th.placeholder()
@@ -41,7 +42,7 @@ func (spec *TrieSpec) placeholder() []byte {
 // hashSize returns the hash size depending on the trie type
 func (spec *TrieSpec) hashSize() int {
 	if spec.sumTrie {
-		return spec.th.hashSize() + sumSizeBytes
+		return spec.th.hashSize() + sumSizeBytes + countSizeBytes
 	}
 	return spec.th.hashSize()
 }
@@ -100,13 +101,17 @@ func (spec *TrieSpec) hashSerialization(data []byte) []byte {
 // Used for verification of serialized proof data for sum trie nodes
 func (spec *TrieSpec) hashSumSerialization(data []byte) []byte {
 	if isExtNode(data) {
-		pathBounds, path, childHash, _ := spec.parseSumExtNode(data)
+		pathBounds, path, childHash, _, _ := spec.parseSumExtNode(data)
 		ext := extensionNode{path: path, child: &lazyNode{childHash}}
 		copy(ext.pathBounds[:], pathBounds)
 		return spec.digestSumNode(&ext)
 	}
+
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
+
 	digest := spec.th.digestData(data)
-	digest = append(digest, data[len(data)-sumSizeBytes:]...)
+	digest = append(digest, data[firstSumByteIdx:firstCountByteIdx]...)
+	digest = append(digest, data[firstCountByteIdx:]...)
 	return digest
 }
 
@@ -188,7 +193,7 @@ func (spec *TrieSpec) encodeSumNode(node trieNode) (preImage []byte) {
 	return nil
 }
 
-// digestSumNode hashes a sum node returning its digest in the following form: [node hash]+[8 byte sum]
+// digestSumNode hashes a sum node returning its digest in the following form: [node hash]+[8 byte sum]+[8 byte count]
 func (spec *TrieSpec) digestSumNode(node trieNode) []byte {
 	if node == nil {
 		return spec.placeholder()
@@ -209,8 +214,10 @@ func (spec *TrieSpec) digestSumNode(node trieNode) []byte {
 	}
 	if *cache == nil {
 		preImage := spec.encodeSumNode(node)
+		firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(preImage)
 		*cache = spec.th.digestData(preImage)
-		*cache = append(*cache, preImage[len(preImage)-sumSizeBytes:]...)
+		*cache = append(*cache, preImage[firstSumByteIdx:firstCountByteIdx]...)
+		*cache = append(*cache, preImage[firstCountByteIdx:]...)
 	}
 	return *cache
 }
@@ -239,34 +246,51 @@ func (spec *TrieSpec) parseExtNode(data []byte) (pathBounds, path, childData []b
 
 // parseSumLeafNode parses a leafNode and returns its weight as well
 // // nolint: unused
-func (spec *TrieSpec) parseSumLeafNode(data []byte) (path, value []byte, weight uint64) {
+func (spec *TrieSpec) parseSumLeafNode(data []byte) (path, value []byte, weight, count uint64) {
 	// panics if not a leaf node
 	checkPrefix(data, leafNodePrefix)
 
 	path = data[prefixLen : prefixLen+spec.ph.PathSize()]
 	value = data[prefixLen+spec.ph.PathSize():]
 
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
+
 	// Extract the sum from the encoded node data
 	var weightBz [sumSizeBytes]byte
-	copy(weightBz[:], value[len(value)-sumSizeBytes:])
+	copy(weightBz[:], data[firstSumByteIdx:firstCountByteIdx])
 	binary.BigEndian.PutUint64(weightBz[:], weight)
+
+	// Extract the count from the encoded node data
+	var countBz [countSizeBytes]byte
+	copy(countBz[:], value[firstCountByteIdx:])
+	binary.BigEndian.PutUint64(countBz[:], count)
+	if count != 1 {
+		panic("count for leaf node should always be 1")
+	}
 
 	return
 }
 
 // parseSumExtNode parses the pathBounds, path, child data and sum from the encoded extension node data
-func (spec *TrieSpec) parseSumExtNode(data []byte) (pathBounds, path, childData []byte, sum uint64) {
+func (spec *TrieSpec) parseSumExtNode(data []byte) (pathBounds, path, childData []byte, sum, count uint64) {
 	// panics if not an extension node
 	checkPrefix(data, extNodePrefix)
 
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(data)
+
 	// Extract the sum from the encoded node data
 	var sumBz [sumSizeBytes]byte
-	copy(sumBz[:], data[len(data)-sumSizeBytes:])
+	copy(sumBz[:], data[firstSumByteIdx:firstCountByteIdx])
 	binary.BigEndian.PutUint64(sumBz[:], sum)
+
+	// Extract the count from the encoded node data
+	var countBz [countSizeBytes]byte
+	copy(countBz[:], data[firstCountByteIdx:])
+	binary.BigEndian.PutUint64(countBz[:], count)
 
 	// +2 represents the length of the pathBounds
 	pathBounds = data[prefixLen : prefixLen+2]
 	path = data[prefixLen+2 : prefixLen+2+spec.ph.PathSize()]
-	childData = data[prefixLen+2+spec.ph.PathSize() : len(data)-sumSizeBytes]
+	childData = data[prefixLen+2+spec.ph.PathSize() : firstSumByteIdx]
 	return
 }

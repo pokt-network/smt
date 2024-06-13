@@ -359,6 +359,7 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 		err = smst.Update([]byte("testKey"), []byte("testValue"), 5)
 		require.NoError(t, err)
 		require.Equal(t, 1, nodeCount(t)) // only root node
+		require.Equal(t, uint64(1), impl.Count())
 	}
 
 	t.Run("delete 1", func(t *testing.T) {
@@ -366,6 +367,7 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 		err = smst.Delete([]byte("testKey"))
 		require.NoError(t, err)
 		require.Equal(t, 0, nodeCount(t))
+		require.Equal(t, uint64(0), impl.Count())
 	})
 
 	t.Run("overwrite 1", func(t *testing.T) {
@@ -373,46 +375,76 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 		err = smst.Update([]byte("testKey"), []byte("testValue2"), 10)
 		require.NoError(t, err)
 		require.Equal(t, 1, nodeCount(t))
+		require.Equal(t, uint64(1), impl.Count())
 	})
-
-	type testCase struct {
-		keys  []string
-		count int
-	}
-	// sha256(testKey)  = 0001...
-	// sha256(testKey2) = 1000... common prefix len 0; 3 nodes (root + 2 leaf)
-	// sha256(foo)      = 0010... common prefix len 2; 5 nodes (3 inner + 2 leaf)
-	cases := []testCase{
-		{[]string{"testKey2"}, 3},
-		{[]string{"foo"}, 4},
-		{[]string{"testKey2", "foo"}, 6},
-		{[]string{"a", "b", "c", "d", "e"}, 14},
-	}
 
 	t.Run("overwrite and delete", func(t *testing.T) {
 		setup()
 		err = smst.Update([]byte("testKey"), []byte("testValue2"), 2)
 		require.NoError(t, err)
 		require.Equal(t, 1, nodeCount(t))
+		require.Equal(t, uint64(1), impl.Count())
 
 		err = smst.Delete([]byte("testKey"))
 		require.NoError(t, err)
 		require.Equal(t, 0, nodeCount(t))
+		require.Equal(t, uint64(0), impl.Count())
+	})
 
-		for tci, tc := range cases {
+	type testCase struct {
+		desc              string
+		keys              []string
+		expectedNodeCount int
+		expectedLeafCount int
+	}
+	// sha256(testKey)  = 0001...
+	// sha256(testKey2) = 1000... common prefix len 0; 3 nodes (root + 2 leaf)
+	// sha256(foo)      = 0010... common prefix len 2; 5 nodes (3 inner + 2 leaf)
+	cases := []testCase{
+		{
+			desc:              "insert a single key (testKey2) which DOES NOT HAVE a similar prefix to the already present key (testKey)",
+			keys:              []string{"testKey2"},
+			expectedNodeCount: 3,
+			expectedLeafCount: 2,
+		},
+		{
+			desc:              "insert a single key (foo) which DOES HAVE a similar prefix to the already present key (testKey)",
+			keys:              []string{"foo"},
+			expectedNodeCount: 4,
+			expectedLeafCount: 2,
+		},
+		{
+			desc:              "override two existing keys which were added by the test cases above",
+			keys:              []string{"testKey2", "foo"},
+			expectedNodeCount: 6,
+			expectedLeafCount: 3,
+		},
+		{
+			desc:              "add 5 new keys with no common prefix to the existing keys",
+			keys:              []string{"a", "b", "c", "d", "e"},
+			expectedNodeCount: 14,
+			expectedLeafCount: 6,
+		},
+	}
+	for tci, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			// Inserts a key-value pair for `testKey`
 			setup()
+			// Insert value for every key
 			for _, key := range tc.keys {
 				err = smst.Update([]byte(key), []byte("testValue2"), 10)
 				require.NoError(t, err, tci)
 			}
-			require.Equal(t, tc.count, nodeCount(t), tci)
+			require.Equal(t, tc.expectedNodeCount, nodeCount(t), tci)
+			require.Equal(t, uint64(tc.expectedLeafCount), impl.Count())
 
-			// Overwrite doesn't change count
+			// Overwrite doesn't change node or leaf count
 			for _, key := range tc.keys {
 				err = smst.Update([]byte(key), []byte("testValue3"), 10)
 				require.NoError(t, err, tci)
 			}
-			require.Equal(t, tc.count, nodeCount(t), tci)
+			require.Equal(t, tc.expectedNodeCount, nodeCount(t), tci)
+			require.Equal(t, uint64(tc.expectedLeafCount), impl.Count())
 
 			// Deletion removes all nodes except root
 			for _, key := range tc.keys {
@@ -420,13 +452,15 @@ func TestSMST_OrphanRemoval(t *testing.T) {
 				require.NoError(t, err, tci)
 			}
 			require.Equal(t, 1, nodeCount(t), tci)
+			require.Equal(t, uint64(1), impl.Count())
 
 			// Deleting and re-inserting a persisted node doesn't change count
 			require.NoError(t, smst.Delete([]byte("testKey")))
 			require.NoError(t, smst.Update([]byte("testKey"), []byte("testValue"), 10))
 			require.Equal(t, 1, nodeCount(t), tci)
-		}
-	})
+			require.Equal(t, uint64(1), impl.Count())
+		})
+	}
 }
 
 func TestSMST_TotalSum(t *testing.T) {
@@ -441,20 +475,31 @@ func TestSMST_TotalSum(t *testing.T) {
 
 	// Check root hash contains the correct hex sum
 	root1 := smst.Root()
-	sumBz := root1[len(root1)-sumSizeBytes:]
-	rootSum := binary.BigEndian.Uint64(sumBz)
-	require.NoError(t, err)
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(root1)
 
-	// Calculate total sum of the trie
+	// Get the sum from the root hash
+	sumBz := root1[firstSumByteIdx:firstCountByteIdx]
+	rootSum := binary.BigEndian.Uint64(sumBz)
+
+	// Get the count from the root hash
+	countBz := root1[firstCountByteIdx:]
+	rootCount := binary.BigEndian.Uint64(countBz)
+
+	// Retrieve and compare the sum
 	sum := smst.Sum()
 	require.Equal(t, sum, uint64(15))
 	require.Equal(t, sum, rootSum)
+
+	// Retrieve and compare the count
+	count := smst.Count()
+	require.Equal(t, count, uint64(3))
+	require.Equal(t, count, rootCount)
 
 	// Prove inclusion
 	proof, err := smst.Prove([]byte("key1"))
 	require.NoError(t, err)
 	checkCompactEquivalence(t, proof, smst.Spec())
-	valid, err := VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, smst.Spec())
+	valid, err := VerifySumProof(proof, root1, []byte("key1"), []byte("value1"), 5, 1, smst.Spec())
 	require.NoError(t, err)
 	require.True(t, valid)
 
@@ -464,12 +509,20 @@ func TestSMST_TotalSum(t *testing.T) {
 	sum = smst.Sum()
 	require.Equal(t, sum, uint64(10))
 
+	// Check that the count is correct after deleting a key
+	count = smst.Count()
+	require.Equal(t, count, uint64(2))
+
 	// Check that the sum is correct after importing the trie
 	require.NoError(t, smst.Commit())
 	root2 := smst.Root()
 	smst = ImportSparseMerkleSumTrie(snm, sha256.New(), root2)
 	sum = smst.Sum()
 	require.Equal(t, sum, uint64(10))
+
+	// Check that the count is correct after importing the trie
+	count = smst.Count()
+	require.Equal(t, count, uint64(2))
 
 	// Calculate the total sum of a larger trie
 	snm = simplemap.NewSimpleMap()
@@ -481,6 +534,10 @@ func TestSMST_TotalSum(t *testing.T) {
 	require.NoError(t, smst.Commit())
 	sum = smst.Sum()
 	require.Equal(t, sum, uint64(49995000))
+
+	// Check that the count is correct after building a larger trie
+	count = smst.Count()
+	require.Equal(t, count, uint64(9999))
 }
 
 func TestSMST_Retrieval(t *testing.T) {
@@ -549,4 +606,7 @@ func TestSMST_Retrieval(t *testing.T) {
 
 	sum = lazy.Sum()
 	require.Equal(t, sum, uint64(15))
+
+	count := lazy.Count()
+	require.Equal(t, count, uint64(3))
 }

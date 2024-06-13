@@ -18,18 +18,24 @@ type SMSTWithStorage struct {
 	preimages kvstore.MapStore
 }
 
-// Update updates a key with a new value in the trie and adds the value to the
-// preimages KVStore
-// Preimages are the values prior to them being hashed - they are used to
-// confirm the values are in the trie
+// Update a key with a new value in the trie and add it to the preimages KVStore.
+// Preimages are the values prior to being hashed, used to confirm the values are in the trie.
 func (smst *SMSTWithStorage) Update(key, value []byte, sum uint64) error {
 	if err := smst.SMST.Update(key, value, sum); err != nil {
 		return err
 	}
 	valueHash := smst.valueHash(value)
+
+	// Append the sum to the value before storing it
 	var sumBz [sumSizeBytes]byte
 	binary.BigEndian.PutUint64(sumBz[:], sum)
 	value = append(value, sumBz[:]...)
+
+	// Append the count to the value before storing it
+	var countBz [countSizeBytes]byte
+	binary.BigEndian.PutUint64(countBz[:], 1)
+	value = append(value, countBz[:]...)
+
 	return smst.preimages.Set(valueHash, value)
 }
 
@@ -48,6 +54,7 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 	if valueHash == nil {
 		return nil, 0, nil
 	}
+	// Extract the value from the preimages KVStore
 	value, err := smst.preimages.Get(valueHash)
 	if err != nil {
 		if errors.Is(err, ErrKeyNotFound) {
@@ -57,13 +64,18 @@ func (smst *SMSTWithStorage) GetValueSum(key []byte) ([]byte, uint64, error) {
 		// Otherwise percolate up any other error
 		return nil, 0, err
 	}
+
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(value)
+
+	// Extract the sum from the value
 	var sumBz [sumSizeBytes]byte
-	copy(sumBz[:], value[len(value)-sumSizeBytes:])
+	copy(sumBz[:], value[firstSumByteIdx:firstCountByteIdx])
 	storedSum := binary.BigEndian.Uint64(sumBz[:])
 	if storedSum != sum {
 		return nil, 0, fmt.Errorf("sum mismatch for %s: got %d, expected %d", string(key), storedSum, sum)
 	}
-	return value[:len(value)-sumSizeBytes], storedSum, nil
+
+	return value[:firstSumByteIdx], storedSum, nil
 }
 
 // Has returns true if the value at the given key is non-default, false otherwise.
