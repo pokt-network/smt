@@ -14,8 +14,8 @@ type TrieSpec struct {
 	sumTrie bool
 }
 
-// newTrieSpec returns a new TrieSpec with the given hasher and sumTrie flag
-func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
+// NewTrieSpec returns a new TrieSpec with the given hasher and sumTrie flag
+func NewTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
 	spec := TrieSpec{th: *NewTrieHasher(hasher)}
 	spec.ph = &pathHasher{spec.th}
 	spec.vh = &valueHasher{spec.th}

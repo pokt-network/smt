@@ -38,7 +38,7 @@ func NewSparseMerkleSumTrie(
 	hasher hash.Hash,
 	options ...TrieSpecOption,
 ) *SMST {
-	trieSpec := newTrieSpec(hasher, true)
+	trieSpec := NewTrieSpec(hasher, true)
 	for _, option := range options {
 		option(&trieSpec)
 	}
