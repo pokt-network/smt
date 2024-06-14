@@ -14,12 +14,21 @@ type TrieSpec struct {
 	sumTrie bool
 }
 
-// newTrieSpec returns a new TrieSpec with the given hasher and sumTrie flag
-func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
+// NewTrieSpec returns a new TrieSpec with the given hasher and sumTrie flag
+func NewTrieSpec(
+	hasher hash.Hash,
+	sumTrie bool,
+	opts ...TrieSpecOption,
+) TrieSpec {
 	spec := TrieSpec{th: *NewTrieHasher(hasher)}
 	spec.ph = &pathHasher{spec.th}
 	spec.vh = &valueHasher{spec.th}
 	spec.sumTrie = sumTrie
+
+	for _, opt := range opts {
+		opt(&spec)
+	}
+
 	return spec
 }
 
@@ -27,6 +36,10 @@ func newTrieSpec(hasher hash.Hash, sumTrie bool) TrieSpec {
 func (spec *TrieSpec) Spec() *TrieSpec {
 	return spec
 }
+
+// PathHasherSize returns the length (in bytes) of digests produced by the
+// path hasher
+func (spec *TrieSpec) PathHasherSize() int { return spec.ph.PathSize() }
 
 // placeholder returns the default placeholder value depending on the trie type
 func (spec *TrieSpec) placeholder() []byte {

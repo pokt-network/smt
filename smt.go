@@ -34,7 +34,7 @@ func NewSparseMerkleTrie(
 	options ...TrieSpecOption,
 ) *SMT {
 	smt := SMT{
-		TrieSpec: newTrieSpec(hasher, false),
+		TrieSpec: NewTrieSpec(hasher, false),
 		nodes:    nodes,
 	}
 	for _, option := range options {
