@@ -25,7 +25,7 @@ func (r MerkleRoot) Sum() uint64 {
 // count of the number of non-empty leafs in the tree.
 func (r MerkleRoot) Count() uint64 {
 	if len(r)%nonSumRootSizeBytes == 0 {
-		panic("roo#sum: not a merkle sum trie")
+		panic("root#count: not a merkle sum trie")
 	}
 
 	_, firstCountByteIdx := getFirstMetaByteIdx([]byte(r))
