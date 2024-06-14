@@ -11,7 +11,7 @@ const (
 // root hash it will panic.
 func (r MerkleRoot) Sum() uint64 {
 	if len(r)%nonSumRootSizeBytes == 0 {
-		panic("roo#sum: not a merkle sum trie")
+		panic("root#sum: not a merkle sum trie")
 	}
 
 	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx([]byte(r))
