@@ -37,6 +37,10 @@ func (spec *TrieSpec) Spec() *TrieSpec {
 	return spec
 }
 
+// PathHasherSize returns the length (in bytes) of digests produced by the
+// path hasher
+func (spec *TrieSpec) PathHasherSize() int { return spec.ph.PathSize() }
+
 // placeholder returns the default placeholder value depending on the trie type
 func (spec *TrieSpec) placeholder() []byte {
 	if spec.sumTrie {
