@@ -3,6 +3,7 @@ package smt
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"hash"
 
 	"github.com/pokt-network/smt/kvstore"
@@ -170,39 +171,46 @@ func (smst *SMST) Commit() error {
 }
 
 // Root returns the root hash of the trie with the total sum bytes appended
-func (smst *SMST) Root() MerkleRoot {
-	return smst.SMT.Root() // [digest]+[binary sum]
+func (smst *SMST) Root() MerkleSumRoot {
+	return MerkleSumRoot(smst.SMT.Root()) // [digest]+[binary sum]+[binary count]
+}
+
+// MustSum returns the sum of the entire trie stored in the root.
+// If the tree is not a sum tree, it will panic.
+func (smst *SMST) MustSum() uint64 {
+	sum, err := smst.Sum()
+	if err != nil {
+		panic(err)
+	}
+	return sum
 }
 
 // Sum returns the sum of the entire trie stored in the root.
 // If the tree is not a sum tree, it will panic.
-func (smst *SMST) Sum() uint64 {
-	rootDigest := []byte(smst.Root())
-
+func (smst *SMST) Sum() (uint64, error) {
 	if !smst.Spec().sumTrie {
-		panic("SMST: not a merkle sum trie")
+		return 0, fmt.Errorf("SMST: not a merkle sum trie")
 	}
 
-	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(rootDigest)
+	return smst.Root().Sum()
+}
 
-	var sumBz [sumSizeBytes]byte
-	copy(sumBz[:], rootDigest[firstSumByteIdx:firstCountByteIdx])
-	return binary.BigEndian.Uint64(sumBz[:])
+// MustCount returns the number of non-empty nodes in the entire trie stored in the root.
+func (smst *SMST) MustCount() uint64 {
+	count, err := smst.Count()
+	if err != nil {
+		panic(err)
+	}
+	return count
 }
 
 // Count returns the number of non-empty nodes in the entire trie stored in the root.
-func (smst *SMST) Count() uint64 {
-	rootDigest := []byte(smst.Root())
-
+func (smst *SMST) Count() (uint64, error) {
 	if !smst.Spec().sumTrie {
-		panic("SMST: not a merkle sum trie")
+		return 0, fmt.Errorf("SMST: not a merkle sum trie")
 	}
 
-	_, firstCountByteIdx := getFirstMetaByteIdx(rootDigest)
-
-	var countBz [countSizeBytes]byte
-	copy(countBz[:], rootDigest[firstCountByteIdx:])
-	return binary.BigEndian.Uint64(countBz[:])
+	return smst.Root().Count()
 }
 
 // getFirstMetaByteIdx returns the index of the first count byte and the first sum byte
@@ -211,5 +219,5 @@ func (smst *SMST) Count() uint64 {
 func getFirstMetaByteIdx(data []byte) (firstSumByteIdx, firstCountByteIdx int) {
 	firstCountByteIdx = len(data) - countSizeBytes
 	firstSumByteIdx = firstCountByteIdx - sumSizeBytes
-	return
+	return firstSumByteIdx, firstCountByteIdx
 }

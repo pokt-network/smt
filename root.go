@@ -15,7 +15,7 @@ const (
 // MustSum returns the uint64 sum of the merkle root, it checks the length of the
 // merkle root and if it is no the same as the size of the SMST's expected
 // root hash it will panic.
-func (r MerkleRoot) MustSum() uint64 {
+func (r MerkleSumRoot) MustSum() uint64 {
 	sum, err := r.Sum()
 	if err != nil {
 		panic(err)
@@ -27,28 +27,49 @@ func (r MerkleRoot) MustSum() uint64 {
 // Sum returns the uint64 sum of the merkle root, it checks the length of the
 // merkle root and if it is no the same as the size of the SMST's expected
 // root hash it will return an error.
-func (r MerkleRoot) Sum() (uint64, error) {
-	if len(r)%SmtRootSizeBytes == 0 {
-		return 0, fmt.Errorf("root#sum: not a merkle sum trie")
+func (r MerkleSumRoot) Sum() (uint64, error) {
+	if len(r) != SmstRootSizeBytes {
+		return 0, fmt.Errorf("MerkleSumRoot#Sum: not a merkle sum trie")
 	}
 
-	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx([]byte(r))
+	return getSum(r), nil
+}
 
-	var sumBz [sumSizeBytes]byte
-	copy(sumBz[:], []byte(r)[firstSumByteIdx:firstCountByteIdx])
-	return binary.BigEndian.Uint64(sumBz[:]), nil
+// MustCount returns the uint64 count of the merkle root, a cryptographically secure
+// count of the number of non-empty leafs in the tree.
+func (r MerkleSumRoot) MustCount() uint64 {
+	count, err := r.Count()
+	if err != nil {
+		panic(err)
+	}
+
+	return count
 }
 
 // Count returns the uint64 count of the merkle root, a cryptographically secure
 // count of the number of non-empty leafs in the tree.
-func (r MerkleRoot) Count() uint64 {
-	if len(r)%SmtRootSizeBytes == 0 {
-		panic("root#sum: not a merkle sum trie")
+func (r MerkleSumRoot) Count() (uint64, error) {
+	if len(r) != SmstRootSizeBytes {
+		return 0, fmt.Errorf("MerkleSumRoot#Count: not a merkle sum trie")
 	}
 
-	_, firstCountByteIdx := getFirstMetaByteIdx([]byte(r))
+	return getCount(r), nil
+}
+
+// getSum returns the sum of the node stored in the root.
+func getSum(root []byte) uint64 {
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(root)
+
+	var sumBz [sumSizeBytes]byte
+	copy(sumBz[:], root[firstSumByteIdx:firstCountByteIdx])
+	return binary.BigEndian.Uint64(sumBz[:])
+}
+
+// getCount returns the count of the node stored in the root.
+func getCount(root []byte) uint64 {
+	_, firstCountByteIdx := getFirstMetaByteIdx(root)
 
 	var countBz [countSizeBytes]byte
-	copy(countBz[:], []byte(r)[firstCountByteIdx:])
+	copy(countBz[:], root[firstCountByteIdx:])
 	return binary.BigEndian.Uint64(countBz[:])
 }
