@@ -186,7 +186,7 @@ func (smst *SMST) MustSum() uint64 {
 }
 
 // Sum returns the sum of the entire trie stored in the root.
-// If the tree is not a sum tree, it will panic.
+// If the tree is not a sum tree, it will return an error.
 func (smst *SMST) Sum() (uint64, error) {
 	if !smst.Spec().sumTrie {
 		return 0, fmt.Errorf("SMST: not a merkle sum trie")
@@ -196,6 +196,7 @@ func (smst *SMST) Sum() (uint64, error) {
 }
 
 // MustCount returns the number of non-empty nodes in the entire trie stored in the root.
+// If the tree is not a sum tree, it will panic.
 func (smst *SMST) MustCount() uint64 {
 	count, err := smst.Count()
 	if err != nil {
@@ -205,6 +206,7 @@ func (smst *SMST) MustCount() uint64 {
 }
 
 // Count returns the number of non-empty nodes in the entire trie stored in the root.
+// If the tree is not a sum tree, it will return an error.
 func (smst *SMST) Count() (uint64, error) {
 	if !smst.Spec().sumTrie {
 		return 0, fmt.Errorf("SMST: not a merkle sum trie")

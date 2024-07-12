@@ -36,7 +36,8 @@ func (r MerkleSumRoot) Sum() (uint64, error) {
 }
 
 // MustCount returns the uint64 count of the merkle root, a cryptographically secure
-// count of the number of non-empty leafs in the tree.
+// count of the number of non-empty leafs in the tree. It panics if the root hash length
+// does not match that of the SMST hasher.
 func (r MerkleSumRoot) MustCount() uint64 {
 	count, err := r.Count()
 	if err != nil {
@@ -47,7 +48,8 @@ func (r MerkleSumRoot) MustCount() uint64 {
 }
 
 // Count returns the uint64 count of the merkle root, a cryptographically secure
-// count of the number of non-empty leafs in the tree.
+// count of the number of non-empty leafs in the tree. It returns an error if the root hash length
+// does not match that of the SMST hasher.
 func (r MerkleSumRoot) Count() (uint64, error) {
 	if len(r) != SmstRootSizeBytes {
 		return 0, fmt.Errorf("MerkleSumRoot#Count: not a merkle sum trie")
