@@ -28,7 +28,7 @@ func TestExampleSMST(t *testing.T) {
 	_ = trie.Commit()
 
 	// Calculate the total sum of the trie
-	_ = trie.Sum() // 20
+	_ = trie.MustSum() // 20
 
 	// Generate a Merkle proof for "foo"
 	proof1, _ := trie.Prove([]byte("foo"))
@@ -52,8 +52,8 @@ func TestExampleSMST(t *testing.T) {
 	require.False(t, valid_false1)
 
 	// Verify the total sum of the trie
-	require.EqualValues(t, 20, trie.Sum())
+	require.EqualValues(t, 20, trie.MustSum())
 
 	// Verify the number of non-empty leafs in the trie
-	require.EqualValues(t, 3, trie.Count())
+	require.EqualValues(t, 3, trie.MustCount())
 }

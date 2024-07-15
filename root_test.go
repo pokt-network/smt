@@ -58,9 +58,9 @@ func TestMerkleRoot_TrieTypes(t *testing.T) {
 				for i := uint64(0); i < 10; i++ {
 					require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i)), i))
 				}
-				require.NotNil(t, trie.Sum())
-				require.EqualValues(t, 45, trie.Sum())
-				require.EqualValues(t, 10, trie.Count())
+				require.NotNil(t, trie.MustSum())
+				require.EqualValues(t, 45, trie.MustSum())
+				require.EqualValues(t, 10, trie.MustCount())
 
 				return
 			}
