@@ -51,24 +51,24 @@ func (root MerkleSumRoot) Count() (uint64, error) {
 	return root.count(), nil
 }
 
+// DigestSize returns the length of the digest portion of the root.
+func (root MerkleSumRoot) DigestSize() int {
+	return len(root) - countSizeBytes - sumSizeBytes
+}
+
 // HasDigestSize returns true if the root hash (digest) length is the same as
 // that of the size of the given hasher.
 func (root MerkleSumRoot) HasDigestSize(size int) bool {
-	return root.length() == size
+	return root.DigestSize() == size
 }
 
 // validateBasic returns an error if the root (digest) length is not a power of two.
 func (root MerkleSumRoot) validateBasic() error {
-	if !isPowerOfTwo(root.length()) {
+	if !isPowerOfTwo(root.DigestSize()) {
 		return fmt.Errorf("MerkleSumRoot#validateBasic: invalid root length")
 	}
 
 	return nil
-}
-
-// length returns the length of the digest portion of the root.
-func (root MerkleSumRoot) length() int {
-	return len(root) - countSizeBytes - sumSizeBytes
 }
 
 // sum returns the sum of the node stored in the root.
