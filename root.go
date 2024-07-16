@@ -3,7 +3,6 @@ package smt
 import (
 	"encoding/binary"
 	"fmt"
-	"hash"
 )
 
 // MustSum returns the uint64 sum of the merkle root, it checks the length of the
@@ -52,10 +51,10 @@ func (root MerkleSumRoot) Count() (uint64, error) {
 	return root.count(), nil
 }
 
-// HasHashLength returns true if the root hash (digest) length is the same as
+// HasDigestSize returns true if the root hash (digest) length is the same as
 // that of the size of the given hasher.
-func (root MerkleSumRoot) HasHashLength(hasher hash.Hash) bool {
-	return root.length() == hasher.Size()
+func (root MerkleSumRoot) HasDigestSize(size int) bool {
+	return root.length() == size
 }
 
 // validateBasic returns an error if the root (digest) length is not a power of two.
