@@ -56,13 +56,13 @@ func (root MerkleSumRoot) DigestSize() int {
 	return len(root) - countSizeBytes - sumSizeBytes
 }
 
-// HasDigestSize returns true if the root hash (digest) length is the same as
+// HasDigestSize returns true if the root digest size is the same as
 // that of the size of the given hasher.
 func (root MerkleSumRoot) HasDigestSize(size int) bool {
 	return root.DigestSize() == size
 }
 
-// validateBasic returns an error if the root (digest) length is not a power of two.
+// validateBasic returns an error if the root digest size is not a power of two.
 func (root MerkleSumRoot) validateBasic() error {
 	if !isPowerOfTwo(root.DigestSize()) {
 		return fmt.Errorf("MerkleSumRoot#validateBasic: invalid root length")
