@@ -26,7 +26,7 @@ var (
 type MerkleRoot []byte
 
 // MerkleSumRoot is a type alias for a byte slice returned from SparseMerkleSumTrie#Root().
-type MerkleSumRoot []byte
+type MerkleSumRoot = MerkleRoot
 
 // A high-level interface that captures the behaviour of all types of nodes
 type trieNode interface {
