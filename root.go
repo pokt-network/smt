@@ -3,20 +3,14 @@ package smt
 import (
 	"encoding/binary"
 	"fmt"
-)
-
-const (
-	// These are intentionally exposed to allow for for testing and custom
-	// implementations of downstream applications.
-	SmtRootSizeBytes  = 32
-	SmstRootSizeBytes = SmtRootSizeBytes + sumSizeBytes + countSizeBytes
+	"hash"
 )
 
 // MustSum returns the uint64 sum of the merkle root, it checks the length of the
 // merkle root and if it is no the same as the size of the SMST's expected
 // root hash it will panic.
-func (r MerkleSumRoot) MustSum() uint64 {
-	sum, err := r.Sum()
+func (root MerkleSumRoot) MustSum() uint64 {
+	sum, err := root.Sum()
 	if err != nil {
 		panic(err)
 	}
@@ -27,19 +21,19 @@ func (r MerkleSumRoot) MustSum() uint64 {
 // Sum returns the uint64 sum of the merkle root, it checks the length of the
 // merkle root and if it is no the same as the size of the SMST's expected
 // root hash it will return an error.
-func (r MerkleSumRoot) Sum() (uint64, error) {
-	if len(r) != SmstRootSizeBytes {
-		return 0, fmt.Errorf("MerkleSumRoot#Sum: not a merkle sum trie")
+func (root MerkleSumRoot) Sum() (uint64, error) {
+	if err := root.validateBasic(); err != nil {
+		return 0, err
 	}
 
-	return getSum(r), nil
+	return root.sum(), nil
 }
 
 // MustCount returns the uint64 count of the merkle root, a cryptographically secure
-// count of the number of non-empty leafs in the tree. It panics if the root hash length
-// does not match that of the SMST hasher.
-func (r MerkleSumRoot) MustCount() uint64 {
-	count, err := r.Count()
+// count of the number of non-empty leafs in the tree. It panics if the root length
+// is invalid.
+func (root MerkleSumRoot) MustCount() uint64 {
+	count, err := root.Count()
 	if err != nil {
 		panic(err)
 	}
@@ -48,30 +42,55 @@ func (r MerkleSumRoot) MustCount() uint64 {
 }
 
 // Count returns the uint64 count of the merkle root, a cryptographically secure
-// count of the number of non-empty leafs in the tree. It returns an error if the root hash length
-// does not match that of the SMST hasher.
-func (r MerkleSumRoot) Count() (uint64, error) {
-	if len(r) != SmstRootSizeBytes {
-		return 0, fmt.Errorf("MerkleSumRoot#Count: not a merkle sum trie")
+// count of the number of non-empty leafs in the tree. It returns an error if the
+// root length is invalid.
+func (root MerkleSumRoot) Count() (uint64, error) {
+	if err := root.validateBasic(); err != nil {
+		return 0, err
 	}
 
-	return getCount(r), nil
+	return root.count(), nil
 }
 
-// getSum returns the sum of the node stored in the root.
-func getSum(root []byte) uint64 {
+// HasHashLength returns true if the root hash (digest) length is the same as
+// that of the size of the given hasher.
+func (root MerkleSumRoot) HasHashLength(hasher hash.Hash) bool {
+	return root.length() == hasher.Size()
+}
+
+// validateBasic returns an error if the root (digest) length is not a power of two.
+func (root MerkleSumRoot) validateBasic() error {
+	if !isPowerOfTwo(root.length()) {
+		return fmt.Errorf("MerkleSumRoot#validateBasic: invalid root length")
+	}
+
+	return nil
+}
+
+// length returns the length of the digest portion of the root.
+func (root MerkleSumRoot) length() int {
+	return len(root) - countSizeBytes - sumSizeBytes
+}
+
+// sum returns the sum of the node stored in the root.
+func (root MerkleSumRoot) sum() uint64 {
 	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(root)
 
-	var sumBz [sumSizeBytes]byte
-	copy(sumBz[:], root[firstSumByteIdx:firstCountByteIdx])
-	return binary.BigEndian.Uint64(sumBz[:])
+	return binary.BigEndian.Uint64(root[firstSumByteIdx:firstCountByteIdx])
 }
 
-// getCount returns the count of the node stored in the root.
-func getCount(root []byte) uint64 {
+// count returns the count of the node stored in the root.
+func (root MerkleSumRoot) count() uint64 {
 	_, firstCountByteIdx := getFirstMetaByteIdx(root)
 
-	var countBz [countSizeBytes]byte
-	copy(countBz[:], root[firstCountByteIdx:])
-	return binary.BigEndian.Uint64(countBz[:])
+	return binary.BigEndian.Uint64(root[firstCountByteIdx:])
+}
+
+// isPowerOfTwo function returns true if the input n is a power of 2
+func isPowerOfTwo(n int) bool {
+	// A power of 2 has only one bit set in its binary representation
+	if n <= 0 {
+		return false
+	}
+	return (n & (n - 1)) == 0
 }
