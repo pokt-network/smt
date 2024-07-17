@@ -13,64 +13,82 @@ import (
 	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
-func TestMerkleRoot_TrieTypes(t *testing.T) {
+func TestMerkleSumRoot_SumAndCountSuccess(t *testing.T) {
 	tests := []struct {
-		desc          string
-		sumTree       bool
-		hasher        hash.Hash
-		expectedPanic string
+		desc   string
+		hasher hash.Hash
 	}{
 		{
-			desc:          "successfully: gets sum of sha256 hasher SMST",
-			sumTree:       true,
-			hasher:        sha256.New(),
-			expectedPanic: "",
+			desc:   "sha256 hasher",
+			hasher: sha256.New(),
 		},
 		{
-			desc:          "successfully: gets sum of sha512 hasher SMST",
-			sumTree:       true,
-			hasher:        sha512.New(),
-			expectedPanic: "",
-		},
-		{
-			desc:          "failure: panics for sha256 hasher SMT",
-			sumTree:       false,
-			hasher:        sha256.New(),
-			expectedPanic: "roo#sum: not a merkle sum trie",
-		},
-		{
-			desc:          "failure: panics for sha512 hasher SMT",
-			sumTree:       false,
-			hasher:        sha512.New(),
-			expectedPanic: "roo#sum: not a merkle sum trie",
+			desc:   "sha512 hasher",
+			hasher: sha512.New(),
 		},
 	}
 
 	nodeStore := simplemap.NewSimpleMap()
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.desc, func(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
 			t.Cleanup(func() {
 				require.NoError(t, nodeStore.ClearAll())
 			})
-			if tt.sumTree {
-				trie := smt.NewSparseMerkleSumTrie(nodeStore, tt.hasher)
-				for i := uint64(0); i < 10; i++ {
-					require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i)), i))
-				}
-				require.NotNil(t, trie.Sum())
-				require.EqualValues(t, 45, trie.Sum())
-				require.EqualValues(t, 10, trie.Count())
+			trie := smt.NewSparseMerkleSumTrie(nodeStore, test.hasher)
+			for i := uint64(0); i < 10; i++ {
+				require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i)), i))
+			}
 
-				return
+			sum, sumErr := trie.Sum()
+			require.NoError(t, sumErr)
+
+			count, countErr := trie.Count()
+			require.NoError(t, countErr)
+
+			require.EqualValues(t, uint64(45), sum)
+			require.EqualValues(t, uint64(10), count)
+		})
+	}
+}
+
+func TestMekleRoot_SumAndCountError(t *testing.T) {
+	tests := []struct {
+		desc   string
+		hasher hash.Hash
+	}{
+		{
+			desc:   "sha256 hasher",
+			hasher: sha256.New(),
+		},
+		{
+			desc:   "sha512 hasher",
+			hasher: sha512.New(),
+		},
+	}
+
+	nodeStore := simplemap.NewSimpleMap()
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Cleanup(func() {
+				require.NoError(t, nodeStore.ClearAll())
+			})
+			trie := smt.NewSparseMerkleSumTrie(nodeStore, test.hasher)
+			for i := uint64(0); i < 10; i++ {
+				require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i)), i))
 			}
-			trie := smt.NewSparseMerkleTrie(nodeStore, tt.hasher)
-			for i := 0; i < 10; i++ {
-				require.NoError(t, trie.Update([]byte(fmt.Sprintf("key%d", i)), []byte(fmt.Sprintf("value%d", i))))
-			}
-			if panicStr := recover(); panicStr != nil {
-				require.Equal(t, tt.expectedPanic, panicStr)
-			}
+
+			root := trie.Root()
+
+			// Mangle the root bytes.
+			root = root[:len(root)-1]
+
+			sum, sumErr := root.Sum()
+			require.Error(t, sumErr)
+			require.Equal(t, uint64(0), sum)
+
+			count, countErr := root.Count()
+			require.Error(t, countErr)
+			require.Equal(t, uint64(0), count)
 		})
 	}
 }

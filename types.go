@@ -22,8 +22,11 @@ var (
 	defaultEmptyCount [countSizeBytes]byte
 )
 
-// MerkleRoot is a type alias for a byte slice returned from the Root method
+// MerkleRoot is a type alias for a byte slice returned from SparseMerkleTrie#Root().
 type MerkleRoot []byte
+
+// MerkleSumRoot is a type alias for a byte slice returned from SparseMerkleSumTrie#Root().
+type MerkleSumRoot []byte
 
 // A high-level interface that captures the behaviour of all types of nodes
 type trieNode interface {
@@ -68,11 +71,13 @@ type SparseMerkleSumTrie interface {
 	// Get descends the trie to access a value. Returns nil if key is not present.
 	Get(key []byte) (data []byte, sum uint64, err error)
 	// Root computes the Merkle root digest.
-	Root() MerkleRoot
+	Root() MerkleSumRoot
 	// Sum computes the total sum of the Merkle trie
-	Sum() uint64
+	Sum() (uint64, error)
+	MustSum() uint64
 	// Count returns the total number of non-empty leaves in the trie
-	Count() uint64
+	Count() (uint64, error)
+	MustCount() uint64
 	// Prove computes a Merkle proof of inclusion or exclusion of a key.
 	Prove(key []byte) (*SparseMerkleProof, error)
 	// ProveClosest computes a Merkle proof of inclusion for a key in the trie

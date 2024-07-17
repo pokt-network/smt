@@ -5,18 +5,11 @@ import (
 	"fmt"
 )
 
-const (
-	// These are intentionally exposed to allow for for testing and custom
-	// implementations of downstream applications.
-	SmtRootSizeBytes  = 32
-	SmstRootSizeBytes = SmtRootSizeBytes + sumSizeBytes + countSizeBytes
-)
-
 // MustSum returns the uint64 sum of the merkle root, it checks the length of the
 // merkle root and if it is no the same as the size of the SMST's expected
 // root hash it will panic.
-func (r MerkleRoot) MustSum() uint64 {
-	sum, err := r.Sum()
+func (root MerkleSumRoot) MustSum() uint64 {
+	sum, err := root.Sum()
 	if err != nil {
 		panic(err)
 	}
@@ -27,28 +20,76 @@ func (r MerkleRoot) MustSum() uint64 {
 // Sum returns the uint64 sum of the merkle root, it checks the length of the
 // merkle root and if it is no the same as the size of the SMST's expected
 // root hash it will return an error.
-func (r MerkleRoot) Sum() (uint64, error) {
-	if len(r)%SmtRootSizeBytes == 0 {
-		return 0, fmt.Errorf("root#sum: not a merkle sum trie")
+func (root MerkleSumRoot) Sum() (uint64, error) {
+	if err := root.validateBasic(); err != nil {
+		return 0, err
 	}
 
-	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx([]byte(r))
+	return root.sum(), nil
+}
 
-	var sumBz [sumSizeBytes]byte
-	copy(sumBz[:], []byte(r)[firstSumByteIdx:firstCountByteIdx])
-	return binary.BigEndian.Uint64(sumBz[:]), nil
+// MustCount returns the uint64 count of the merkle root, a cryptographically secure
+// count of the number of non-empty leafs in the tree. It panics if the root length
+// is invalid.
+func (root MerkleSumRoot) MustCount() uint64 {
+	count, err := root.Count()
+	if err != nil {
+		panic(err)
+	}
+
+	return count
 }
 
 // Count returns the uint64 count of the merkle root, a cryptographically secure
-// count of the number of non-empty leafs in the tree.
-func (r MerkleRoot) Count() uint64 {
-	if len(r)%SmtRootSizeBytes == 0 {
-		panic("root#sum: not a merkle sum trie")
+// count of the number of non-empty leafs in the tree. It returns an error if the
+// root length is invalid.
+func (root MerkleSumRoot) Count() (uint64, error) {
+	if err := root.validateBasic(); err != nil {
+		return 0, err
 	}
 
-	_, firstCountByteIdx := getFirstMetaByteIdx([]byte(r))
+	return root.count(), nil
+}
 
-	var countBz [countSizeBytes]byte
-	copy(countBz[:], []byte(r)[firstCountByteIdx:])
-	return binary.BigEndian.Uint64(countBz[:])
+// DigestSize returns the length of the digest portion of the root.
+func (root MerkleSumRoot) DigestSize() int {
+	return len(root) - countSizeBytes - sumSizeBytes
+}
+
+// HasDigestSize returns true if the root digest size is the same as
+// that of the size of the given hasher.
+func (root MerkleSumRoot) HasDigestSize(size int) bool {
+	return root.DigestSize() == size
+}
+
+// validateBasic returns an error if the root digest size is not a power of two.
+func (root MerkleSumRoot) validateBasic() error {
+	if !isPowerOfTwo(root.DigestSize()) {
+		return fmt.Errorf("MerkleSumRoot#validateBasic: invalid root length")
+	}
+
+	return nil
+}
+
+// sum returns the sum of the node stored in the root.
+func (root MerkleSumRoot) sum() uint64 {
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(root)
+
+	return binary.BigEndian.Uint64(root[firstSumByteIdx:firstCountByteIdx])
+}
+
+// count returns the count of the node stored in the root.
+func (root MerkleSumRoot) count() uint64 {
+	_, firstCountByteIdx := getFirstMetaByteIdx(root)
+
+	return binary.BigEndian.Uint64(root[firstCountByteIdx:])
+}
+
+// isPowerOfTwo function returns true if the input n is a power of 2
+func isPowerOfTwo(n int) bool {
+	// A power of 2 has only one bit set in its binary representation
+	if n <= 0 {
+		return false
+	}
+	return (n & (n - 1)) == 0
 }
