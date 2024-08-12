@@ -389,7 +389,9 @@ func TestBadger_KVStore_Len(t *testing.T) {
 
 	for _, tc := range tests {
 		require.NoError(t, store.Set(tc.key, tc.value))
-		require.Equal(t, tc.size, store.Len())
+		len, err := store.Len()
+		require.NoError(t, err)
+		require.Equal(t, tc.size, len)
 	}
 }
 

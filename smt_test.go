@@ -316,7 +316,9 @@ func TestSMT_OrphanRemoval(t *testing.T) {
 
 	nodeCount := func(t *testing.T) int {
 		require.NoError(t, impl.Commit())
-		return smn.Len()
+		len, err := smn.Len()
+		require.NoError(t, err)
+		return len
 	}
 	setup := func() {
 		smn = simplemap.NewSimpleMap()

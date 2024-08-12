@@ -158,7 +158,9 @@ func TestSimpleMap_Len(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			tt.setup(store)
-			require.Equal(t, tt.expectedLen, store.Len())
+			len, err := store.Len()
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedLen, len)
 		})
 	}
 }
@@ -172,6 +174,7 @@ func TestSimpleMap_ClearAll(t *testing.T) {
 
 	// Clear all elements
 	require.NoError(t, store.ClearAll())
-
-	require.Equal(t, 0, store.Len())
+	len, err := store.Len()
+	require.NoError(t, err)
+	require.Equal(t, 0, len)
 }

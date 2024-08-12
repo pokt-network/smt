@@ -13,7 +13,7 @@ type MapStore interface {
 	// Delete removes a key
 	Delete(key []byte) error
 	// Len returns the number of key-value pairs in the store
-	Len() int
+	Len() (int, error)
 
 	// --- Debug ---
 

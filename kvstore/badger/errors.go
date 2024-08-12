@@ -35,4 +35,7 @@ var (
 	// ErrBadgerGettingStoreLength is returned when the badger store fails to
 	// get the length of the database
 	ErrBadgerGettingStoreLength = errors.New("unable to get database length")
+	// ErrBadgerUnableToCheckExistence is returned when the badger store fails to
+	// check if a key exists
+	ErrBadgerUnableToCheckExistence = errors.New("unable to check key existence")
 )

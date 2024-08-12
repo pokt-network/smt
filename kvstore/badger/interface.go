@@ -42,7 +42,7 @@ type BadgerKVStore interface {
 	// Exists returns true if the key exists
 	Exists(key []byte) (bool, error)
 	// Len returns the number of key-value pairs in the store
-	Len() int
+	Len() (int, error)
 
 	// --- Data management ---
 
