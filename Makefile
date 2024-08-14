@@ -42,6 +42,10 @@ test_all:  ## runs the test suite
 test_badger: ## runs the badger KVStore submodule's test suite
 	go test -v -p 1 -count=1 ./kvstore/badger/... -mod=readonly -race
 
+.PHONY: test_pebble
+test_pebble: ## runs the pebble KVStore submodule's test suite
+	go test -v -p 1 -count=1 ./kvstore/pebble/... -mod=readonly -race
+
 
 #####################
 ###   go helpers  ###

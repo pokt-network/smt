@@ -12,6 +12,7 @@ import (
 const (
 	maxPendingWrites  = 16 // used in backup restoration
 	gcIntervalMinutes = 5 * time.Minute
+	gcDiscardRatio    = 0.5
 )
 
 var _ BadgerKVStore = &badgerKVStore{}
@@ -226,13 +227,30 @@ func (store *badgerKVStore) runValueLogGC() {
 	ticker := time.NewTicker(gcIntervalMinutes)
 	defer ticker.Stop()
 
+	logger := store.db.Opts().Logger
+
 	for range ticker.C {
-		err := store.db.RunValueLogGC(0.5)
-		if err != nil && err != badgerv4.ErrNoRewrite {
-			// Log the error, but don't stop the process
-			// We might want to use a proper logging mechanism here
-			println("Error during value log GC:", err)
+		err := store.db.RunValueLogGC(gcDiscardRatio)
+		if err == nil {
+			if logger != nil {
+				logger.Infof("Value log GC successful")
+			}
+		} else if err == badgerv4.ErrNoRewrite {
+			if logger != nil {
+				logger.Debugf("Value log GC found no data to rewrite")
+			}
+		} else if err == badgerv4.ErrRejected {
+			if logger != nil {
+				logger.Infof("Value log GC rejected (another operation in progress)")
+			}
+		} else {
+			if logger != nil {
+				logger.Errorf("Error during value log GC: %v", err)
+			}
 		}
+
+		// Add a small delay to prevent tight looping if errors occur frequently
+		time.Sleep(time.Second)
 	}
 }
 
@@ -264,7 +282,7 @@ func badgerOptions(path string) badgerv4.Options {
 	opts := badgerv4.DefaultOptions(path)
 
 	// Disable badger's logger since it's very noisy
-	opts.Logger = nil
+	// opts.Logger = nil
 
 	// Reduce MemTableSize from default 64MB to 32MB
 	// This reduces memory usage but may increase disk I/O due to more frequent flushes
