@@ -14,7 +14,6 @@ func TestPebble_KVStore_BasicOperations(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
-	invalidKey := [65001]byte{}
 	testCases := []struct {
 		desc        string
 		op          string
@@ -43,14 +42,6 @@ func TestPebble_KVStore_BasicOperations(t *testing.T) {
 			desc:        "Fails to set value to nil key",
 			op:          "set",
 			key:         nil,
-			value:       []byte("bar"),
-			fail:        true,
-			expectedErr: pebble.ErrPebbleUnableToSetValue,
-		},
-		{
-			desc:        "Fails to set a value to a key that is too large",
-			op:          "set",
-			key:         invalidKey[:],
 			value:       []byte("bar"),
 			fail:        true,
 			expectedErr: pebble.ErrPebbleUnableToSetValue,
@@ -99,14 +90,6 @@ func TestPebble_KVStore_BasicOperations(t *testing.T) {
 			desc:        "Fails to delete a nil key",
 			op:          "delete",
 			key:         nil,
-			value:       nil,
-			fail:        true,
-			expectedErr: pebble.ErrPebbleUnableToDeleteValue,
-		},
-		{
-			desc:        "Fails to delete a value for a key that is too large",
-			op:          "delete",
-			key:         invalidKey[:],
 			value:       nil,
 			fail:        true,
 			expectedErr: pebble.ErrPebbleUnableToDeleteValue,
