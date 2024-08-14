@@ -18,9 +18,6 @@ type PebbleKVStore interface {
 	Delete(key []byte) error
 	// --- Lifecycle methods ---
 	Stop() error
-	// --- Data methods ---
-	// Backup(writer io.Writer, incremental bool) error
-	// Restore(io.Reader) error
 	// --- Accessors ---
 	GetAll(prefixKey []byte, descending bool) (keys, values [][]byte, err error)
 	Exists(key []byte) (bool, error)

@@ -10,7 +10,7 @@ import (
 )
 
 func TestPebble_KVStore_BasicOperations(t *testing.T) {
-	store, err := pebble.NewKVStore("", "")
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -158,7 +158,7 @@ func TestPebble_KVStore_BasicOperations(t *testing.T) {
 }
 
 func TestPebble_KVStore_GetAllBasic(t *testing.T) {
-	store, err := pebble.NewKVStore("", "")
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -195,7 +195,7 @@ func TestPebble_KVStore_GetAllBasic(t *testing.T) {
 }
 
 func TestPebble_KVStore_GetAllPrefixed(t *testing.T) {
-	store, err := pebble.NewKVStore("", "")
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -245,7 +245,7 @@ func TestPebble_KVStore_GetAllPrefixed(t *testing.T) {
 }
 
 func TestPebble_KVStore_Exists(t *testing.T) {
-	store, err := pebble.NewKVStore("", "")
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -287,7 +287,7 @@ func TestPebble_KVStore_Exists(t *testing.T) {
 }
 
 func TestPebble_KVStore_ClearAll(t *testing.T) {
-	store, err := pebble.NewKVStore("", "")
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -334,37 +334,8 @@ func TestPebble_KVStore_ClearAll(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// func TestPebble_KVStore_BackupAndRestore(t *testing.T) {
-// 	tempDir, err := os.MkdirTemp("", "pebble-test-*")
-// 	require.NoError(t, err)
-// 	defer os.RemoveAll(tempDir)
-
-// 	store, err := pebble.NewKVStore("", tempDir)
-// 	require.NoError(t, err)
-// 	require.NotNil(t, store)
-
-// 	setupStore(t, store)
-
-// 	keys, values, err := store.GetAll([]byte{}, false)
-// 	require.NoError(t, err)
-
-// 	buf := bytes.NewBuffer(nil)
-// 	err = store.Backup(buf, false)
-// 	require.NoError(t, err)
-
-// 	require.NoError(t, store.ClearAll())
-// 	err = store.Restore(buf)
-// 	require.NoError(t, err)
-
-// 	newKeys, newValues, err := store.GetAll([]byte{}, false)
-// 	require.NoError(t, err)
-
-// 	require.Equal(t, keys, newKeys)
-// 	require.Equal(t, values, newValues)
-// }
-
 func TestPebble_KVStore_Len(t *testing.T) {
-	store, err := pebble.NewKVStore("", "")
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
