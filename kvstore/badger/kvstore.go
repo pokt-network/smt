@@ -3,16 +3,12 @@ package badger
 import (
 	"errors"
 	"io"
-	"time"
 
 	badgerv4 "github.com/dgraph-io/badger/v4"
-	badgerv4opts "github.com/dgraph-io/badger/v4/options"
 )
 
 const (
-	maxPendingWrites  = 16 // used in backup restoration
-	gcIntervalMinutes = 5 * time.Minute
-	gcDiscardRatio    = 0.5
+	maxPendingWrites = 16 // used in backup restoration
 )
 
 var _ BadgerKVStore = &badgerKVStore{}
@@ -36,12 +32,7 @@ func NewKVStore(path string) (BadgerKVStore, error) {
 		return nil, errors.Join(ErrBadgerOpeningStore, err)
 	}
 
-	store := &badgerKVStore{db: db}
-
-	// Start value log GC in a separate goroutine
-	go store.runValueLogGC()
-
-	return store, nil
+	return &badgerKVStore{db: db}, nil
 }
 
 // Set sets/updates the value for a given key
@@ -54,28 +45,6 @@ func (store *badgerKVStore) Set(key, value []byte) error {
 	}
 	return nil
 }
-
-// TODO: Add/use BatchSet when multiple KV pairs need to be updated for performance benefits
-// BatchSet sets/updates multiple key-value pairs in a single transaction
-// func (store *badgerKVStore) BatchSet(keys, values [][]byte) error {
-// 	if len(keys) != len(values) {
-// 		return errors.New("mismatched number of keys and values")
-// 	}
-//
-// 	wb := store.db.NewWriteBatch()
-// 	defer wb.Cancel()
-//
-// 	for i := range keys {
-// 		if err := wb.Set(keys[i], values[i]); err != nil {
-// 			return errors.Join(ErrBadgerUnableToSetValue, err)
-// 		}
-// 	}
-//
-// 	if err := wb.Flush(); err != nil {
-// 		return errors.Join(ErrBadgerUnableToSetValue, err)
-// 	}
-// 	return nil
-// }
 
 // Get returns the value for a given key
 func (store *badgerKVStore) Get(key []byte) ([]byte, error) {
@@ -222,38 +191,6 @@ func (store *badgerKVStore) Len() (int, error) {
 	return count, nil
 }
 
-// runValueLogGC runs the value log garbage collection process periodically
-func (store *badgerKVStore) runValueLogGC() {
-	ticker := time.NewTicker(gcIntervalMinutes)
-	defer ticker.Stop()
-
-	logger := store.db.Opts().Logger
-
-	for range ticker.C {
-		err := store.db.RunValueLogGC(gcDiscardRatio)
-		if err == nil {
-			if logger != nil {
-				logger.Infof("Value log GC successful")
-			}
-		} else if err == badgerv4.ErrNoRewrite {
-			if logger != nil {
-				logger.Debugf("Value log GC found no data to rewrite")
-			}
-		} else if err == badgerv4.ErrRejected {
-			if logger != nil {
-				logger.Infof("Value log GC rejected (another operation in progress)")
-			}
-		} else {
-			if logger != nil {
-				logger.Errorf("Error during value log GC: %v", err)
-			}
-		}
-
-		// Add a small delay to prevent tight looping if errors occur frequently
-		time.Sleep(time.Second)
-	}
-}
-
 // PrefixEndBytes returns the end byteslice for a noninclusive range
 // that would include all byte slices for which the input is the prefix
 func prefixEndBytes(prefix []byte) []byte {
@@ -271,6 +208,8 @@ func prefixEndBytes(prefix []byte) []byte {
 
 // badgerOptions returns the badger options for the store being created
 func badgerOptions(path string) badgerv4.Options {
+	// TODO: If we will use badger for SMT storage, consider exposing the low-level options via a config file to make it
+	// easier to test under different load conditions.
 	// Parameters should be adjusted carefully, depending on the type of load. We need to experiment more to find the best
 	// values, and even then they might need further adjustments as the type of load/environment (e.g. memory dedicated
 	// to the process) changes.
@@ -280,51 +219,6 @@ func badgerOptions(path string) badgerv4.Options {
 	// - https://github.com/dgraph-io/badger/blob/master/options.go#L37
 	// - https://github.com/open-policy-agent/opa/issues/4014#issuecomment-1003700744
 	opts := badgerv4.DefaultOptions(path)
-
-	// Disable badger's logger since it's very noisy
-	// opts.Logger = nil
-
-	// Reduce MemTableSize from default 64MB to 32MB
-	// This reduces memory usage but may increase disk I/O due to more frequent flushes
-	opts.MemTableSize = 32 << 20
-
-	// Decrease NumMemtables from default 5 to 3
-	// This reduces memory usage but may slow down writes if set too low
-	opts.NumMemtables = 3
-
-	// Lower ValueThreshold from default 1MB to 256 bytes
-	// This stores more data in LSM trees, reducing memory usage for small values
-	// but may impact write performance for larger values
-	opts.ValueThreshold = 256
-
-	// Reduce BlockCacheSize from default 256MB to 32MB
-	// This reduces memory usage but may slow down read operations
-	opts.BlockCacheSize = 32 << 20
-
-	// Adjust NumLevelZeroTables from default 5 to 3
-	// This triggers compaction more frequently, potentially reducing memory usage
-	// but at the cost of more disk I/O
-	opts.NumLevelZeroTables = 3
-
-	// Adjust NumLevelZeroTablesStall from default 15 to 8
-	// This also helps in triggering compaction more frequently
-	opts.NumLevelZeroTablesStall = 8
-
-	// Change Compression from default Snappy to ZSTD
-	// This can reduce memory and disk usage at the cost of higher CPU usage
-	opts.Compression = badgerv4opts.ZSTD
-
-	// Set ZSTDCompressionLevel to 3 (default is 1)
-	// This provides better compression but increases CPU usage
-	opts.ZSTDCompressionLevel = 3
-
-	// Reduce BaseTableSize from default 2MB to 1MB
-	// This might help in reducing memory usage, especially for many small keys
-	opts.BaseTableSize = 1 << 20
-
-	// Enable dynamic thresholding for value log (default is 0.0, which is disabled)
-	// This might help in optimizing memory usage for specific workloads
-	opts.VLogPercentile = 0.9
 
 	return opts
 }
