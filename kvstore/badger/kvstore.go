@@ -114,16 +114,19 @@ func (store *badgerKVStore) GetAll(prefix []byte, descending bool) (keys, values
 func (store *badgerKVStore) Exists(key []byte) (bool, error) {
 	var exists bool
 	err := store.db.View(func(tx *badgerv4.Txn) error {
-		_, err := tx.Get(key)
+		item, err := tx.Get(key)
 		if err == badgerv4.ErrKeyNotFound {
-			exists = false
-			return nil
+			return ErrBadgerUnableToGetValue
 		}
 		if err != nil {
 			return err
 		}
-		exists = true
-		return nil
+		// Check if the value is nil
+		err = item.Value(func(val []byte) error {
+			exists = len(val) > 0
+			return nil
+		})
+		return err
 	})
 	if err != nil {
 		return false, errors.Join(ErrBadgerUnableToCheckExistence, err)
