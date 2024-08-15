@@ -222,6 +222,7 @@ func badgerOptions(path string) badgerv4.Options {
 	// - https://github.com/dgraph-io/badger/blob/master/options.go#L37
 	// - https://github.com/open-policy-agent/opa/issues/4014#issuecomment-1003700744
 	opts := badgerv4.DefaultOptions(path)
+	opts.Logger = nil // disable badger's logger since it's very noisy
 
 	return opts
 }
