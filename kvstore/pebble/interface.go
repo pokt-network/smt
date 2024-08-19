@@ -12,17 +12,11 @@ var _ kvstore.MapStore = (PebbleKVStore)(nil)
 // This is a superset of the MapStore interface that offers more
 // features and can be used as a standalone key-value store.
 type PebbleKVStore interface {
-	// --- Store methods ---
-	Get(key []byte) ([]byte, error)
-	Set(key, value []byte) error
-	Delete(key []byte) error
+	kvstore.MapStore
+
 	// --- Lifecycle methods ---
 	Stop() error
 	// --- Accessors ---
 	GetAll(prefixKey []byte, descending bool) (keys, values [][]byte, err error)
 	Exists(key []byte) (bool, error)
-	// Len returns the number of key-value pairs in the store
-	Len() (int, error)
-	// --- Data management ---
-	ClearAll() error
 }

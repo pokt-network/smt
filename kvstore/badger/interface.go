@@ -14,14 +14,7 @@ var _ kvstore.MapStore = (BadgerKVStore)(nil)
 // This is a superset of the MapStore interface that offers more
 // features and can be used as a standalone key-value store.
 type BadgerKVStore interface {
-	// --- Store methods ---
-
-	// Get returns the value for a given key
-	Get(key []byte) ([]byte, error)
-	// Set sets/updates the value for a given key
-	Set(key, value []byte) error
-	// Delete removes a key
-	Delete(key []byte) error
+	kvstore.MapStore
 
 	// --- Lifecycle methods ---
 
@@ -41,11 +34,4 @@ type BadgerKVStore interface {
 	GetAll(prefixKey []byte, descending bool) (keys, values [][]byte, err error)
 	// Exists returns true if the key exists
 	Exists(key []byte) (bool, error)
-	// Len returns the number of key-value pairs in the store
-	Len() (int, error)
-
-	// --- Data management ---
-
-	// ClearAll deletes all key-value pairs in the store
-	ClearAll() error
 }

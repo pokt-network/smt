@@ -15,6 +15,8 @@ type pebbleKVStore struct {
 
 // NewKVStore creates a new PebbleKVStore instance.
 // If path is empty, it creates an in-memory store.
+// TODO: consider exposing the low-level options (`pebble.Options{}`) via a config file to make it
+// easier to test under different load conditions.
 func NewKVStore(path string) (PebbleKVStore, error) {
 	store := &pebbleKVStore{}
 
