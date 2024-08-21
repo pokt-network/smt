@@ -20,8 +20,8 @@ type badgerKVStore struct {
 
 // NewKVStore creates a new BadgerKVStore using badger as the underlying database
 // if no path for a persistence database is provided it will create one in-memory
-// TODO: consider exposing the low-level options (`badgerv4.Options`) via a config file to make it
-// easier to test under different load conditions.
+// TODO_CONSIDERATION: consider exposing the low-level options (`badgerv4.Options`) via a
+// config file to make it easier to test under different load conditions.
 func NewKVStore(path string) (BadgerKVStore, error) {
 	var db *badgerv4.DB
 	var err error
@@ -213,7 +213,7 @@ func prefixEndBytes(prefix []byte) []byte {
 
 // badgerOptions returns the badger options for the store being created
 func badgerOptions(path string) badgerv4.Options {
-	// Parameters should be adjusted carefully, depending on the type of load. We need to experiment more to find the best
+	// DEV_NOTE: Parameters should be adjusted carefully, depending on the type of load. We need to experiment more to find the best
 	// values, and even then they might need further adjustments as the type of load/environment (e.g. memory dedicated
 	// to the process) changes.
 	//
