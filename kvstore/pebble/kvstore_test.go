@@ -352,6 +352,69 @@ func TestPebble_KVStore_Len(t *testing.T) {
 	}
 }
 
+func TestPebble_KVStore_GetAllWithPrefixEnd(t *testing.T) {
+	store, err := pebble.NewKVStore("")
+	require.NoError(t, err)
+	require.NotNil(t, store)
+
+	keys := [][]byte{
+		[]byte("user:1"),
+		[]byte("user:10"),
+		[]byte("user:100"),
+		[]byte("user:2"),
+		[]byte("user:20"),
+	}
+	values := [][]byte{
+		[]byte("value1"),
+		[]byte("value10"),
+		[]byte("value100"),
+		[]byte("value2"),
+		[]byte("value20"),
+	}
+
+	for i := 0; i < len(keys); i++ {
+		err := store.Set(keys[i], values[i])
+		require.NoError(t, err)
+	}
+
+	t.Run("GetAll with prefix user:1", func(t *testing.T) {
+		expectedKeys := [][]byte{
+			[]byte("user:1"),
+			[]byte("user:10"),
+			[]byte("user:100"),
+		}
+		expectedValues := [][]byte{
+			[]byte("value1"),
+			[]byte("value10"),
+			[]byte("value100"),
+		}
+
+		allKeys, allValues, err := store.GetAll([]byte("user:1"), false)
+		require.NoError(t, err)
+		require.Equal(t, expectedKeys, allKeys)
+		require.Equal(t, expectedValues, allValues)
+	})
+
+	t.Run("GetAll with prefix user:2", func(t *testing.T) {
+		expectedKeys := [][]byte{
+			[]byte("user:2"),
+			[]byte("user:20"),
+		}
+		expectedValues := [][]byte{
+			[]byte("value2"),
+			[]byte("value20"),
+		}
+
+		allKeys, allValues, err := store.GetAll([]byte("user:2"), false)
+		require.NoError(t, err)
+		require.Equal(t, expectedKeys, allKeys)
+		require.Equal(t, expectedValues, allValues)
+	})
+
+	err = store.Stop()
+	require.NoError(t, err)
+}
+
 func setupStore(t *testing.T, store pebble.PebbleKVStore) {
 	t.Helper()
 	err := store.Set([]byte("foo"), []byte("bar"))

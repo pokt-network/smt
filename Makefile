@@ -97,6 +97,10 @@ benchmark_smst_ops:  ## runs the benchmarks test different operations on the SMS
 benchmark_proof_sizes:  ## runs the benchmarks test the proof sizes for different sized tries
 	go test -tags=benchmark -v ./benchmarks -run ProofSizes
 
+.PHONY: benchmark_pebble
+benchmark_pebble:  ## TODO: Add the pebble benchmarks
+	echo "TODO: Implement pebble benchmarks"
+
 ###########################
 ###   Release Helpers   ###
 ###########################

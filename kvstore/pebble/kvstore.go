@@ -148,7 +148,19 @@ func (store *pebbleKVStore) Len() (int, error) {
 	return count, nil
 }
 
-// prefixEndBytes returns the end key for prefix scans.
+// prefixEndBytes returns the end byte slice for a noninclusive range
+// that would include all byte slices for which the input is the prefix.
+// It's used in reverse iteration to set the upper bound of the key range.
+//
+// Example:
+// If prefix is []byte("user:1"), prefixEndBytes returns []byte("user:2").
+// This ensures that in reverse iteration:
+// - Keys like "user:1", "user:1:profile", "user:10" are included.
+// - But "user:2", "user:2:profile" are not included.
+//
+// See `TestPebble_KVStore_GetAllWithPrefixEnd` for more examples.
+//
+// Note: This function assumes the prefix is composed of standard ASCII characters.
 func prefixEndBytes(prefix []byte) []byte {
 	if len(prefix) == 0 {
 		return nil

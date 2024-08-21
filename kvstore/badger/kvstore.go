@@ -112,14 +112,12 @@ func (store *badgerKVStore) GetAll(prefix []byte, descending bool) (keys, values
 	return keys, values, nil
 }
 
-// Exists checks whether the key exists in the store
+// Exists checks whether the key exists in the store without retrieving the full value.
+// This avoids unnecessary memory allocations and copying that would occur with a full Get.
 func (store *badgerKVStore) Exists(key []byte) (bool, error) {
 	var exists bool
 	err := store.db.View(func(tx *badgerv4.Txn) error {
 		item, err := tx.Get(key)
-		if err == badgerv4.ErrKeyNotFound {
-			return ErrBadgerUnableToGetValue
-		}
 		if err != nil {
 			return err
 		}
@@ -196,8 +194,15 @@ func (store *badgerKVStore) Len() (int, error) {
 	return count, nil
 }
 
-// PrefixEndBytes returns the end byteslice for a noninclusive range
-// that would include all byte slices for which the input is the prefix
+// prefixEndBytes returns the end byteslice for a noninclusive range
+// that would include all byte slices for which the input is the prefix.
+// It's used in reverse iteration to set the upper bound of the key range.
+//
+// Example:
+// If prefix is []byte("user:1"), prefixEndBytes returns []byte("user:2").
+// This ensures that in reverse iteration:
+// - Keys like "user:1", "user:1:profile", "user:10" are included.
+// - But "user:2", "user:2:profile" are not included.
 func prefixEndBytes(prefix []byte) []byte {
 	if len(prefix) == 0 {
 		return nil
