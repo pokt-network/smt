@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	badgerv4 "github.com/dgraph-io/badger/v4"
 	"github.com/pokt-network/smt/kvstore/badger"
 )
 
@@ -280,7 +281,7 @@ func TestBadger_KVStore_Exists(t *testing.T) {
 
 	// Key does not exist
 	exists, err = store.Exists([]byte("oof"))
-	require.ErrorIs(t, err, badger.ErrBadgerUnableToGetValue)
+	require.ErrorIs(t, err, badgerv4.ErrKeyNotFound)
 	require.False(t, exists)
 
 	err = store.Stop()
