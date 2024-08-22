@@ -115,6 +115,7 @@ func (store *pebbleKVStore) Exists(key []byte) (bool, error) {
 }
 
 // ClearAll removes all key-value pairs from the store.
+// DEV_NOTE: currently not used in production code, but consider optimizing with `Batch.DeleteRange` if that changes.
 func (store *pebbleKVStore) ClearAll() error {
 	iter, _ := store.db.NewIter(nil)
 	defer iter.Close()
