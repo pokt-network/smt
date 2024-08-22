@@ -1,8 +1,10 @@
 go 1.20
 
 use (
-    // Include the main SMT module
-    .
-    // Include the badger KVStore submodule
-    ./kvstore/badger
+	// Include the main SMT module
+	.
+	// Include the badger KVStore submodule
+	./kvstore/badger
+	// Include the pebble KVStore submodule
+	./kvstore/pebble
 )

@@ -20,6 +20,8 @@ type badgerKVStore struct {
 
 // NewKVStore creates a new BadgerKVStore using badger as the underlying database
 // if no path for a persistence database is provided it will create one in-memory
+// TODO_CONSIDERATION: consider exposing the low-level options (`badgerv4.Options`) via a
+// config file to make it easier to test under different load conditions.
 func NewKVStore(path string) (BadgerKVStore, error) {
 	var db *badgerv4.DB
 	var err error
@@ -31,6 +33,7 @@ func NewKVStore(path string) (BadgerKVStore, error) {
 	if err != nil {
 		return nil, errors.Join(ErrBadgerOpeningStore, err)
 	}
+
 	return &badgerKVStore{db: db}, nil
 }
 
@@ -109,13 +112,26 @@ func (store *badgerKVStore) GetAll(prefix []byte, descending bool) (keys, values
 	return keys, values, nil
 }
 
-// Exists checks whether the key exists in the store
+// Exists checks whether the key exists in the store without retrieving the full value.
+// This avoids unnecessary memory allocations and copying that would occur with a full Get.
 func (store *badgerKVStore) Exists(key []byte) (bool, error) {
-	val, err := store.Get(key)
+	var exists bool
+	err := store.db.View(func(tx *badgerv4.Txn) error {
+		item, err := tx.Get(key)
+		if err != nil {
+			return err
+		}
+		// Check if the value is nil
+		err = item.Value(func(val []byte) error {
+			exists = len(val) > 0
+			return nil
+		})
+		return err
+	})
 	if err != nil {
-		return false, err
+		return false, errors.Join(ErrBadgerUnableToCheckExistence, err)
 	}
-	return val != nil, nil
+	return exists, nil
 }
 
 // ClearAll deletes all key-value pairs in the store
@@ -159,9 +175,9 @@ func (store *badgerKVStore) Stop() error {
 }
 
 // Len gives the number of keys in the store
-func (store *badgerKVStore) Len() int {
-	count := 0
-	if err := store.db.View(func(tx *badgerv4.Txn) error {
+func (store *badgerKVStore) Len() (int, error) {
+	var count int
+	err := store.db.View(func(tx *badgerv4.Txn) error {
 		opt := badgerv4.DefaultIteratorOptions
 		opt.Prefix = []byte{}
 		opt.Reverse = false
@@ -171,14 +187,22 @@ func (store *badgerKVStore) Len() int {
 			count++
 		}
 		return nil
-	}); err != nil {
-		panic(errors.Join(ErrBadgerGettingStoreLength, err))
+	})
+	if err != nil {
+		return 0, errors.Join(ErrBadgerGettingStoreLength, err)
 	}
-	return count
+	return count, nil
 }
 
-// PrefixEndBytes returns the end byteslice for a noninclusive range
-// that would include all byte slices for which the input is the prefix
+// prefixEndBytes returns the end byteslice for a noninclusive range
+// that would include all byte slices for which the input is the prefix.
+// It's used in reverse iteration to set the upper bound of the key range.
+//
+// Example:
+// If prefix is []byte("user:1"), prefixEndBytes returns []byte("user:2").
+// This ensures that in reverse iteration:
+// - Keys like "user:1", "user:1:profile", "user:10" are included.
+// - But "user:2", "user:2:profile" are not included.
 func prefixEndBytes(prefix []byte) []byte {
 	if len(prefix) == 0 {
 		return nil
@@ -194,7 +218,16 @@ func prefixEndBytes(prefix []byte) []byte {
 
 // badgerOptions returns the badger options for the store being created
 func badgerOptions(path string) badgerv4.Options {
+	// DEV_NOTE: Parameters should be adjusted carefully, depending on the type of load. We need to experiment more to find the best
+	// values, and even then they might need further adjustments as the type of load/environment (e.g. memory dedicated
+	// to the process) changes.
+	//
+	// Good links to read about options:
+	// - https://github.com/dgraph-io/badger/issues/1304#issuecomment-630078745
+	// - https://github.com/dgraph-io/badger/blob/master/options.go#L37
+	// - https://github.com/open-policy-agent/opa/issues/4014#issuecomment-1003700744
 	opts := badgerv4.DefaultOptions(path)
 	opts.Logger = nil // disable badger's logger since it's very noisy
+
 	return opts
 }

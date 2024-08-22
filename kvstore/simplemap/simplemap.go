@@ -63,8 +63,8 @@ func (sm *simpleMap) Delete(key []byte) error {
 }
 
 // Len returns the number of key-value pairs in the store.
-func (sm *simpleMap) Len() int {
-	return len(sm.m)
+func (sm *simpleMap) Len() (int, error) {
+	return len(sm.m), nil
 }
 
 // ClearAll clears all key-value pairs

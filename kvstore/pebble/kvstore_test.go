@@ -1,22 +1,19 @@
-package badger_test
+package pebble_test
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	badgerv4 "github.com/dgraph-io/badger/v4"
-	"github.com/pokt-network/smt/kvstore/badger"
+	"github.com/pokt-network/smt/kvstore/pebble"
 )
 
-func TestBadger_KVStore_BasicOperations(t *testing.T) {
-	store, err := badger.NewKVStore("")
+func TestPebble_KVStore_BasicOperations(t *testing.T) {
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
-	invalidKey := [65001]byte{}
 	testCases := []struct {
 		desc        string
 		op          string
@@ -47,15 +44,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			key:         nil,
 			value:       []byte("bar"),
 			fail:        true,
-			expectedErr: badger.ErrBadgerUnableToSetValue,
-		},
-		{
-			desc:        "Fails to set a value to a key that is too large",
-			op:          "set",
-			key:         invalidKey[:],
-			value:       []byte("bar"),
-			fail:        true,
-			expectedErr: badger.ErrBadgerUnableToSetValue,
+			expectedErr: pebble.ErrPebbleUnableToSetValue,
 		},
 		{
 			desc:        "Successfully retrieve a value from the store",
@@ -71,7 +60,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			key:         []byte("bar"),
 			value:       nil,
 			fail:        true,
-			expectedErr: badger.ErrBadgerUnableToGetValue,
+			expectedErr: pebble.ErrPebbleUnableToGetValue,
 		},
 		{
 			desc:        "Fails when the key is empty",
@@ -79,7 +68,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			key:         nil,
 			value:       nil,
 			fail:        true,
-			expectedErr: badger.ErrBadgerUnableToGetValue,
+			expectedErr: pebble.ErrPebbleUnableToGetValue,
 		},
 		{
 			desc:        "Successfully deletes a value in the store",
@@ -103,15 +92,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 			key:         nil,
 			value:       nil,
 			fail:        true,
-			expectedErr: badger.ErrBadgerUnableToDeleteValue,
-		},
-		{
-			desc:        "Fails to delete a value for a key that is too large",
-			op:          "delete",
-			key:         invalidKey[:],
-			value:       nil,
-			fail:        true,
-			expectedErr: badger.ErrBadgerUnableToDeleteValue,
+			expectedErr: pebble.ErrPebbleUnableToDeleteValue,
 		},
 	}
 
@@ -149,7 +130,7 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 				} else {
 					require.NoError(t, err)
 					_, err := store.Get(tc.key)
-					require.ErrorIs(t, err, badger.ErrBadgerUnableToGetValue)
+					require.ErrorIs(t, err, pebble.ErrPebbleUnableToGetValue)
 				}
 			}
 		})
@@ -159,8 +140,8 @@ func TestBadger_KVStore_BasicOperations(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBadger_KVStore_GetAllBasic(t *testing.T) {
-	store, err := badger.NewKVStore("")
+func TestPebble_KVStore_GetAllBasic(t *testing.T) {
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -196,8 +177,8 @@ func TestBadger_KVStore_GetAllBasic(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBadger_KVStore_GetAllPrefixed(t *testing.T) {
-	store, err := badger.NewKVStore("")
+func TestPebble_KVStore_GetAllPrefixed(t *testing.T) {
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -246,8 +227,8 @@ func TestBadger_KVStore_GetAllPrefixed(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBadger_KVStore_Exists(t *testing.T) {
-	store, err := badger.NewKVStore("")
+func TestPebble_KVStore_Exists(t *testing.T) {
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -281,15 +262,15 @@ func TestBadger_KVStore_Exists(t *testing.T) {
 
 	// Key does not exist
 	exists, err = store.Exists([]byte("oof"))
-	require.ErrorIs(t, err, badgerv4.ErrKeyNotFound)
+	require.NoError(t, err)
 	require.False(t, exists)
 
 	err = store.Stop()
 	require.NoError(t, err)
 }
 
-func TestBadger_KVStore_ClearAll(t *testing.T) {
-	store, err := badger.NewKVStore("")
+func TestPebble_KVStore_ClearAll(t *testing.T) {
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -336,33 +317,8 @@ func TestBadger_KVStore_ClearAll(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBadger_KVStore_BackupAndRestore(t *testing.T) {
-	store, err := badger.NewKVStore("")
-	require.NoError(t, err)
-	require.NotNil(t, store)
-
-	setupStore(t, store)
-
-	keys, values, err := store.GetAll([]byte{}, false)
-	require.NoError(t, err)
-
-	buf := bytes.NewBuffer(nil)
-	err = store.Backup(buf, false)
-	require.NoError(t, err)
-
-	require.NoError(t, store.ClearAll())
-	err = store.Restore(buf)
-	require.NoError(t, err)
-
-	newKeys, newValues, err := store.GetAll([]byte{}, false)
-	require.NoError(t, err)
-
-	require.Equal(t, keys, newKeys)
-	require.Equal(t, values, newValues)
-}
-
-func TestBadger_KVStore_Len(t *testing.T) {
-	store, err := badger.NewKVStore("")
+func TestPebble_KVStore_Len(t *testing.T) {
+	store, err := pebble.NewKVStore("")
 	require.NoError(t, err)
 	require.NotNil(t, store)
 
@@ -396,7 +352,70 @@ func TestBadger_KVStore_Len(t *testing.T) {
 	}
 }
 
-func setupStore(t *testing.T, store badger.BadgerKVStore) {
+func TestPebble_KVStore_GetAllWithPrefixEnd(t *testing.T) {
+	store, err := pebble.NewKVStore("")
+	require.NoError(t, err)
+	require.NotNil(t, store)
+
+	keys := [][]byte{
+		[]byte("user:1"),
+		[]byte("user:10"),
+		[]byte("user:100"),
+		[]byte("user:2"),
+		[]byte("user:20"),
+	}
+	values := [][]byte{
+		[]byte("value1"),
+		[]byte("value10"),
+		[]byte("value100"),
+		[]byte("value2"),
+		[]byte("value20"),
+	}
+
+	for i := 0; i < len(keys); i++ {
+		err := store.Set(keys[i], values[i])
+		require.NoError(t, err)
+	}
+
+	t.Run("GetAll with prefix user:1", func(t *testing.T) {
+		expectedKeys := [][]byte{
+			[]byte("user:1"),
+			[]byte("user:10"),
+			[]byte("user:100"),
+		}
+		expectedValues := [][]byte{
+			[]byte("value1"),
+			[]byte("value10"),
+			[]byte("value100"),
+		}
+
+		allKeys, allValues, err := store.GetAll([]byte("user:1"), false)
+		require.NoError(t, err)
+		require.Equal(t, expectedKeys, allKeys)
+		require.Equal(t, expectedValues, allValues)
+	})
+
+	t.Run("GetAll with prefix user:2", func(t *testing.T) {
+		expectedKeys := [][]byte{
+			[]byte("user:2"),
+			[]byte("user:20"),
+		}
+		expectedValues := [][]byte{
+			[]byte("value2"),
+			[]byte("value20"),
+		}
+
+		allKeys, allValues, err := store.GetAll([]byte("user:2"), false)
+		require.NoError(t, err)
+		require.Equal(t, expectedKeys, allKeys)
+		require.Equal(t, expectedValues, allValues)
+	})
+
+	err = store.Stop()
+	require.NoError(t, err)
+}
+
+func setupStore(t *testing.T, store pebble.PebbleKVStore) {
 	t.Helper()
 	err := store.Set([]byte("foo"), []byte("bar"))
 	require.NoError(t, err)
