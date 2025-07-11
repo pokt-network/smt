@@ -3,6 +3,7 @@ package smt
 import (
 	"encoding/binary"
 	"hash"
+	"sync"
 )
 
 // TODO_IMPROVE:: Improve how the `hasher` file is consolidated with
@@ -31,10 +32,31 @@ type ValueHasher interface {
 	ValueHashSize() int
 }
 
+// bufferPool provides reusable byte slices to reduce allocations
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 0, 256) // Pre-allocate reasonable capacity
+	},
+}
+
+// getBuffer returns a reusable byte slice from the pool
+func getBuffer() []byte {
+	return bufferPool.Get().([]byte)[:0] // Reset length but keep capacity
+}
+
+// putBuffer returns a byte slice to the pool for reuse
+func putBuffer(buf []byte) {
+	if cap(buf) < 1024 { // Don't pool very large buffers
+		bufferPool.Put(buf)
+	}
+}
+
 // trieHasher is a common hasher for all trie hashers (paths & values).
 type trieHasher struct {
 	hasher    hash.Hash
 	zeroValue []byte
+	// Reusable buffer for hash computations
+	hashBuf []byte
 }
 
 // pathHasher is a hasher for trie paths.
@@ -56,6 +78,7 @@ type nilPathHasher struct {
 func NewTrieHasher(hasher hash.Hash) *trieHasher {
 	th := trieHasher{hasher: hasher}
 	th.zeroValue = make([]byte, th.hashSize())
+	th.hashBuf = make([]byte, 0, th.hashSize()) // Pre-allocate hash buffer
 	return &th
 }
 
@@ -102,8 +125,12 @@ func (n *nilPathHasher) PathSize() int {
 // digestData returns the hash of the data provided using the trie hasher.
 func (th *trieHasher) digestData(data []byte) []byte {
 	th.hasher.Write(data)
-	digest := th.hasher.Sum(nil)
+	th.hashBuf = th.hasher.Sum(th.hashBuf[:0]) // Reuse buffer, reset length to 0
 	th.hasher.Reset()
+	
+	// Return a copy to avoid buffer reuse issues
+	digest := make([]byte, len(th.hashBuf))
+	copy(digest, th.hashBuf)
 	return digest
 }
 

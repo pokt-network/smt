@@ -145,7 +145,10 @@ func (smt *SMT) update(
 		return node, err
 	}
 
-	newLeaf := &leafNode{path: path, valueHash: value}
+	// Copy path to avoid retaining the entire input slice
+	pathCopy := make([]byte, len(path))
+	copy(pathCopy, path)
+	newLeaf := &leafNode{path: pathCopy, valueHash: value}
 	// Empty subtrie is always replaced by a single leaf
 	if node == nil {
 		return newLeaf, nil
@@ -176,13 +179,15 @@ func (smt *SMT) update(
 		// a pre-existing leafNode with a common prefix.
 		last := &node
 		if depth < prefixLen {
-			// note: this keeps path slice alive - GC inefficiency?
 			if depth > 0xff {
 				panic("invalid depth")
 			}
+			// Copy only the needed portion of path to avoid retaining the entire slice
+			pathCopy := make([]byte, len(path))
+			copy(pathCopy, path)
 			ext := extensionNode{
 				child: newInner,
-				path:  path,
+				path:  pathCopy,
 				pathBounds: [2]byte{
 					byte(depth), byte(prefixLen),
 				},

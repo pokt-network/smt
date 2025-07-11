@@ -55,27 +55,85 @@ func isInnerNode(data []byte) bool {
 // encodeLeafNode encodes leaf nodes. This function applies to both the SMT and
 // SMST since the weight of the node is appended to the end of the valueHash.
 func encodeLeafNode(path, leafData []byte) (data []byte) {
+	// Pre-calculate total size to avoid multiple allocations
+	totalSize := prefixLen + len(path) + len(leafData)
+	
+	// Use single allocation if total size is reasonable
+	if totalSize <= 512 {
+		data = make([]byte, 0, totalSize)
+		data = append(data, leafNodePrefix...)
+		data = append(data, path...)
+		data = append(data, leafData...)
+		return data
+	}
+	
+	// For larger sizes, use buffer pool
+	data = getBuffer()
+	if cap(data) < totalSize {
+		data = make([]byte, 0, totalSize)
+	}
+	
 	data = append(data, leafNodePrefix...)
 	data = append(data, path...)
 	data = append(data, leafData...)
-	return
+	
+	// Return a copy and put buffer back in pool
+	result := make([]byte, len(data))
+	copy(result, data)
+	putBuffer(data)
+	return result
 }
 
 // encodeInnerNode encodes inner node given the data for both children
 func encodeInnerNode(leftData, rightData []byte) (data []byte) {
+	// Pre-calculate total size to avoid multiple allocations
+	totalSize := prefixLen + len(leftData) + len(rightData)
+	
+	// Use single allocation if total size is reasonable
+	if totalSize <= 512 {
+		data = make([]byte, 0, totalSize)
+		data = append(data, innerNodePrefix...)
+		data = append(data, leftData...)
+		data = append(data, rightData...)
+		return data
+	}
+	
+	// For larger sizes, use buffer pool
+	data = getBuffer()
+	if cap(data) < totalSize {
+		data = make([]byte, 0, totalSize)
+	}
+	
 	data = append(data, innerNodePrefix...)
 	data = append(data, leftData...)
 	data = append(data, rightData...)
-	return
+	
+	// Return a copy and put buffer back in pool
+	result := make([]byte, len(data))
+	copy(result, data)
+	putBuffer(data)
+	return result
 }
 
 // encodeExtensionNode encodes the data of an extension nodes
 func encodeExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
+	// Pre-calculate total size to avoid multiple allocations
+	totalSize := prefixLen + 2 + len(path) + len(childData) // +2 for pathBounds
+	data = getBuffer()
+	if cap(data) < totalSize {
+		data = make([]byte, 0, totalSize)
+	}
+	
 	data = append(data, extNodePrefix...)
 	data = append(data, pathBounds[:]...)
 	data = append(data, path...)
 	data = append(data, childData...)
-	return
+	
+	// Return a copy and put buffer back in pool
+	result := make([]byte, len(data))
+	copy(result, data)
+	putBuffer(data)
+	return result
 }
 
 // encodeSumInnerNode encodes an inner node for an smst given the data for both children

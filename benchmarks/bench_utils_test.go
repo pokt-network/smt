@@ -38,7 +38,7 @@ var (
 	getSMST = func(s *smt.SMST, i uint64) error {
 		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, i)
-		_, _, _, err := s.Get(b)
+		_, _, err := s.Get(b)
 		return err
 	}
 	proSMST = func(s *smt.SMST, i uint64) error {
