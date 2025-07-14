@@ -12,9 +12,31 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TARGET_GOLANG_VERSION: "1.20.12"
+  TARGET_GOLANG_VERSION: "1.24.3"
 
 jobs:
+  run-linter:
+    name: Run linter
+    runs-on: "ubuntu-22.04"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.3"
+
+      - name: Setup Git Authentication
+        run: |
+          git config --global url."https://${{ github.token }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1
+          args: --timeout 20m --verbose
+
   tests:
     runs-on: ubuntu-latest
     strategy:
@@ -28,14 +50,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.TARGET_GOLANG_VERSION }}
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-          args: --timeout=10m
-          skip-cache: true
-          only-new-issues: true
 
       - name: Install gocovmerge
         run: go install github.com/wadey/gocovmerge@latest
@@ -54,19 +68,29 @@ jobs:
         # We're utilizing `tee` above which can capture non-json stdout output
         # so we need to remove non-json lines before additional parsing and
         # submitting it to the external github action.
-        run: cat test_results.json | jq -c -R 'fromjson? | select(type == "object")' > tmp.json && mv tmp.json test_results.json
+        run: |
+          if [ -f test_results.json ]; then
+            cat test_results.json | jq -c -R 'fromjson? | select(type == "object")' > tmp.json && mv tmp.json test_results.json
+          else
+            echo "test_results.json not found, creating empty file"
+            echo '{}' > test_results.json
+          fi
 
       - name: Output test failures
         if: ${{ failure() }}
         run: |
-          jq --argjson fail_tests "$( \
-            jq -c -r 'select(.Action == "fail") | select(.Test) | .Test' test_results.json \
-            | jq -R -s -c 'split("\n") | map(select(length > 0))' \
-          )" \
-          'select(.Test as $t | ($fail_tests | arrays)[] | select($t == .)) | select(.Output) | .Output' test_results.json \
-          | jq -r \
-          | sed ':a;N;$!ba;s/\n\n/\n/g' > test_failures.json
-          cat test_failures.json
+          if [ -f test_results.json ] && [ -s test_results.json ]; then
+            jq --argjson fail_tests "$( \
+              jq -c -r 'select(.Action == "fail") | select(.Test) | .Test' test_results.json \
+              | jq -R -s -c 'split("\n") | map(select(length > 0))' \
+            )" \
+            'select(.Test as $t | ($fail_tests | arrays)[] | select($t == .)) | select(.Output) | .Output' test_results.json \
+            | jq -r \
+            | sed ':a;N;$!ba;s/\n\n/\n/g' > test_failures.json
+            cat test_failures.json
+          else
+            echo "No test results available for failure analysis"
+          fi
           exit 1
 
       - name: Upload test results
@@ -77,6 +101,7 @@ jobs:
             test_*.json
 
       - name: Annotate tests on GitHub
+        if: hashFiles('test_results.json')
         uses: guyarb/golang-test-annotations@v0.5.1
         with:
           test-results: test_results.json
