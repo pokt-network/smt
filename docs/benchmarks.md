@@ -1,29 +1,28 @@
-# Benchmarks
+# Benchmarks <!-- omit in toc -->
 
-<!-- toc -->
-
-- [Overview](#overview)
-- [Definitions](#definitions)
-  * [Bytes/Operation (B/op)](#bytesoperation-bop)
-  * [Commit](#commit)
-  * [Sizing](#sizing)
-- [SMT](#smt)
-  * [Fill](#fill)
-  * [Operations](#operations)
-- [SMST](#smst)
-  * [Fill](#fill-1)
-  * [Operations](#operations-1)
-- [Proofs](#proofs)
-  * [SMT](#smt-1)
-  * [SMST](#smst-1)
-
-<!-- tocstop -->
-
-## Overview
+## Overview <!-- omit in toc -->
 
 Benchmarks for the different aspects of this SMT library can be found in
 [benchmarks](../benchmarks/). In order to run the entire benchmarking suite use
 the following command:
+
+## Table of Contents <!-- omit in toc -->
+
+- [Definitions](#definitions)
+  - [Bytes/Operation (B/op)](#bytesoperation-bop)
+  - [Commit](#commit)
+  - [Sizing](#sizing)
+- [SMT Benchmarks](#smt-benchmarks)
+  - [Fill Benchmarks](#fill-benchmarks)
+  - [Operations Benchmarks](#operations-benchmarks)
+- [SMST Benchmarks](#smst-benchmarks)
+  - [SMST Fill Benchmarks](#smst-fill-benchmarks)
+  - [SMST Operations Benchmarks](#smst-operations-benchmarks)
+- [Proofs Benchmarks](#proofs-benchmarks)
+  - [SMT Proofs Benchmarks](#smt-proofs-benchmarks)
+  - [SMST Proofs Benchmarks](#smst-proofs-benchmarks)
+
+<!-- tocstop -->
 
 ```sh
 make benchmark_all
@@ -61,10 +60,7 @@ _NOTE: Unless otherwise stated the benchmarks in this document were ran on a
 2023 14-inch Macbook Pro M2 Max with 32GB of RAM. The tries tested are using the
 `sha256.New()` hasher._
 
-_TODO: There is an opportunity to do a fuzz test where we commit every `N`
-updates, if this ever becomes a bottlneck_
-
-## SMT
+## SMT Benchmarks
 
 In order to run the SMT benchmarks use the following command:
 
@@ -72,7 +68,7 @@ In order to run the SMT benchmarks use the following command:
 make benchmark_smt
 ```
 
-### Fill
+### Fill Benchmarks
 
 The "fill" benchmarks cover the time taken to insert `N` key-value pairs into
 the SMT, as well as how long it takes to do this and commit these changes to
@@ -98,7 +94,7 @@ make benchmark_smt_fill
 | Fill          | 10M      | 10         | 29.718092496  | 21,255,245,031  | 303,637,210             |
 | Fill & Commit | 10M      | 10         | 396.142675962 | 173,053,933,624 | 1,775,304,977           |
 
-### Operations
+### Operations Benchmarks
 
 The "operations" benchmarks cover the time taken to perform a single operation
 on an SMT of a given size, and also how long doing this operation followed by a
@@ -144,7 +140,7 @@ make benchmark_smt_ops
 | Delete          | 10M              | 545,876    | 4,173        | 556          | 6                       |
 | Delete & Commit | 10M              | 3,916      | 271,332      | 108,396      | 772                     |
 
-## SMST
+## SMST Benchmarks
 
 In order to run the SMST benchmarks use the following command:
 
@@ -152,7 +148,7 @@ In order to run the SMST benchmarks use the following command:
 make benchmark_smst
 ```
 
-### Fill
+### SMST Fill Benchmarks
 
 The "fill" benchmarks cover the time taken to insert `N` key-value-sum triples
 into the SMST, as well as how long it takes to do this and commit these changes
@@ -178,7 +174,7 @@ make benchmark_smst_fill
 | Fill          | 10M      | 10         | 26.859672362  | 21,894,837,504  | 313,635,611             |
 | Fill & Commit | 10M      | 10         | 490.805535617 | 197,997,807,905 | 1,865,882,489           |
 
-### Operations
+### SMST Operations Benchmarks
 
 The "operations" benchmarks cover the time taken to perform a single operation
 on an SMST of a given size, and also how long doing this operation followed by
@@ -224,7 +220,7 @@ make benchmark_smst_ops
 | Delete          | 10M              | 232,544    | 4,618        | 1,552        | 8                       |
 | Delete & Commit | 10M              | 224,767    | 5,048        | 1,552        | 8                       |
 
-## Proofs
+## Proofs Benchmarks
 
 To run the tests to average the proof size for numerous prefilled tries use the
 following command:
@@ -233,9 +229,9 @@ following command:
 make benchmark_proof_sizes
 ```
 
-### SMT
+### SMT Proofs Benchmarks
 
-| Prefilled Size | Average Serialised Proof Size (bytes) | Min (bytes) | Max (bytes) | Average Serialised Compacted Proof Size (bytes) | Min (bytes) | Max (bytes) |
+| Prefilled Size | Average Serialized Proof Size (bytes) | Min (bytes) | Max (bytes) | Average Serialized Compacted Proof Size (bytes) | Min (bytes) | Max (bytes) |
 | -------------- | ------------------------------------- | ----------- | ----------- | ----------------------------------------------- | ----------- | ----------- |
 | 100,000        | 780                                   | 650         | 1310        | 790                                             | 692         | 925         |
 | 500,000        | 856                                   | 716         | 1475        | 866                                             | 758         | 1024        |
@@ -243,9 +239,9 @@ make benchmark_proof_sizes
 | 5,000,000      | 966                                   | 815         | 1739        | 976                                             | 858         | 1156        |
 | 10,000,000     | 999                                   | 848         | 1739        | 1010                                            | 891         | 1189        |
 
-### SMST
+### SMST Proofs Benchmarks
 
-| Prefilled Size | Average Serialised Proof Size (bytes) | Min (bytes) | Max (bytes) | Average Serialised Compacted Proof Size (bytes) | Min (bytes) | Max (bytes) |
+| Prefilled Size | Average Serialized Proof Size (bytes) | Min (bytes) | Max (bytes) | Average Serialized Compacted Proof Size (bytes) | Min (bytes) | Max (bytes) |
 | -------------- | ------------------------------------- | ----------- | ----------- | ----------------------------------------------- | ----------- | ----------- |
 | 100,000        | 935                                   | 780         | 1590        | 937                                             | 822         | 1101        |
 | 500,000        | 1030                                  | 862         | 1795        | 1032                                            | 904         | 1224        |

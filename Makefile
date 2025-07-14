@@ -129,3 +129,10 @@ tag_minor_release: ## Tag a new minor release (e.g. v1.0.0 -> v1.1.0)
 	@echo "Run the following commands to push the new tag:"
 	@echo "  git push origin $(NEW_TAG)"
 	@echo "And draft a new release at https://github.com/pokt-network/smt/releases/new"
+
+###############
+### Imports ###
+###############
+
+include ./makefiles/colors.mk
+include ./makefiles/release.mk
