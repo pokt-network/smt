@@ -50,6 +50,7 @@ test_pebble: ## runs the pebble KVStore submodule's test suite
 #####################
 ###   go helpers  ###
 #####################
+
 .PHONY: mod_tidy
 mod_tidy: ## runs go mod tidy for all (sub)modules
 	go mod tidy
@@ -60,6 +61,10 @@ mod_tidy: ## runs go mod tidy for all (sub)modules
 go_docs: check_godoc ## Generate documentation for the project
 	echo "Visit http://localhost:6060/pkg/github.com/pokt-network/smt/"
 	godoc -http=:6060
+
+.PHONY: go_lint
+go_lint: ## Run all go linters
+	golangci-lint run --timeout 5m --build-tags test
 
 #####################
 ###   Benchmark   ###

@@ -15,6 +15,28 @@ env:
   TARGET_GOLANG_VERSION: "1.20.12"
 
 jobs:
+  run-linter:
+    name: Run linter
+    runs-on: "ubuntu-22.04"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.20"
+
+      - name: Setup Git Authentication
+        run: |
+          git config --global url."https://${{ github.token }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1
+          args: --timeout 20m --verbose
+
   tests:
     runs-on: ubuntu-latest
     strategy:
@@ -28,14 +50,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.TARGET_GOLANG_VERSION }}
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-          args: --timeout=10m
-          skip-cache: true
-          only-new-issues: true
 
       - name: Install gocovmerge
         run: go install github.com/wadey/gocovmerge@latest
