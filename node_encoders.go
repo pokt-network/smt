@@ -26,6 +26,12 @@ var (
 	prefixLen       = 1
 )
 
+const (
+	// Reasonable node size is the threshold at which we start using the buffer pool.
+	// This is a micro optimization that can be adjusted based on the expected size of the nodes.
+	reasonableNodeSize = 512
+)
+
 // NB: We use `prefixLen` a lot through this file, so to make the code more readable, we
 // define it as a constant but need to assert on its length just in case the code evolves
 // in the future.
@@ -57,26 +63,26 @@ func isInnerNode(data []byte) bool {
 func encodeLeafNode(path, leafData []byte) (data []byte) {
 	// Pre-calculate total size to avoid multiple allocations
 	totalSize := prefixLen + len(path) + len(leafData)
-	
+
 	// Use single allocation if total size is reasonable
-	if totalSize <= 512 {
+	if totalSize <= reasonableNodeSize {
 		data = make([]byte, 0, totalSize)
 		data = append(data, leafNodePrefix...)
 		data = append(data, path...)
 		data = append(data, leafData...)
 		return data
 	}
-	
+
 	// For larger sizes, use buffer pool
 	data = getBuffer()
 	if cap(data) < totalSize {
 		data = make([]byte, 0, totalSize)
 	}
-	
+
 	data = append(data, leafNodePrefix...)
 	data = append(data, path...)
 	data = append(data, leafData...)
-	
+
 	// Return a copy and put buffer back in pool
 	result := make([]byte, len(data))
 	copy(result, data)
@@ -88,26 +94,26 @@ func encodeLeafNode(path, leafData []byte) (data []byte) {
 func encodeInnerNode(leftData, rightData []byte) (data []byte) {
 	// Pre-calculate total size to avoid multiple allocations
 	totalSize := prefixLen + len(leftData) + len(rightData)
-	
+
 	// Use single allocation if total size is reasonable
-	if totalSize <= 512 {
+	if totalSize <= reasonableNodeSize {
 		data = make([]byte, 0, totalSize)
 		data = append(data, innerNodePrefix...)
 		data = append(data, leftData...)
 		data = append(data, rightData...)
 		return data
 	}
-	
+
 	// For larger sizes, use buffer pool
 	data = getBuffer()
 	if cap(data) < totalSize {
 		data = make([]byte, 0, totalSize)
 	}
-	
+
 	data = append(data, innerNodePrefix...)
 	data = append(data, leftData...)
 	data = append(data, rightData...)
-	
+
 	// Return a copy and put buffer back in pool
 	result := make([]byte, len(data))
 	copy(result, data)
@@ -123,12 +129,12 @@ func encodeExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byt
 	if cap(data) < totalSize {
 		data = make([]byte, 0, totalSize)
 	}
-	
+
 	data = append(data, extNodePrefix...)
 	data = append(data, pathBounds[:]...)
 	data = append(data, path...)
 	data = append(data, childData...)
-	
+
 	// Return a copy and put buffer back in pool
 	result := make([]byte, len(data))
 	copy(result, data)

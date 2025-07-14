@@ -16,6 +16,14 @@ var (
 	_ ValueHasher = (*valueHasher)(nil)
 )
 
+const (
+	// Reasonable size to pre-allocate for the buffer pool
+	bufferPoolPreallocationSize = 512
+
+	// Maximum size for the buffer pool to avoid pooling very large buffers
+	maxSizeForBufferPool = 1024
+)
+
 // PathHasher defines how key inputs are hashed to produce trie paths.
 type PathHasher interface {
 	// Path hashes a key (preimage) and returns a trie path (digest).
@@ -34,8 +42,9 @@ type ValueHasher interface {
 
 // bufferPool provides reusable byte slices to reduce allocations
 var bufferPool = sync.Pool{
-	New: func() interface{} {
-		return make([]byte, 0, 256) // Pre-allocate reasonable capacity
+	New: func() any {
+		// Pre-allocate reasonable capacity
+		return make([]byte, 0, bufferPoolPreallocationSize)
 	},
 }
 
@@ -46,7 +55,8 @@ func getBuffer() []byte {
 
 // putBuffer returns a byte slice to the pool for reuse
 func putBuffer(buf []byte) {
-	if cap(buf) < 1024 { // Don't pool very large buffers
+	// Don't pool very large buffers
+	if cap(buf) < maxSizeForBufferPool {
 		bufferPool.Put(buf)
 	}
 }
