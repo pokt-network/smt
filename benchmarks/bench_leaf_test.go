@@ -15,8 +15,8 @@ import (
 )
 
 func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
-	trieSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
-	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
+	trieSizes := []int{10000, 50000, 100000} // number of leaves
+	leafSizes := []int{256, 1024, 4096}       // number of bytes per leaf
 	nodes := simplemap.NewSimpleMap()
 	for _, trieSize := range trieSizes {
 		for _, leafSize := range leafSizes {
@@ -44,8 +44,8 @@ func BenchmarkSMTLeafSizes_Fill(b *testing.B) {
 }
 
 func BenchmarkSMSTLeafSizes_Fill(b *testing.B) {
-	trieSizes := []int{100000, 500000, 1000000, 5000000, 10000000} // number of leaves
-	leafSizes := []int{256, 512, 1024, 2048, 4096, 8192, 16384}    // number of bytes per leaf
+	trieSizes := []int{10000, 50000, 100000} // number of leaves
+	leafSizes := []int{256, 1024, 4096}       // number of bytes per leaf
 	nodes := simplemap.NewSimpleMap()
 	for _, trieSize := range trieSizes {
 		for _, leafSize := range leafSizes {
