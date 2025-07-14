@@ -29,7 +29,7 @@ var (
 const (
 	// Reasonable node size is the threshold at which we start using the buffer pool.
 	// This is a micro optimization that can be adjusted based on the expected size of the nodes.
-	reasonableNodeSize = 512
+	reasonableNodeSize = 256
 )
 
 // NB: We use `prefixLen` a lot through this file, so to make the code more readable, we
