@@ -1,6 +1,6 @@
 module github.com/pokt-network/smt/kvstore/pebble
 
-go 1.20
+go 1.24.3
 
 require (
 	github.com/pokt-network/smt v0.8.1
