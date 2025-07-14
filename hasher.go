@@ -55,8 +55,8 @@ func putBuffer(buf []byte) {
 type trieHasher struct {
 	hasher    hash.Hash
 	zeroValue []byte
-	// Reusable buffer for hash computations
-	hashBuf []byte
+	hashBuf   []byte     // Reusable buffer for hash computations
+	hashBufMu sync.Mutex // Protects concurrent access to hasher
 }
 
 // pathHasher is a hasher for trie paths.
@@ -124,10 +124,13 @@ func (n *nilPathHasher) PathSize() int {
 
 // digestData returns the hash of the data provided using the trie hasher.
 func (th *trieHasher) digestData(data []byte) []byte {
+	th.hashBufMu.Lock()
+	defer th.hashBufMu.Unlock()
+
 	th.hasher.Write(data)
 	th.hashBuf = th.hasher.Sum(th.hashBuf[:0]) // Reuse buffer, reset length to 0
 	th.hasher.Reset()
-	
+
 	// Return a copy to avoid buffer reuse issues
 	digest := make([]byte, len(th.hashBuf))
 	copy(digest, th.hashBuf)
