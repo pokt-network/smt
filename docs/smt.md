@@ -481,7 +481,7 @@ These compacted proof types can then be decompressed by calling:
 ### Serialisation
 
 All proof types are serialisable in both their regular and compressed forms.
-This is done through the `encoding/gob` package that provides optimisations
+This is done through the `encoding/gob` package that provides optimizations
 around marshalling and unmarshalling custom go types compared to other encoding
 schemes.
 

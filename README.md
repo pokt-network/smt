@@ -7,33 +7,32 @@
 [![Tests](https://github.com/pokt-network/smt/actions/workflows/test.yml/badge.svg)](https://github.com/pokt-network/smt/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/pokt-network/smt/branch/main/graph/badge.svg)](https://codecov.io/gh/pokt-network/smt)
 
-<!-- toc -->
-
 - [Overview](#overview)
 - [Documentation](#documentation)
 - [Tests](#tests)
 - [Benchmarks](#benchmarks)
 - [Release Tags](#release-tags)
-  - [Tagging a new release](#tagging-a-new-release)
-  - [Push and Release](#push-and-release)
-
-<!-- tocstop -->
-
-**NOTE: Requires Go 1.20.12+**
 
 ## Overview
 
 This is a Go library that implements a Sparse Merkle Trie for a key-value map.
-The trie implements the same optimisations specified in the [Libra whitepaper],
+The trie implements the same optimizations specified in the [Libra whitepaper](https://diem-developers-components.netlify.app/papers/the-diem-blockchain/2020-05-26.pdf),
 to reduce the number of hash operations required per trie operation to $O(k)$
 where $k$ is the number of non-empty elements in the trie. And is implemented
-in a similar way to the [JMT whitepaper], with additional features and proof
+in a similar way to the [JMT whitepaper](https://developers.diem.com/papers/jellyfish-merkle-tree/2021-01-14.pdf), with additional features and proof
 mechanics.
 
 ## Documentation
 
 Documentation for the different aspects of this library, the trie, proofs and
-all its different components can be found in the [docs](./docs/) directory.
+all its different components can be found in the [docs](./docs/) directory:
+
+- **[Sparse Merkle Trie](./docs/smt.md)** - Core SMT implementation and usage
+- **[Merkle Sum Trie](./docs/merkle-sum-trie.md)** - SMST implementation with sum capabilities
+- **[Benchmarks](./docs/benchmarks.md)** - Performance benchmarks and analysis
+- **[MapStore Interface](./docs/mapstore.md)** - Key-value store interface documentation
+- **[Badger Store](./docs/badger-store.md)** - BadgerDB storage backend implementation
+- **[FAQ](./docs/faq.md)** - Frequently asked questions
 
 ## Tests
 
@@ -61,33 +60,15 @@ make benchmark_all
 To view pre-ran results of the entire benchmarking suite see
 [benchmarks](./docs/benchmarks.md)
 
-[jmt whitepaper]: https://developers.diem.com/papers/jellyfish-merkle-tree/2021-01-14.pdf
-[libra whitepaper]: https://diem-developers-components.netlify.app/papers/the-diem-blockchain/2020-05-26.pdf
-
 ## Release Tags
 
-You can tag and publish a new release by following the instructions bellow.
-
-### Tagging a new release
-
-For a bug fix:
+You can tag and publish a new release by using one of the following commands:
 
 ```bash
-make tag_bug_fix
+make release_tag_rc
+make release_tag_dev
+make release_tag_minor
+make release_tag_major
 ```
 
-For a minor release run:
-
-```bash
-make tag_minor_release
-```
-
-### Push and Release
-
-Then, push the tag to the repository:
-
-```bash
-git push origin v<release>
-```
-
-Create a release on GitHub with the tag and the release notes [here](https://github.com/pokt-network/smt/releases/new).
+Create a release on GitHub with the tag and the release notes [on GitHub](https://github.com/pokt-network/smt/releases/new).
