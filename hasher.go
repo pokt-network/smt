@@ -44,20 +44,24 @@ type ValueHasher interface {
 var bufferPool = sync.Pool{
 	New: func() any {
 		// Pre-allocate reasonable capacity
-		return make([]byte, 0, bufferPoolPreallocationSize)
+		buf := make([]byte, 0, bufferPoolPreallocationSize)
+		return &buf
 	},
 }
 
 // getBuffer returns a reusable byte slice from the pool
 func getBuffer() []byte {
-	return bufferPool.Get().([]byte)[:0] // Reset length but keep capacity
+	buf := bufferPool.Get().(*[]byte)
+	*buf = (*buf)[:0] // Reset length but keep capacity
+	return *buf
 }
 
 // putBuffer returns a byte slice to the pool for reuse
 func putBuffer(buf []byte) {
 	// Don't pool very large buffers
 	if cap(buf) < maxSizeForBufferPool {
-		bufferPool.Put(buf)
+		buf = buf[:0] // Reset length but keep capacity
+		bufferPool.Put(&buf)
 	}
 }
 
