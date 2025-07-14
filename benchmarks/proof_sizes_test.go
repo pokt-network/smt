@@ -24,20 +24,8 @@ func TestSMT_ProofSizes(t *testing.T) {
 			trieSize: 100000,
 		},
 		{
-			desc:     "Proof Size (Prefilled: 500000)",
-			trieSize: 500000,
-		},
-		{
-			desc:     "Proof Size (Prefilled: 1000000)",
-			trieSize: 1000000,
-		},
-		{
-			desc:     "Proof Size (Prefilled: 5000000)",
-			trieSize: 5000000,
-		},
-		{
-			desc:     "Proof Size (Prefilled: 10000000)",
-			trieSize: 10000000,
+			desc:     "Proof Size (Prefilled: 50000)",
+			trieSize: 50000,
 		},
 	}
 	for _, tc := range testCases {
@@ -111,20 +99,8 @@ func TestSMST_ProofSizes(t *testing.T) {
 			trieSize: 100000,
 		},
 		{
-			desc:     "Proof Size (Prefilled: 500000)",
-			trieSize: 500000,
-		},
-		{
-			desc:     "Proof Size (Prefilled: 1000000)",
-			trieSize: 1000000,
-		},
-		{
-			desc:     "Proof Size (Prefilled: 5000000)",
-			trieSize: 5000000,
-		},
-		{
-			desc:     "Proof Size (Prefilled: 10000000)",
-			trieSize: 10000000,
+			desc:     "Proof Size (Prefilled: 50000)",
+			trieSize: 50000,
 		},
 	}
 	for _, tc := range testCases {

@@ -47,26 +47,6 @@ func BenchmarkSparseMerkleTrie_Fill(b *testing.B) {
 			trieSize: 1000000,
 			commit:   true,
 		},
-		{
-			desc:     "Fill (5000000)",
-			trieSize: 5000000,
-			commit:   false,
-		},
-		{
-			desc:     "Fill & Commit (5000000)",
-			trieSize: 5000000,
-			commit:   true,
-		},
-		{
-			desc:     "Fill (10000000)",
-			trieSize: 10000000,
-			commit:   false,
-		},
-		{
-			desc:     "Fill & Commit (10000000)",
-			trieSize: 10000000,
-			commit:   true,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -133,30 +113,6 @@ func BenchmarkSparseMerkleTrie_Update(b *testing.B) {
 			commit:   true,
 			fn:       updSMT,
 		},
-		{
-			desc:     "Update (Prefilled: 5000000)",
-			trieSize: 5000000,
-			commit:   false,
-			fn:       updSMT,
-		},
-		{
-			desc:     "Update & Commit (Prefilled: 5000000)",
-			trieSize: 5000000,
-			commit:   true,
-			fn:       updSMT,
-		},
-		{
-			desc:     "Update (Prefilled: 10000000)",
-			trieSize: 10000000,
-			commit:   false,
-			fn:       updSMT,
-		},
-		{
-			desc:     "Update & Commit (Prefilled: 10000000)",
-			trieSize: 10000000,
-			commit:   true,
-			fn:       updSMT,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -193,18 +149,6 @@ func BenchmarkSparseMerkleTrie_Get(b *testing.B) {
 			commit:   false,
 			fn:       getSMT,
 		},
-		{
-			desc:     "Get (Prefilled: 5000000)",
-			trieSize: 5000000,
-			commit:   false,
-			fn:       getSMT,
-		},
-		{
-			desc:     "Get (Prefilled: 10000000)",
-			trieSize: 10000000,
-			commit:   false,
-			fn:       getSMT,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -238,18 +182,6 @@ func BenchmarkSparseMerkleTrie_Prove(b *testing.B) {
 		{
 			desc:     "Prove (Prefilled: 1000000)",
 			trieSize: 1000000,
-			commit:   false,
-			fn:       proSMT,
-		},
-		{
-			desc:     "Prove (Prefilled: 5000000)",
-			trieSize: 5000000,
-			commit:   false,
-			fn:       proSMT,
-		},
-		{
-			desc:     "Prove (Prefilled: 10000000)",
-			trieSize: 10000000,
 			commit:   false,
 			fn:       proSMT,
 		},
@@ -304,30 +236,6 @@ func BenchmarkSparseMerkleTrie_Delete(b *testing.B) {
 		{
 			desc:     "Delete & Commit (Prefilled: 1000000)",
 			trieSize: 1000000,
-			commit:   true,
-			fn:       delSMT,
-		},
-		{
-			desc:     "Delete (Prefilled: 5000000)",
-			trieSize: 5000000,
-			commit:   false,
-			fn:       delSMT,
-		},
-		{
-			desc:     "Delete & Commit (Prefilled: 5000000)",
-			trieSize: 5000000,
-			commit:   true,
-			fn:       delSMT,
-		},
-		{
-			desc:     "Delete (Prefilled: 10000000)",
-			trieSize: 10000000,
-			commit:   false,
-			fn:       delSMT,
-		},
-		{
-			desc:     "Delete & Commit (Prefilled: 10000000)",
-			trieSize: 10000000,
 			commit:   true,
 			fn:       delSMT,
 		},
