@@ -340,7 +340,7 @@ func VerifySumProof(proof *SparseMerkleProof, root, key, value []byte, sum, coun
 	}
 
 	smtSpec := &TrieSpec{
-		th:      spec.th,
+		th:      NewTrieHasher(spec.th.hasher),
 		ph:      spec.ph,
 		vh:      spec.vh,
 		sumTrie: spec.sumTrie,
@@ -362,7 +362,7 @@ func VerifyClosestProof(proof *SparseMerkleClosestProof, root []byte, spec *Trie
 	// Create a new TrieSpec with a nil path hasher.
 	// Since the ClosestProof already contains a hashed path, double hashing it will invalidate the proof.
 	nilSpec := &TrieSpec{
-		th:      spec.th,
+		th:      NewTrieHasher(spec.th.hasher),
 		ph:      newNilPathHasher(spec.ph.PathSize()),
 		vh:      spec.vh,
 		sumTrie: spec.sumTrie,

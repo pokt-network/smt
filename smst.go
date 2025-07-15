@@ -52,15 +52,27 @@ func NewSparseMerkleSumTrie(
 	//     Therefore, the underlying SMT underneath needs a nil path hasher, while
 	//     the outer SMST does all the (non nil) path hashing itself.
 	// TODO_TECHDEBT(@Olshansk): Look for ways to simplify / cleanup the above.
+	smtSpec := TrieSpec{
+		th:      NewTrieHasher(trieSpec.th.hasher),
+		ph:      trieSpec.ph,
+		vh:      trieSpec.vh,
+		sumTrie: trieSpec.sumTrie,
+	}
 	smt := &SMT{
-		TrieSpec: trieSpec,
+		TrieSpec: smtSpec,
 		nodes:    nodes,
 	}
 	nilValueHasher := WithValueHasher(nil)
 	nilValueHasher(&smt.TrieSpec)
 
+	smstSpec := TrieSpec{
+		th:      NewTrieHasher(trieSpec.th.hasher),
+		ph:      trieSpec.ph,
+		vh:      trieSpec.vh,
+		sumTrie: trieSpec.sumTrie,
+	}
 	return &SMST{
-		TrieSpec: trieSpec,
+		TrieSpec: smstSpec,
 		SMT:      smt,
 	}
 }

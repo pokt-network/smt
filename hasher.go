@@ -3,6 +3,7 @@ package smt
 import (
 	"encoding/binary"
 	"hash"
+	"sync"
 )
 
 // TODO_IMPROVE:: Improve how the `hasher` file is consolidated with
@@ -13,6 +14,14 @@ var (
 	_ PathHasher  = (*pathHasher)(nil)
 	_ PathHasher  = (*nilPathHasher)(nil)
 	_ ValueHasher = (*valueHasher)(nil)
+)
+
+const (
+	// Reasonable size to pre-allocate for the buffer pool
+	bufferPoolPreallocationSize = 512
+
+	// Maximum size for the buffer pool to avoid pooling very large buffers
+	maxSizeForBufferPool = 1024
 )
 
 // PathHasher defines how key inputs are hashed to produce trie paths.
@@ -31,10 +40,37 @@ type ValueHasher interface {
 	ValueHashSize() int
 }
 
+// bufferPool provides reusable byte slices to reduce allocations
+var bufferPool = sync.Pool{
+	New: func() any {
+		// Pre-allocate reasonable capacity
+		buf := make([]byte, 0, bufferPoolPreallocationSize)
+		return &buf
+	},
+}
+
+// getBuffer returns a reusable byte slice from the pool
+func getBuffer() []byte {
+	buf := bufferPool.Get().(*[]byte)
+	*buf = (*buf)[:0] // Reset length but keep capacity
+	return *buf
+}
+
+// putBuffer returns a byte slice to the pool for reuse
+func putBuffer(buf []byte) {
+	// Don't pool very large buffers
+	if cap(buf) < maxSizeForBufferPool {
+		buf = buf[:0] // Reset length but keep capacity
+		bufferPool.Put(&buf)
+	}
+}
+
 // trieHasher is a common hasher for all trie hashers (paths & values).
 type trieHasher struct {
 	hasher    hash.Hash
 	zeroValue []byte
+	hashBuf   []byte     // Reusable buffer for hash computations
+	hashBufMu sync.Mutex // Protects concurrent access to hasher
 }
 
 // pathHasher is a hasher for trie paths.
@@ -56,6 +92,7 @@ type nilPathHasher struct {
 func NewTrieHasher(hasher hash.Hash) *trieHasher {
 	th := trieHasher{hasher: hasher}
 	th.zeroValue = make([]byte, th.hashSize())
+	th.hashBuf = make([]byte, 0, th.hashSize()) // Pre-allocate hash buffer
 	return &th
 }
 
@@ -101,9 +138,16 @@ func (n *nilPathHasher) PathSize() int {
 
 // digestData returns the hash of the data provided using the trie hasher.
 func (th *trieHasher) digestData(data []byte) []byte {
+	th.hashBufMu.Lock()
+	defer th.hashBufMu.Unlock()
+
 	th.hasher.Write(data)
-	digest := th.hasher.Sum(nil)
+	th.hashBuf = th.hasher.Sum(th.hashBuf[:0]) // Reuse buffer, reset length to 0
 	th.hasher.Reset()
+
+	// Return a copy to avoid buffer reuse issues
+	digest := make([]byte, len(th.hashBuf))
+	copy(digest, th.hashBuf)
 	return digest
 }
 

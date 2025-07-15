@@ -8,7 +8,7 @@ import (
 // TrieSpec specifies the hashing functions used by a trie instance to encode
 // leaf paths and stored values, and the corresponding maximum trie depth.
 type TrieSpec struct {
-	th      trieHasher
+	th      *trieHasher
 	ph      PathHasher
 	vh      ValueHasher
 	sumTrie bool
@@ -20,9 +20,9 @@ func NewTrieSpec(
 	sumTrie bool,
 	opts ...TrieSpecOption,
 ) TrieSpec {
-	spec := TrieSpec{th: *NewTrieHasher(hasher)}
-	spec.ph = &pathHasher{spec.th}
-	spec.vh = &valueHasher{spec.th}
+	spec := TrieSpec{th: NewTrieHasher(hasher)}
+	spec.ph = &pathHasher{*NewTrieHasher(hasher)}
+	spec.vh = &valueHasher{*NewTrieHasher(hasher)}
 	spec.sumTrie = sumTrie
 
 	for _, opt := range opts {
