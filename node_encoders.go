@@ -125,6 +125,18 @@ func encodeInnerNode(leftData, rightData []byte) (data []byte) {
 func encodeExtensionNode(pathBounds [2]byte, path, childData []byte) (data []byte) {
 	// Pre-calculate total size to avoid multiple allocations
 	totalSize := prefixLen + 2 + len(path) + len(childData) // +2 for pathBounds
+
+	// Use single allocation if total size is reasonable
+	if totalSize <= reasonableNodeSize {
+		data = make([]byte, 0, totalSize)
+		data = append(data, extNodePrefix...)
+		data = append(data, pathBounds[:]...)
+		data = append(data, path...)
+		data = append(data, childData...)
+		return data
+	}
+
+	// For larger sizes, use buffer pool
 	data = getBuffer()
 	if cap(data) < totalSize {
 		data = make([]byte, 0, totalSize)
