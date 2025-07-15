@@ -171,21 +171,21 @@ func BenchmarkResources_Contention(b *testing.B) {
 
 	for _, numGoroutines := range concurrencyLevels {
 		b.Run("Goroutines_"+strconv.Itoa(numGoroutines), func(b *testing.B) {
-			nodes := simplemap.NewSimpleMap()
-			trie := smt.NewSparseMerkleTrie(nodes, sha256.New())
-
 			b.ReportAllocs()
 			b.ResetTimer()
 
 			b.RunParallel(func(pb *testing.PB) {
+				// Each goroutine gets its own trie and hasher to avoid thread safety issues
+				nodes := simplemap.NewSimpleMap()
+				trie := smt.NewSparseMerkleTrie(nodes, sha256.New())
+				
 				for pb.Next() {
 					key := make([]byte, 32)
 					value := make([]byte, 128) // Size that uses buffer pool
 					_ = trie.Update(key, value)
 				}
-			})
-
-			b.Cleanup(func() {
+				
+				// Clean up per-goroutine resources
 				require.NoError(b, nodes.ClearAll())
 			})
 		})
