@@ -22,6 +22,11 @@ type extensionNode struct {
 	child trieNode
 	// Bool whether or not the node has been flushed to disk
 	persisted bool
+	// compactedSubtree reports that every resident leaf below this node has
+	// already been compacted, so a compaction pass can stop here. Cleared by
+	// setDirty, which every mutation of this node's subtree calls on the way
+	// back up. See compact.go.
+	compactedSubtree bool
 	// The cached digest of the node trie
 	digest []byte
 }
@@ -58,6 +63,7 @@ func (ext *extensionNode) pathEnd() int {
 func (ext *extensionNode) setDirty() {
 	ext.persisted = false
 	ext.digest = nil
+	ext.compactedSubtree = false
 }
 
 // boundsMatch returns the length of the matching prefix between `ext.pathBounds`

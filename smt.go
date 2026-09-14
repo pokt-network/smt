@@ -21,6 +21,11 @@ type SMT struct {
 	root trieNode
 	// Lists of per-operation orphan sets
 	orphans []orphanNodes
+	// resolvedSinceCompaction reports that a node or a leaf value was brought
+	// in from the store since the last compaction pass. Those arrive outside
+	// the setDirty path, so the next pass must ignore the compactedSubtree
+	// shortcuts and walk everything. See compact.go.
+	resolvedSinceCompaction bool
 }
 
 // Hashes of persisted nodes deleted from trie
@@ -105,6 +110,9 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 	}
 	if leaf == nil {
 		return defaultEmptyValue, nil
+	}
+	if err := smt.resolveLeafValue(leaf); err != nil {
+		return nil, err
 	}
 	return leaf.valueHash, nil
 }
@@ -376,6 +384,9 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if !bytes.Equal(leaf.path, path) {
 			// This is a non-membership proof that involves showing a different leaf.
 			// Add the leaf data to the proof.
+			if err := smt.resolveLeafValue(leaf); err != nil {
+				return nil, err
+			}
 			leafData = encodeLeafNode(leaf.path, leaf.valueHash)
 		}
 	}
@@ -395,6 +406,9 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	if sib != nil {
 		sib, err = smt.resolveLazy(sib)
 		if err != nil {
+			return nil, err
+		}
+		if err = smt.resolveCompactedLeaf(sib); err != nil {
 			return nil, err
 		}
 		proof.SiblingData = smt.encode(sib)
@@ -523,6 +537,9 @@ func (smt *SMT) ProveClosest(path []byte) (
 		// if no leaf was found and the trie is not empty something went wrong
 		panic("expected leaf node")
 	}
+	if err = smt.resolveLeafValue(leaf); err != nil {
+		return nil, err
+	}
 	proof.ClosestPath, proof.ClosestValueHash = leaf.path, leaf.valueHash
 	// Hash siblings from bottom up.
 	var sideNodes [][]byte
@@ -540,6 +557,9 @@ func (smt *SMT) ProveClosest(path []byte) (
 		if err != nil {
 			return nil, err
 		}
+		if err = smt.resolveCompactedLeaf(sib); err != nil {
+			return nil, err
+		}
 		proof.ClosestProof.SiblingData = smt.encode(sib)
 	}
 
@@ -552,6 +572,9 @@ func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	if !ok {
 		return node, nil
 	}
+	// Resolving pulls a subtree into memory without going through setDirty, so
+	// the compaction shortcuts below this point are no longer trustworthy.
+	smt.resolvedSinceCompaction = true
 	if smt.sumTrie {
 		return smt.resolveSumNode(stub.digest)
 	}

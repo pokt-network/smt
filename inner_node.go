@@ -9,7 +9,12 @@ type innerNode struct {
 	// Both child nodes are always expected to be non-nil.
 	leftChild, rightChild trieNode
 	persisted             bool
-	digest                []byte
+	// compactedSubtree reports that every resident leaf below this node has
+	// already been compacted, so a compaction pass can stop here. Cleared by
+	// setDirty, which every mutation of this node's subtree calls on the way
+	// back up. See compact.go.
+	compactedSubtree bool
+	digest           []byte
 }
 
 // Persisted satisfied the trieNode#Persisted interface
@@ -22,4 +27,5 @@ func (node *innerNode) CachedDigest() []byte { return node.digest }
 func (node *innerNode) setDirty() {
 	node.persisted = false
 	node.digest = nil
+	node.compactedSubtree = false
 }
