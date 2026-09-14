@@ -291,6 +291,7 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 			// Join this extension with the child
 			smt.addOrphan(orphans, n)
 			n.pathBounds[0] = extNode.pathBounds[0]
+			n.setDirty()
 			node = n
 		}
 		extNode.setDirty()
