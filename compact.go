@@ -29,16 +29,43 @@ package smt
 // leave a leaf whose value is in neither memory nor the store, and whose digest
 // would then be computed over a truncated preimage.
 //
-// Callers must run this AFTER Commit returns, never from inside it: commit
-// marks a node persisted before it encodes and stores it.
-// The caller is expected to run this after every Commit, which is once per
-// relay in the miner. A pass that walked the whole trie every time would be
-// O(N) per call and O(N^2) over a session: measured at 20k leaves that is
-// already 3.5 s, and the cost grows with the square. So a node whose whole
-// subtree is compacted is marked, and later passes stop there, which makes a
-// pass cost the depth of the path that changed rather than the size of the
-// trie. The marks ride on setDirty, which every mutation already calls on the
-// way back up.
+// What "persisted" means, and what the caller owes. Compaction trusts each
+// node's persisted flag, and that flag records that Commit handed the node to
+// the store, not that the store holds it: commit marks a node persisted before
+// it calls Set, an ordering that predates compaction. So:
+//
+//   - a Commit that returns an error may leave nodes marked persisted that the
+//     store never received;
+//   - a store that accepts Set into a buffer and writes it out later reports
+//     success from Set even when that later write fails, and nothing in the
+//     trie can observe that failure.
+//
+// In both cases the affected leaves must not be compacted until they have been
+// written again, for example by updating the same key and committing
+// successfully. Compacting them first drops the only remaining copy of their
+// value. Only the caller can see the store fail, so only the caller can hold
+// compaction back. Run this after a Commit that succeeded and whose writes the
+// store has confirmed, never from inside Commit.
+//
+// Cost. It is meant to be called after every Commit. A pass that walked the
+// whole trie every time would be O(N) per call and O(N^2) across N updates:
+// measured at 20k leaves that is already 3.5 s, and it grows with the square.
+// So a node whose whole subtree is compacted is marked, and later passes stop
+// there, which makes a pass cost the depth of the path that changed rather
+// than the size of the trie. The marks ride on setDirty, which every mutation
+// already calls on the way back up.
+//
+// Concurrency. Compaction writes to the trie, and so does every read that has
+// to bring a value back: Get, Prove and ProveClosest restore a compacted leaf's
+// value from the store and record that they did, and resolving a lazy node is
+// recorded too. None of these is safe to call concurrently with any other
+// method without external locking. Get was already unsafe that way on a trie
+// holding lazy nodes, because it replaces a resolved node in place; compaction
+// extends the same caveat to Prove and ProveClosest, and to fully resident
+// tries.
+//
+// The error is in the signature so that a future pass can report a failure
+// without an API change. This implementation never returns a non-nil error.
 func (smt *SMT) CompactPersistedLeaves() (int, error) {
 	// Anything pulled in from the store arrived outside the setDirty path, so
 	// the marks cannot be trusted and this pass walks everything.

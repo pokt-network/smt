@@ -68,6 +68,10 @@ func (smt *SMT) Root() MerkleRoot {
 }
 
 // Get returns the hash (i.e. digest) of the leaf value stored at the given key
+//
+// Get writes to the trie: it replaces a lazy node it resolves in place and
+// restores a compacted leaf's value from the store. It is not safe to call
+// concurrently with any other method; see CompactPersistedLeaves.
 func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
 	// The leaf node whose value will be returned
@@ -335,6 +339,10 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 }
 
 // Prove generates a SparseMerkleProof for the given key
+//
+// Prove writes to the trie when it restores a compacted leaf's value from the
+// store, and it records any node it resolves from the store. It is not safe to
+// call concurrently with any other method; see CompactPersistedLeaves.
 func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	path := smt.ph.Path(key)
 	var siblings []trieNode
@@ -428,6 +436,11 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 // depth (ie tries left if it tried right and vice versa). This guarantees that
 // a proof of inclusion is found that has the most common bits with the path
 // provided, biased to the longest common prefix.
+//
+// ProveClosest writes to the trie when it restores a compacted leaf's value
+// from the store, and it records any node it resolves from the store. It is
+// not safe to call concurrently with any other method; see
+// CompactPersistedLeaves.
 func (smt *SMT) ProveClosest(path []byte) (
 	proof *SparseMerkleClosestProof, // proof of the key-value pair found
 	err error, // the error value encountered
