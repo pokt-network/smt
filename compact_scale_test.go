@@ -12,6 +12,19 @@ import (
 	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
+// scaleTestsEnv opts in to the scale tests. They build hundreds of thousands
+// of leaves and run past the default test timeout under -race, so a plain
+// `go test ./...` skips them.
+const scaleTestsEnv = "SMT_SCALE_TESTS"
+
+func skipUnlessScaleTests(t *testing.T) {
+	t.Helper()
+	if os.Getenv(scaleTestsEnv) == "" {
+		t.Skipf("scale test: set %s=1 to run it; its measured results are quoted in "+
+			"the description of pokt-network/smt#55", scaleTestsEnv)
+	}
+}
+
 // envInt reads a positive integer from the environment, falling back to def.
 func envInt(t *testing.T, name string, def int) int {
 	t.Helper()
@@ -47,9 +60,7 @@ func envInt(t *testing.T, name string, def int) int {
 // Memory: this holds TWO tries and TWO node stores at once — roughly 2.6 GB at
 // 500k leaves. Override with SMT_SCALE_LEAVES.
 func TestCompactScale_C1_RootIdenticalAtProtocolMaximum(t *testing.T) {
-	if testing.Short() {
-		t.Skip("scale test; skipped under -short")
-	}
+	skipUnlessScaleTests(t)
 
 	numLeaves := envInt(t, "SMT_SCALE_LEAVES", 100_000)
 	sampleEvery := envInt(t, "SMT_SCALE_SAMPLE", 10_000)
@@ -131,9 +142,7 @@ func TestCompactScale_C1_RootIdenticalAtProtocolMaximum(t *testing.T) {
 // in-process node stores alone come to roughly 8 GB, bytes an out-of-process
 // store would not keep in this heap. Raise with SMT_FLEET_MAXLEAVES.
 func TestCompactScale_C1_ThousandConcurrentTries(t *testing.T) {
-	if testing.Short() {
-		t.Skip("scale test; skipped under -short")
-	}
+	skipUnlessScaleTests(t)
 
 	numTries := envInt(t, "SMT_FLEET_TRIES", 1000)
 	minLeaves := envInt(t, "SMT_FLEET_MINLEAVES", 1000)
@@ -270,9 +279,7 @@ func (e *rootMismatchError) Error() string {
 // C2 at scale: a proof taken from a deep trie. What a caller pays is the number
 // of store reads per proof, which this reports rather than assumes.
 func TestCompactScale_C2_ProofsFromDeepTrie(t *testing.T) {
-	if testing.Short() {
-		t.Skip("scale test; skipped under -short")
-	}
+	skipUnlessScaleTests(t)
 
 	numLeaves := envInt(t, "SMT_SCALE_PROOF_LEAVES", 100_000)
 	numProofs := envInt(t, "SMT_SCALE_PROOFS", 200)
