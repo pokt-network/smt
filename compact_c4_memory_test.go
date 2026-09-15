@@ -14,9 +14,9 @@ import (
 // C4: how much resident memory compaction actually reclaims.
 //
 // What is measured is the memory retained by the TRIE, not by the trie plus
-// its node store. In production the node store is Redis, so its bytes are not
-// in the miner's heap at all; charging them to both variants would dilute the
-// ratio with a constant that does not exist on the machine under test. The
+// its node store. A node store is often not in the trie's process at all -- it
+// can be an external database -- so charging its bytes to both variants would
+// dilute the ratio with a constant that need not exist where the trie runs. The
 // store figure is reported separately so the dilution can be seen rather than
 // assumed.
 //
@@ -87,16 +87,16 @@ type heapMeasurement struct {
 	// brief asked for. It includes span fragmentation, so it is the noisier of
 	// the two and is reported rather than asserted on.
 	trieInuse uint64
-	// storeBytes is what the node store retains, which in production lives in
-	// Redis rather than in this process.
+	// storeBytes is what the node store retains; an out-of-process store would
+	// not hold these bytes in this heap.
 	storeBytes uint64
 	storeLen   int
 	root       string
 }
 
 // measureTrieHeap builds a trie of numLeaves values of valueSize bytes,
-// committing after every update the way the miner does, and reports how much
-// heap the trie itself retains.
+// committing after every update, which is the pattern compaction is meant for,
+// and reports how much heap the trie itself retains.
 func measureTrieHeap(t *testing.T, numLeaves, valueSize int, compact bool) heapMeasurement {
 	t.Helper()
 
@@ -137,8 +137,7 @@ func measureTrieHeap(t *testing.T, numLeaves, valueSize int, compact bool) heapM
 }
 
 // buildMeasuredTrie inserts numLeaves deterministic key/value pairs, calling
-// Commit after each Update the way miner/smst_manager.go does, and optionally
-// compacting after each Commit.
+// Commit after each Update and optionally compacting after each Commit.
 func buildMeasuredTrie(
 	t *testing.T,
 	store kvstore.MapStore,

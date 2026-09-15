@@ -119,18 +119,17 @@ func TestCompactScale_C1_RootIdenticalAtProtocolMaximum(t *testing.T) {
 	}
 }
 
-// C1 for the fleet shape: the miner runs many session tries at once, not one
-// enormous one. The measured fleet carries roughly 350 claims in parallel with
-// num_suppliers_per_session=50, so a thousand concurrent tries is the shape
-// that matters.
+// C1 for the fleet shape: a process that keeps one trie per open unit of work
+// holds many tries at once, not one enormous one, and a thousand concurrent
+// tries is that shape.
 //
 // Only the compacted tries stay resident. Each plain twin is built, its root
 // recorded, and then dropped, because keeping a thousand plain twins alive
 // would measure nothing except the machine running out of memory.
 //
-// Leaves per trie default to 1k-3k rather than the 1k-10k asked for: at 10k the
-// thousand IN-PROCESS node stores alone come to roughly 8 GB, and those bytes
-// live in Redis in production, not in the miner. Raise with SMT_FLEET_MAXLEAVES.
+// Leaves per trie default to 1k-3k rather than 1k-10k: at 10k the thousand
+// in-process node stores alone come to roughly 8 GB, bytes an out-of-process
+// store would not keep in this heap. Raise with SMT_FLEET_MAXLEAVES.
 func TestCompactScale_C1_ThousandConcurrentTries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("scale test; skipped under -short")
@@ -268,8 +267,8 @@ func (e *rootMismatchError) Error() string {
 		" with " + strconv.Itoa(e.leaves) + " leaves"
 }
 
-// C2 at scale: a proof taken from a deep trie. What the miner pays is the
-// number of store reads per proof, which this reports rather than assumes.
+// C2 at scale: a proof taken from a deep trie. What a caller pays is the number
+// of store reads per proof, which this reports rather than assumes.
 func TestCompactScale_C2_ProofsFromDeepTrie(t *testing.T) {
 	if testing.Short() {
 		t.Skip("scale test; skipped under -short")
