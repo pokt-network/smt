@@ -162,13 +162,15 @@ func TestCompact_ConcurrentProofsDoNotRace(t *testing.T) {
 				}
 			}
 
-			const workers = 4
+			const workers = 8
+			start := make(chan struct{})
 			errs := make(chan error, workers)
 			for w := 0; w < workers; w++ {
 				go func(w int) {
+					<-start
 					path := make([]byte, 32)
 					rnd := rand.New(rand.NewSource(int64(131 + w)))
-					for i := 0; i < 100; i++ {
+					for i := 0; i < 1000; i++ {
 						rnd.Read(path) //nolint:errcheck // math/rand Read never returns an error
 						if _, err := trie.ProveClosest(path); err != nil {
 							errs <- err
@@ -178,6 +180,7 @@ func TestCompact_ConcurrentProofsDoNotRace(t *testing.T) {
 					errs <- nil
 				}(w)
 			}
+			close(start)
 			for w := 0; w < workers; w++ {
 				requireNoError(t, <-errs, "ProveClosest")
 			}
