@@ -21,11 +21,6 @@ type SMT struct {
 	root trieNode
 	// Lists of per-operation orphan sets
 	orphans []orphanNodes
-	// resolvedSinceCompaction reports that a node or a leaf value was brought
-	// in from the store since the last compaction pass. Those arrive outside
-	// the setDirty path, so the next pass must ignore the compactedSubtree
-	// shortcuts and walk everything. See compact.go.
-	resolvedSinceCompaction bool
 }
 
 // Hashes of persisted nodes deleted from trie
@@ -69,8 +64,9 @@ func (smt *SMT) Root() MerkleRoot {
 
 // Get returns the hash (i.e. digest) of the leaf value stored at the given key
 //
-// Get writes to the trie: it replaces a lazy node it resolves in place and
-// restores a compacted leaf's value from the store. It is not safe to call
+// Get writes to the trie: it replaces a lazy node it resolves in place,
+// restores a compacted leaf's value from the store, and clears the compaction
+// mark on the nodes it walks. It is not safe to call
 // concurrently with any other method; see CompactPersistedLeaves.
 func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
@@ -88,6 +84,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 		if *currNode == nil {
 			break
 		}
+		clearCompactedMark(*currNode)
 		if n, ok := (*currNode).(*leafNode); ok {
 			if bytes.Equal(path, n.path) {
 				leaf = n
@@ -104,6 +101,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
+			clearCompactedMark(*currNode)
 		}
 		inner := (*currNode).(*innerNode)
 		if getPathBit(path, depth) == leftChildBit {
@@ -266,6 +264,9 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 	if err != nil {
 		return node, err
 	}
+	// A miss returns ErrKeyNotFound without dirtying anything, yet leaves the
+	// nodes it resolved in place.
+	clearCompactedMark(node)
 
 	if node == nil {
 		return node, ErrKeyNotFound
@@ -341,8 +342,8 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 // Prove generates a SparseMerkleProof for the given key
 //
 // Prove writes to the trie when it restores a compacted leaf's value from the
-// store, and it records any node it resolves from the store. It is not safe to
-// call concurrently with any other method; see CompactPersistedLeaves.
+// store, and it clears the compaction mark on the nodes it walks. It is not safe
+// to call concurrently with any other method; see CompactPersistedLeaves.
 func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	path := smt.ph.Path(key)
 	var siblings []trieNode
@@ -357,6 +358,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if node == nil {
 			break
 		}
+		clearCompactedMark(node)
 		if _, ok := node.(*leafNode); ok {
 			break
 		}
@@ -372,6 +374,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 				if err != nil {
 					return nil, err
 				}
+				clearCompactedMark(node)
 			} else {
 				node = extNode.expand()
 			}
@@ -438,7 +441,7 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 // provided, biased to the longest common prefix.
 //
 // ProveClosest writes to the trie when it restores a compacted leaf's value
-// from the store, and it records any node it resolves from the store. It is
+// from the store, and it clears the compaction mark on the nodes it walks. It is
 // not safe to call concurrently with any other method; see
 // CompactPersistedLeaves.
 func (smt *SMT) ProveClosest(path []byte) (
@@ -499,6 +502,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 			flipPathBit(workingPath, depth)
 			proof.FlippedBits = append(proof.FlippedBits, depth)
 		}
+		clearCompactedMark(node)
 		// end traversal when we hit a leaf node
 		if _, ok := node.(*leafNode); ok {
 			proof.Depth = depth
@@ -523,6 +527,7 @@ func (smt *SMT) ProveClosest(path []byte) (
 				if err != nil {
 					return nil, err
 				}
+				clearCompactedMark(node)
 			}
 		}
 		inner, ok := node.(*innerNode)
@@ -586,9 +591,6 @@ func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	if !ok {
 		return node, nil
 	}
-	// Resolving pulls a subtree into memory without going through setDirty, so
-	// the compaction shortcuts below this point are no longer trustworthy.
-	smt.resolvedSinceCompaction = true
 	if smt.sumTrie {
 		return smt.resolveSumNode(stub.digest)
 	}

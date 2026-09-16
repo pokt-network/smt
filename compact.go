@@ -49,27 +49,23 @@ package smt
 // than the size of the trie. The marks ride on setDirty, which every mutation
 // already calls on the way back up.
 //
-// Concurrency. Compaction writes to the trie, and so does every read that has
-// to bring a value back: Get, Prove and ProveClosest restore a compacted leaf's
-// value from the store and record that they did, and resolving a lazy node is
-// recorded too. None of these is safe to call concurrently with any other
+// Concurrency. Compaction writes to the trie, and so does every read: Get,
+// Prove and ProveClosest restore a compacted leaf's value from the store and
+// clear the compactedSubtree mark on every node they descend through. None of
+// these is safe to call concurrently with any other
 // method without external locking. Get was already unsafe that way on a trie
 // holding lazy nodes, because it replaces a resolved node in place; compaction
 // extends the same caveat to Prove and ProveClosest, and to fully resident
 // tries.
 func (smt *SMT) CompactPersistedLeaves() int {
-	// Anything pulled in from the store arrived outside the setDirty path, so
-	// the marks cannot be trusted and this pass walks everything.
-	force := smt.resolvedSinceCompaction
-	compacted, _ := smt.compactNode(smt.root, force)
-	smt.resolvedSinceCompaction = false
+	compacted, _ := smt.compactNode(smt.root)
 	return compacted
 }
 
 // compactNode recursively compacts the resident subtree rooted at node. It
 // returns how many leaves it compacted, and whether every resident leaf below
 // node now holds no value.
-func (smt *SMT) compactNode(node trieNode, force bool) (compacted int, allCompacted bool) {
+func (smt *SMT) compactNode(node trieNode) (compacted int, allCompacted bool) {
 	switch n := node.(type) {
 	case *leafNode:
 		if n.compacted {
@@ -92,19 +88,19 @@ func (smt *SMT) compactNode(node trieNode, force bool) (compacted int, allCompac
 		return 1, true
 
 	case *innerNode:
-		if n.compactedSubtree && !force {
+		if n.compactedSubtree {
 			return 0, true
 		}
-		left, leftAll := smt.compactNode(n.leftChild, force)
-		right, rightAll := smt.compactNode(n.rightChild, force)
+		left, leftAll := smt.compactNode(n.leftChild)
+		right, rightAll := smt.compactNode(n.rightChild)
 		n.compactedSubtree = leftAll && rightAll
 		return left + right, n.compactedSubtree
 
 	case *extensionNode:
-		if n.compactedSubtree && !force {
+		if n.compactedSubtree {
 			return 0, true
 		}
-		count, all := smt.compactNode(n.child, force)
+		count, all := smt.compactNode(n.child)
 		n.compactedSubtree = all
 		return count, all
 
@@ -134,10 +130,27 @@ func (smt *SMT) resolveLeafValue(leaf *leafNode) error {
 	_, valueHash := smt.parseLeafNode(data)
 	leaf.valueHash = cloneBytes(valueHash)
 	leaf.compacted = false
-	// This leaf now holds a value again, but its ancestors still carry a
-	// compactedSubtree mark that would make the next pass skip it.
-	smt.resolvedSinceCompaction = true
 	return nil
+}
+
+// clearCompactedMark records that the subtree below node may hold values again.
+//
+// Mutations get this from setDirty. Reads cannot use setDirty, because they
+// change neither a node's digest nor whether the store holds it, yet they can
+// still bring values into the resident trie below a marked node: Get replaces
+// a lazy node with the node it resolves, a resolved leaf carries its value,
+// and a hydrated compacted leaf holds its value again. So every traversal that
+// can do that calls this on each inner or extension node it descends through,
+// and the next pass descends that path again. Clearing a node that gained
+// nothing costs that pass the path's depth; missing one leaves a value resident
+// until the next mutation through that path.
+func clearCompactedMark(node trieNode) {
+	switch n := node.(type) {
+	case *innerNode:
+		n.compactedSubtree = false
+	case *extensionNode:
+		n.compactedSubtree = false
+	}
 }
 
 // resolveCompactedLeaf restores the value of node when it is a compacted leaf,
