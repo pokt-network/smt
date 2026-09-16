@@ -10,12 +10,20 @@ import (
 )
 
 // Deleting a key can leave an extension node joined onto its parent's path.
-// The joined node is mutated in place (its pathBounds start moves), so it has
-// to be marked dirty like every other mutated node: a node that still claims
-// to be persisted keeps a digest that no longer describes it, and commit skips
-// re-writing it, which loses it from the store.
+// The joined node is mutated in place (its pathBounds start moves), and the
+// join now calls setDirty on it, like the symmetric join in the inner-node
+// branch of delete.
 //
-// The symmetric join in the inner-node branch of delete does call setDirty.
+// That call is defensive: both tests below pass without it. An extension
+// node's child is always an inner node (smt.go builds it that way and
+// extensionNode.split keeps it), and delete returns an extension node from an
+// inner node only through the inner-node branch's absorb, which has already
+// called setDirty on it, so the node this branch joins is already dirty. That
+// is read from the code and measured, not proven: instrumented randomized
+// deletes reached this branch 99 times and never with a clean node. The tests
+// pin what the call protects, should that ever change: the root matches a
+// trie built without the deleted key, the store holds the joined node, and the
+// node carries no persisted flag, stale digest or compaction mark.
 //
 // Paths are taken straight from the keys via dummyPathHasher so the shape can
 // be built deliberately rather than searched for:
@@ -77,9 +85,9 @@ func TestDelete_JoinedExtensionIsMarkedDirty(t *testing.T) {
 	}
 }
 
-// The second consequence: the compaction mark added for performance lives on
-// the same setDirty. A joined extension node that is never marked dirty keeps
-// claiming its subtree is fully compacted, so a later pass stops there.
+// The compaction mark rides on the same setDirty: a joined extension node that
+// kept it would claim its subtree is fully compacted, and a later pass would
+// stop there. Defensive for the same reason as the test above.
 func TestDelete_JoinedExtensionClearsCompactionMark(t *testing.T) {
 	lone, pairA, pairB := joinShapedKeys()
 
