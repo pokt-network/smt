@@ -696,46 +696,66 @@ func (smt *SMT) parseSumTrieNode(data, digest []byte) (trieNode, error) {
 // Commit persists all dirty nodes in the trie, deletes all orphaned
 // nodes from the database and then computes and saves the root hash
 func (smt *SMT) Commit() (err error) {
-	// All orphans are persisted and have cached digests, so we don't need to check for null
-	for _, orphans := range smt.orphans {
-		for _, hash := range orphans {
-			if err = smt.nodes.Delete(hash); err != nil {
-				return
-			}
-		}
-	}
-	smt.orphans = nil
-	if err = smt.commit(smt.root); err != nil {
+	// Write the new nodes before deleting the orphans. Deleting first leaves
+	// the store holding neither the last committed root nor the new one when a
+	// write then fails, and a failed Commit used to drop the orphan list too.
+	written := make(map[string]struct{})
+	if err = smt.commit(smt.root, written); err != nil {
 		return
 	}
 	smt.rootHash = smt.Root()
+
+	// An orphan can share its digest with a node this commit just wrote, such
+	// as a key set back to a value it held: that digest is live again and must
+	// stay. All orphans are persisted and have cached digests, so we don't need
+	// to check for null.
+	var pending [][]byte
+	for _, orphans := range smt.orphans {
+		for _, hash := range orphans {
+			if _, live := written[string(hash)]; !live {
+				pending = append(pending, hash)
+			}
+		}
+	}
+	for i, hash := range pending {
+		if err = smt.nodes.Delete(hash); err != nil {
+			// The new root is written; keep what is left for the next Commit.
+			smt.orphans = []orphanNodes{pending[i:]}
+			return
+		}
+	}
+	smt.orphans = nil
 	return
 }
 
-func (smt *SMT) commit(node trieNode) error {
+// commit writes every node of the subtree that is not yet persisted, children
+// first, and records the digest of each node it writes in written.
+func (smt *SMT) commit(node trieNode, written map[string]struct{}) error {
 	if node != nil && node.Persisted() {
 		return nil
 	}
 	switch n := node.(type) {
 	case *leafNode:
 	case *innerNode:
-		if err := smt.commit(n.leftChild); err != nil {
+		if err := smt.commit(n.leftChild, written); err != nil {
 			return err
 		}
-		if err := smt.commit(n.rightChild); err != nil {
+		if err := smt.commit(n.rightChild, written); err != nil {
 			return err
 		}
 	case *extensionNode:
-		if err := smt.commit(n.child); err != nil {
+		if err := smt.commit(n.child, written); err != nil {
 			return err
 		}
 	default:
 		return nil
 	}
 	preimage := smt.encode(node)
-	if err := smt.nodes.Set(smt.digest(node), preimage); err != nil {
+	digest := smt.digest(node)
+	if err := smt.nodes.Set(digest, preimage); err != nil {
 		return err
 	}
+	written[string(digest)] = struct{}{}
 	// Only a node the store accepted is persisted: a node marked before a
 	// failed Set would be skipped by the next Commit and never written.
 	switch n := node.(type) {

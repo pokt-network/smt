@@ -98,3 +98,180 @@ func TestCommit_RetryAfterFailedSetWritesEveryNode(t *testing.T) {
 		})
 	}
 }
+
+var errInjectedDelete = errors.New("injected Delete failure")
+
+// flakyStore fails the next Set or Delete when armed, and passes everything
+// else through, so a Commit can be made to fail at a chosen step.
+type flakyStore struct {
+	kvstore.MapStore
+	failSet, failDelete bool
+}
+
+func (s *flakyStore) Set(key, value []byte) error {
+	if s.failSet {
+		s.failSet = false
+		return errInjectedSet
+	}
+	return s.MapStore.Set(key, value)
+}
+
+func (s *flakyStore) Delete(key []byte) error {
+	if s.failDelete {
+		s.failDelete = false
+		return errInjectedDelete
+	}
+	return s.MapStore.Delete(key)
+}
+
+// commitScenario builds a committed trie over store, then applies a second
+// batch that orphans persisted nodes (an overwrite and a delete) and adds a key,
+// without committing it. It returns the first root, the values it held, the
+// second batch's final values, and a reference store holding exactly what a
+// successful second Commit leaves behind.
+func commitScenario(t *testing.T, store kvstore.MapStore) (
+	trie *SMST, firstRoot []byte, first, second map[string][]byte, ref kvstore.MapStore,
+) {
+	t.Helper()
+	rnd := rand.New(rand.NewSource(20260917))
+	first = make(map[string][]byte)
+	var keys [][]byte
+	for i := 0; i < 50; i++ {
+		key, value := make([]byte, 32), make([]byte, 64)
+		rnd.Read(key)   //nolint:errcheck // math/rand Read never returns an error
+		rnd.Read(value) //nolint:errcheck // math/rand Read never returns an error
+		keys = append(keys, key)
+		first[string(key)] = value
+	}
+	build := func(s kvstore.MapStore) *SMST {
+		tr := newPoktrollSpecSMST(s)
+		for _, key := range keys {
+			requireNoError(t, tr.Update(key, first[string(key)], 1), "Update")
+		}
+		requireNoError(t, tr.Commit(), "first Commit")
+		return tr
+	}
+	second = make(map[string][]byte, len(first))
+	for k, v := range first {
+		second[k] = v
+	}
+	newKey, newValue := make([]byte, 32), make([]byte, 64)
+	rnd.Read(newKey)   //nolint:errcheck // math/rand Read never returns an error
+	rnd.Read(newValue) //nolint:errcheck // math/rand Read never returns an error
+	overwritten := append([]byte(nil), first[string(keys[0])]...)
+	overwritten[0] ^= 0xff
+	secondBatch := func(tr *SMST) {
+		requireNoError(t, tr.Update(keys[0], overwritten, 1), "overwrite")
+		requireNoError(t, tr.Delete(keys[1]), "Delete")
+		requireNoError(t, tr.Update(newKey, newValue, 1), "Update new key")
+	}
+	second[string(keys[0])] = overwritten
+	delete(second, string(keys[1]))
+	second[string(newKey)] = newValue
+
+	ref = simplemap.NewSimpleMap()
+	refTrie := build(ref)
+	secondBatch(refTrie)
+	requireNoError(t, refTrie.Commit(), "ref second Commit")
+
+	trie = build(store)
+	firstRoot = append([]byte(nil), trie.Root()...)
+	secondBatch(trie)
+	return trie, firstRoot, first, second, ref
+}
+
+// requireStoreServes imports root from store and requires it to read exactly
+// the given values.
+func requireStoreServes(t *testing.T, store kvstore.MapStore, root []byte, values map[string][]byte, what string) {
+	t.Helper()
+	imported := ImportSparseMerkleSumTrie(store, sha256.New(), root, WithValueHasher(nil))
+	for k, want := range values {
+		got, _, err := imported.Get([]byte(k))
+		if err != nil {
+			t.Fatalf("%s: cannot read key %x: %v", what, k, err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Fatalf("%s: key %x reads %d bytes, want %d", what, k, len(got), len(want))
+		}
+	}
+}
+
+// A Commit whose write fails must leave the store serving the last committed
+// root: nothing has replaced it yet. Deleting the orphans before writing broke
+// that, because the orphans are nodes of that root.
+func TestCommit_FailedWriteKeepsTheLastCommittedRoot(t *testing.T) {
+	store := &flakyStore{MapStore: simplemap.NewSimpleMap()}
+	trie, firstRoot, first, second, ref := commitScenario(t, store)
+
+	store.failSet = true
+	if err := trie.Commit(); !errors.Is(err, errInjectedSet) {
+		t.Fatalf("Commit: got %v, want the injected Set failure", err)
+	}
+	requireStoreServes(t, store, firstRoot, first, "after a failed Commit, the last committed root")
+
+	// And the orphans are still owed: the retry must leave exactly what a
+	// Commit that never failed leaves, with no node of the first root behind.
+	requireNoError(t, trie.Commit(), "retried Commit")
+	requireStoreServes(t, store, trie.Root(), second, "after the retry, the new root")
+	requireSameStoreSize(t, store, ref)
+}
+
+// A Commit whose orphan delete fails has already written the new root; the
+// orphans left undeleted must be deleted by the next Commit.
+func TestCommit_FailedDeleteKeepsOrphansForTheNextCommit(t *testing.T) {
+	store := &flakyStore{MapStore: simplemap.NewSimpleMap()}
+	trie, _, _, second, ref := commitScenario(t, store)
+
+	store.failDelete = true
+	if err := trie.Commit(); !errors.Is(err, errInjectedDelete) {
+		t.Fatalf("Commit: got %v, want the injected Delete failure", err)
+	}
+	requireStoreServes(t, store, trie.Root(), second, "after a failed orphan delete, the new root")
+
+	requireNoError(t, trie.Commit(), "retried Commit")
+	requireSameStoreSize(t, store, ref)
+}
+
+// Setting a key back to a value it held gives the new leaf the digest of the
+// leaf it orphans. That digest must survive the Commit: writing the new nodes
+// first and then deleting every orphan would delete the leaf just written.
+func TestCommit_KeySetBackToItsValueKeepsItsNode(t *testing.T) {
+	key, value, other := bytes.Repeat([]byte{1}, 32), []byte("value"), []byte("other")
+	cases := map[string]func(tr *SMST){
+		"same value again": func(tr *SMST) {
+			requireNoError(t, tr.Update(key, value, 1), "Update same value")
+		},
+		"changed and changed back in one batch": func(tr *SMST) {
+			requireNoError(t, tr.Update(key, other, 1), "Update other")
+			requireNoError(t, tr.Update(key, value, 1), "Update back")
+		},
+		"deleted and set again in one batch": func(tr *SMST) {
+			requireNoError(t, tr.Delete(key), "Delete")
+			requireNoError(t, tr.Update(key, value, 1), "Update again")
+		},
+	}
+	for name, batch := range cases {
+		t.Run(name, func(t *testing.T) {
+			store := simplemap.NewSimpleMap()
+			trie := newPoktrollSpecSMST(store)
+			requireNoError(t, trie.Update(bytes.Repeat([]byte{2}, 32), other, 1), "Update neighbour")
+			requireNoError(t, trie.Update(key, value, 1), "Update")
+			requireNoError(t, trie.Commit(), "Commit")
+
+			batch(trie)
+			requireNoError(t, trie.Commit(), "Commit after the batch")
+			requireStoreServes(t, store, trie.Root(), map[string][]byte{string(key): value}, name)
+		})
+	}
+}
+
+func requireSameStoreSize(t *testing.T, got, want kvstore.MapStore) {
+	t.Helper()
+	gotLen, err := got.Len()
+	requireNoError(t, err, "Len")
+	wantLen, err := want.Len()
+	requireNoError(t, err, "reference Len")
+	if gotLen != wantLen {
+		t.Fatalf("store holds %d nodes, want %d: orphans were leaked or live nodes deleted", gotLen, wantLen)
+	}
+}
