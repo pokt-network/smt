@@ -217,18 +217,19 @@ func snapshotResidentNodes(root trieNode) map[trieNode]nodeState {
 	return out
 }
 
-// What a pass costs is the set of resident inner and extension nodes without a
-// mark: a marked node returns at once. On a trie imported from the store, that
-// set must stay the path an update changed, and every node must be marked again
-// once the pass is done. Were reads or resolves to fall back on a walk of the
-// whole trie, or were marks not restored, this set would grow with the trie.
+// A pass costs the inner and extension nodes it descends into. On a trie
+// imported from the store and read between updates, that must stay the path
+// the last update and reads walked, not the trie: a pass that ignored the marks
+// (as one forced by a trie-wide flag did) visits thousands of nodes here. And
+// every node must be marked again once the pass is done, or later passes pay
+// for it.
 func TestCompact_PassCostStaysOnTheChangedPath(t *testing.T) {
 	const (
 		initialLeaves = 2000
 		updates       = 2000
-		// Far above the depth of a 4k-leaf trie over sha256 paths, far below
-		// the thousands of internal nodes it holds.
-		maxUnmarked = 64
+		// Far above the paths one update and two reads walk in a 4k-leaf trie
+		// over sha256 paths, far below the thousands of internal nodes it holds.
+		maxVisited = 64
 	)
 	store := simplemap.NewSimpleMap()
 	src := newPoktrollSpecSMST(store)
@@ -246,18 +247,23 @@ func TestCompact_PassCostStaysOnTheChangedPath(t *testing.T) {
 	}
 
 	trie := ImportSparseMerkleSumTrie(store, sha256.New(), src.Root(), WithValueHasher(nil))
+	absent := make([]byte, 32)
 	worst := 0
 	for i := 0; i < updates; i++ {
 		put(trie)
-		unmarked := unmarkedResidentInternalNodes(trie.root)
-		if unmarked > worst {
-			worst = unmarked
+		rnd.Read(absent) //nolint:errcheck // math/rand Read never returns an error
+		_, err := trie.ProveClosest(absent)
+		requireNoError(t, err, "ProveClosest")
+		_, _, err = trie.Get(absent)
+		requireNoError(t, err, "Get")
+
+		_, visited := trie.compactPass()
+		if visited > worst {
+			worst = visited
 		}
-		if unmarked > maxUnmarked {
-			t.Fatalf("update %d: the next pass would visit %d unmarked internal nodes, want at most %d",
-				i, unmarked, maxUnmarked)
+		if visited > maxVisited {
+			t.Fatalf("update %d: the pass descended into %d internal nodes, want at most %d", i, visited, maxVisited)
 		}
-		trie.CompactPersistedLeaves()
 		if left := unmarkedResidentInternalNodes(trie.root); left != 0 {
 			t.Fatalf("update %d: %d internal nodes are still unmarked after the pass, so every later pass visits them",
 				i, left)
@@ -268,7 +274,27 @@ func TestCompact_PassCostStaysOnTheChangedPath(t *testing.T) {
 		t.Fatalf("CONTROL: want at least %d resident leaves all compacted, got %d of %d holding a value",
 			updates, held, total)
 	}
-	t.Logf("worst unmarked internal nodes before a pass: %d over %d resident leaves", worst, total)
+
+	// Control: the counter must see a walk of the whole resident trie, or a
+	// bound on it proves nothing.
+	clearAllCompactedMarks(trie.root)
+	if _, visited := trie.compactPass(); visited <= maxVisited {
+		t.Fatalf("CONTROL: a pass over a trie with no marks descended into only %d internal nodes", visited)
+	}
+	t.Logf("worst pass: %d internal nodes over %d resident leaves", worst, total)
+}
+
+// clearAllCompactedMarks unmarks every resident inner and extension node.
+func clearAllCompactedMarks(node trieNode) {
+	switch n := node.(type) {
+	case *innerNode:
+		n.compactedSubtree = false
+		clearAllCompactedMarks(n.leftChild)
+		clearAllCompactedMarks(n.rightChild)
+	case *extensionNode:
+		n.compactedSubtree = false
+		clearAllCompactedMarks(n.child)
+	}
 }
 
 // unmarkedResidentInternalNodes counts the resident inner and extension nodes

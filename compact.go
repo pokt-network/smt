@@ -58,14 +58,21 @@ package smt
 // read the value of a compacted leaf they need from the store into the proof,
 // which costs a store read each time, and leave the leaf compacted.
 func (smt *SMT) CompactPersistedLeaves() int {
-	compacted, _ := smt.compactNode(smt.root)
+	compacted, _ := smt.compactPass()
 	return compacted
+}
+
+// compactPass runs one compaction pass and also reports how many inner and
+// extension nodes it descended into, which is what the pass costs.
+func (smt *SMT) compactPass() (compacted, visited int) {
+	compacted, _ = smt.compactNode(smt.root, &visited)
+	return compacted, visited
 }
 
 // compactNode recursively compacts the resident subtree rooted at node. It
 // returns how many leaves it compacted, and whether every resident leaf below
 // node now holds no value.
-func (smt *SMT) compactNode(node trieNode) (compacted int, allCompacted bool) {
+func (smt *SMT) compactNode(node trieNode, visited *int) (compacted int, allCompacted bool) {
 	switch n := node.(type) {
 	case *leafNode:
 		if n.compacted {
@@ -91,8 +98,9 @@ func (smt *SMT) compactNode(node trieNode) (compacted int, allCompacted bool) {
 		if n.compactedSubtree {
 			return 0, true
 		}
-		left, leftAll := smt.compactNode(n.leftChild)
-		right, rightAll := smt.compactNode(n.rightChild)
+		*visited++
+		left, leftAll := smt.compactNode(n.leftChild, visited)
+		right, rightAll := smt.compactNode(n.rightChild, visited)
 		n.compactedSubtree = leftAll && rightAll
 		return left + right, n.compactedSubtree
 
@@ -100,7 +108,8 @@ func (smt *SMT) compactNode(node trieNode) (compacted int, allCompacted bool) {
 		if n.compactedSubtree {
 			return 0, true
 		}
-		count, all := smt.compactNode(n.child)
+		*visited++
+		count, all := smt.compactNode(n.child, visited)
 		n.compactedSubtree = all
 		return count, all
 
