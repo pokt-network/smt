@@ -18,7 +18,8 @@ type extensionNode struct {
 	// inner nodes that this single extension node replaces.
 	pathBounds [2]byte
 	// A child node from this extension node.
-	// It will always be an innerNode, leafNode or lazyNode.
+	// It will always be an innerNode, or a lazyNode that resolves to one: delete
+	// replaces an extension node whose child became a leaf with that leaf.
 	child trieNode
 	// Bool whether or not the node has been flushed to disk
 	persisted bool

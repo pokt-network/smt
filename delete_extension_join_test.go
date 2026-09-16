@@ -9,21 +9,19 @@ import (
 	"github.com/pokt-network/smt/kvstore/simplemap"
 )
 
-// Deleting a key can leave an extension node joined onto its parent's path.
-// The joined node is mutated in place (its pathBounds start moves), and the
-// join now calls setDirty on it, like the symmetric join in the inner-node
-// branch of delete.
+// Deleting a key can leave an extension node joined onto its parent's path:
+// the node is mutated in place, its pathBounds start moving to the parent's.
+// This test pins the result against a trie built without the deleted key: the
+// same root, and a store complete enough to re-import it. What it catches is
+// the join itself (measured: dropping the pathBounds assignment fails it).
 //
-// That call is defensive: both tests below pass without it. An extension
-// node's child is always an inner node (smt.go builds it that way and
-// extensionNode.split keeps it), and delete returns an extension node from an
-// inner node only through the inner-node branch's absorb, which has already
-// called setDirty on it, so the node this branch joins is already dirty. That
-// is read from the code and measured, not proven: instrumented randomized
-// deletes reached this branch 99 times and never with a clean node. The tests
-// pin what the call protects, should that ever change: the root matches a
-// trie built without the deleted key, the store holds the joined node, and the
-// node carries no persisted flag, stale digest or compaction mark.
+// It does not catch the setDirty the join also calls, and cannot: an extension
+// node's child is always an inner node, and delete returns an extension node
+// from an inner node only through the inner-node branch's absorb, which has
+// already dirtied it, so the joined node is dirty either way. That is read from
+// the code and measured, not proven: instrumented randomized deletes reached
+// the join 977 times, never with a clean node. The call stays, symmetric with
+// the absorb, as a guard should that ever change.
 //
 // Paths are taken straight from the keys via dummyPathHasher so the shape can
 // be built deliberately rather than searched for:
@@ -35,7 +33,7 @@ import (
 // Deleting `lone` empties one side of the inner node, so its sibling — the
 // inner extension — is returned upward and joined onto the outer extension's
 // path. That join is the branch under test.
-func TestDelete_JoinedExtensionIsMarkedDirty(t *testing.T) {
+func TestDelete_JoinedExtensionMatchesReference(t *testing.T) {
 	lone, pairA, pairB := joinShapedKeys()
 
 	store := simplemap.NewSimpleMap()
@@ -62,8 +60,7 @@ func TestDelete_JoinedExtensionIsMarkedDirty(t *testing.T) {
 
 	if !bytes.Equal(trie.Root(), ref.Root()) {
 		t.Fatalf("root after deleting the lone key does not match a trie built without it:\n"+
-			" after delete: %x\n reference:    %x\n"+
-			"the joined extension node kept the digest it had before its path was changed",
+			" after delete: %x\n reference:    %x",
 			trie.Root(), ref.Root())
 	}
 
@@ -74,49 +71,12 @@ func TestDelete_JoinedExtensionIsMarkedDirty(t *testing.T) {
 	for _, key := range [][]byte{pairA, pairB} {
 		got, _, err := reimported.Get(key)
 		if err != nil {
-			t.Fatalf("re-importing from the post-delete root cannot read key %x: %v\n"+
-				"commit skipped the joined extension node because it still claimed to be persisted",
-				key, err)
+			t.Fatalf("re-importing from the post-delete root cannot read key %x: %v", key, err)
 		}
 		if !bytes.Equal(got, valueFor(key)) {
 			t.Fatalf("key %x: re-imported trie returned %d bytes, want %d",
 				key, len(got), len(valueFor(key)))
 		}
-	}
-}
-
-// The compaction mark rides on the same setDirty: a joined extension node that
-// kept it would claim its subtree is fully compacted, and a later pass would
-// stop there. Defensive for the same reason as the test above.
-func TestDelete_JoinedExtensionClearsCompactionMark(t *testing.T) {
-	lone, pairA, pairB := joinShapedKeys()
-
-	trie := newDummyPathSMST(simplemap.NewSimpleMap())
-	for _, key := range [][]byte{lone, pairA, pairB} {
-		requireNoError(t, trie.Update(key, valueFor(key), 1), "Update")
-	}
-	requireNoError(t, trie.Commit(), "Commit")
-	trie.CompactPersistedLeaves()
-	assertJoinShape(t, trie)
-
-	requireNoError(t, trie.Delete(lone), "Delete")
-
-	// The node returned upward by the join is the new root.
-	joined, ok := trie.root.(*extensionNode)
-	if !ok {
-		t.Fatalf("after the delete the root is %T, want *extensionNode; "+
-			"the join branch was not reached", trie.root)
-	}
-	if joined.compactedSubtree {
-		t.Fatal("the joined extension node still claims its subtree is fully compacted, " +
-			"so a later compaction pass would stop there even though the node changed")
-	}
-	if joined.persisted {
-		t.Fatal("the joined extension node still claims to be persisted, so commit will " +
-			"not re-write it under its new digest")
-	}
-	if joined.digest != nil {
-		t.Fatal("the joined extension node kept the digest it had before its path changed")
 	}
 }
 
