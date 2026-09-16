@@ -30,22 +30,16 @@ package smt
 // would then be computed over a truncated preimage.
 //
 // What "persisted" means, and what the caller owes. Compaction trusts each
-// node's persisted flag, and that flag records that Commit handed the node to
-// the store, not that the store holds it: commit marks a node persisted before
-// it calls Set, an ordering that predates compaction. So:
-//
-//   - a Commit that returns an error may leave nodes marked persisted that the
-//     store never received;
-//   - a store that accepts Set into a buffer and writes it out later reports
-//     success from Set even when that later write fails, and nothing in the
-//     trie can observe that failure.
-//
-// In both cases the affected leaves must not be compacted until they have been
-// written again, for example by updating the same key and committing
-// successfully. Compacting them first drops the only remaining copy of their
-// value. Only the caller can see the store fail, so only the caller can hold
-// compaction back. Run this after a Commit that succeeded and whose writes the
-// store has confirmed, never from inside Commit.
+// node's persisted flag, and commit sets that flag once the store's Set has
+// returned without error. That records that the store accepted the node, not
+// that it holds it: a store that accepts Set into a buffer and writes it out
+// later reports success from Set even when that later write fails, and nothing
+// in the trie can observe that failure. Leaves affected that way must not be
+// compacted until they have been written again, for example by updating the
+// same key and committing successfully; compacting them first drops the only
+// remaining copy of their value. Only the caller can see the store fail, so
+// only the caller can hold compaction back. Run this after a Commit that
+// succeeded and whose writes the store has confirmed, never from inside Commit.
 //
 // Cost. It is meant to be called after every Commit. A pass that walked the
 // whole trie every time would be O(N) per call and O(N^2) across N updates:

@@ -720,9 +720,7 @@ func (smt *SMT) commit(node trieNode) error {
 	}
 	switch n := node.(type) {
 	case *leafNode:
-		n.persisted = true
 	case *innerNode:
-		n.persisted = true
 		if err := smt.commit(n.leftChild); err != nil {
 			return err
 		}
@@ -730,7 +728,6 @@ func (smt *SMT) commit(node trieNode) error {
 			return err
 		}
 	case *extensionNode:
-		n.persisted = true
 		if err := smt.commit(n.child); err != nil {
 			return err
 		}
@@ -738,7 +735,20 @@ func (smt *SMT) commit(node trieNode) error {
 		return nil
 	}
 	preimage := smt.encode(node)
-	return smt.nodes.Set(smt.digest(node), preimage)
+	if err := smt.nodes.Set(smt.digest(node), preimage); err != nil {
+		return err
+	}
+	// Only a node the store accepted is persisted: a node marked before a
+	// failed Set would be skipped by the next Commit and never written.
+	switch n := node.(type) {
+	case *leafNode:
+		n.persisted = true
+	case *innerNode:
+		n.persisted = true
+	case *extensionNode:
+		n.persisted = true
+	}
+	return nil
 }
 
 func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {
