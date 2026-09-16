@@ -310,11 +310,14 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 	} else {
 		child, sib = &inner.rightChild, &inner.leftChild
 	}
-	*child, err = smt.delete(*child, depth+1, path, orphans)
+	// Resolve the sibling before deleting below the child: the delete mutates
+	// nodes in place, so a store error after it would leave the key removed in
+	// memory while the call reports failure. A miss now reads the sibling too.
+	*sib, err = smt.resolveLazy(*sib)
 	if err != nil {
 		return node, err
 	}
-	*sib, err = smt.resolveLazy(*sib)
+	*child, err = smt.delete(*child, depth+1, path, orphans)
 	if err != nil {
 		return node, err
 	}
@@ -582,15 +585,26 @@ func (smt *SMT) ProveClosest(path []byte) (
 }
 
 // resolveLazy resolves a lazy note into a cached node depending on the tree type
+//
+// On a store error it returns the lazy node itself, not nil. Callers assign the
+// result in place before they check the error, so a nil would replace the lazy
+// node with an empty subtree and the trie would lose every leaf below it.
 func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	stub, ok := node.(*lazyNode)
 	if !ok {
 		return node, nil
 	}
+	var resolved trieNode
+	var err error
 	if smt.sumTrie {
-		return smt.resolveSumNode(stub.digest)
+		resolved, err = smt.resolveSumNode(stub.digest)
+	} else {
+		resolved, err = smt.resolveNode(stub.digest)
 	}
-	return smt.resolveNode(stub.digest)
+	if err != nil {
+		return node, err
+	}
+	return resolved, nil
 }
 
 // resolveNode returns a trieNode (inner, leaf, or extension) based on what they
