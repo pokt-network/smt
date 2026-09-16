@@ -53,9 +53,7 @@ func TestCompact_ProveNonMembershipOverCompactedLeaf(t *testing.T) {
 	}
 	requireNoError(t, compacted.Commit(), "compacted.Commit")
 	requireNoError(t, plain.Commit(), "plain.Commit")
-	if _, err := compacted.CompactPersistedLeaves(); err != nil {
-		t.Fatalf("CompactPersistedLeaves: %v", err)
-	}
+	compacted.CompactPersistedLeaves()
 
 	held, total := residentLeavesHoldingValues(compacted.root)
 	if total == 0 || held != 0 {
@@ -103,9 +101,7 @@ func TestCompact_ProveNonMembershipOverCompactedLeaf(t *testing.T) {
 
 		// Prove restored one leaf; compact again so the next proof also starts
 		// from a fully compacted trie.
-		if _, err := compacted.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("re-compaction: %v", err)
-		}
+		compacted.CompactPersistedLeaves()
 	}
 
 	if withLeafData == 0 {
@@ -131,9 +127,7 @@ func TestCompact_ProveWithCompactedSibling(t *testing.T) {
 	}
 	requireNoError(t, compacted.Commit(), "compacted.Commit")
 	requireNoError(t, plain.Commit(), "plain.Commit")
-	if _, err := compacted.CompactPersistedLeaves(); err != nil {
-		t.Fatalf("CompactPersistedLeaves: %v", err)
-	}
+	compacted.CompactPersistedLeaves()
 
 	root := compacted.Root()
 	spec := compacted.Spec()
@@ -162,9 +156,7 @@ func TestCompact_ProveWithCompactedSibling(t *testing.T) {
 			t.Fatalf("proof for key %x from the compacted trie did not verify", key)
 		}
 
-		if _, err := compacted.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("re-compaction: %v", err)
-		}
+		compacted.CompactPersistedLeaves()
 	}
 
 	if leafSiblings == 0 {
@@ -194,16 +186,12 @@ func TestCompact_DeleteOnCompactedTrie(t *testing.T) {
 			requireNoError(t, trie.Update(key, valueFor(key), 1), "Update")
 		}
 		requireNoError(t, trie.Commit(), "Commit")
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 		assertAbsorbShape(t, trie)
 
 		requireNoError(t, trie.Delete(lone), "Delete")
 		requireNoError(t, trie.Commit(), "Commit after delete")
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves after delete: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 
 		ref := newDummyPathSMST(simplemap.NewSimpleMap())
 		for _, key := range [][]byte{r, pairA, pairB} {
@@ -265,9 +253,7 @@ func TestCompact_DeleteOnCompactedTrie(t *testing.T) {
 
 				requireNoError(t, trieA.Commit(), "A.Commit")
 				requireNoError(t, trieB.Commit(), "B.Commit")
-				if _, err := trieA.CompactPersistedLeaves(); err != nil {
-					t.Fatalf("step %d: CompactPersistedLeaves: %v", step, err)
-				}
+				trieA.CompactPersistedLeaves()
 				if !bytes.Equal(trieA.Root(), trieB.Root()) {
 					t.Fatalf("step %d (%s): root diverged between the compacted and the plain trie", step, op)
 				}
@@ -356,9 +342,7 @@ func TestCompact_PlainTrie(t *testing.T) {
 		requireNoError(t, plain.Update(o.key, o.value), "plain.Update")
 		requireNoError(t, compacted.Commit(), "compacted.Commit")
 		requireNoError(t, plain.Commit(), "plain.Commit")
-		if _, err := compacted.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("op %d: CompactPersistedLeaves: %v", i, err)
-		}
+		compacted.CompactPersistedLeaves()
 		if !bytes.Equal(compacted.Root(), plain.Root()) {
 			t.Fatalf("op %d: root diverged between the compacted and the plain trie", i)
 		}
@@ -398,17 +382,13 @@ func TestCompact_PlainTrie(t *testing.T) {
 			t.Fatalf("closest proof for key %x from the compacted trie did not verify", key)
 		}
 
-		if _, err := compacted.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("re-compaction: %v", err)
-		}
+		compacted.CompactPersistedLeaves()
 		value, err := compacted.Get(key)
 		requireNoError(t, err, "Get")
 		if !bytes.Equal(value, latest[string(key)].value) {
 			t.Fatalf("key %x: Get returned the wrong value", key)
 		}
-		if _, err := compacted.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("re-compaction: %v", err)
-		}
+		compacted.CompactPersistedLeaves()
 	}
 
 	if leafSiblings == 0 {
@@ -441,9 +421,7 @@ func TestCompact_ImportedTrieWithLazyNodes(t *testing.T) {
 		if _, _, err := imported.Get(keys[0]); err != nil {
 			t.Fatalf("Get: %v", err)
 		}
-		if _, err := imported.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		imported.CompactPersistedLeaves()
 		held, total := residentLeavesHoldingValues(imported.root)
 		if total == 0 || held != 0 {
 			t.Fatalf("CONTROL: after resolving one path want its leaf resident and compacted, got %d of %d holding a value",
@@ -463,9 +441,7 @@ func TestCompact_ImportedTrieWithLazyNodes(t *testing.T) {
 			t.Fatalf("CONTROL: the reads pulled no leaf values into memory (%d resident leaves); nothing to compact", total)
 		}
 
-		if _, err := imported.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		imported.CompactPersistedLeaves()
 		if held, total := residentLeavesHoldingValues(imported.root); held != 0 {
 			t.Fatalf("%d of %d leaves resolved from the store still hold a value after compaction: "+
 				"the pass stopped at an ancestor marked compacted before those leaves were resolved into it",
@@ -483,9 +459,7 @@ func TestCompact_ImportedTrieWithLazyNodes(t *testing.T) {
 			requireNoError(t, trie.Update(o.key, o.value, o.weight), "Update")
 		}
 		requireNoError(t, trie.Commit(), "Commit")
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 		if held, total := residentLeavesHoldingValues(trie.root); total == 0 || held != 0 {
 			t.Fatalf("CONTROL: want every resident leaf compacted, got %d of %d holding a value", held, total)
 		}
@@ -501,9 +475,7 @@ func TestCompact_ImportedTrieWithLazyNodes(t *testing.T) {
 			t.Fatal("CONTROL: the reads restored no leaf value; nothing to compact")
 		}
 
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 		if held, total := residentLeavesHoldingValues(trie.root); held != 0 {
 			t.Fatalf("%d of %d restored leaves still hold a value after compaction: the pass "+
 				"stopped at an ancestor still marked compacted from before the restore", held, total)

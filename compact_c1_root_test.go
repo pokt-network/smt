@@ -37,9 +37,7 @@ func TestCompact_C1_RootIsIdentical(t *testing.T) {
 					requireNoError(t, trieB.Commit(), "B.Commit")
 
 					// Only trie A compacts.
-					if _, err := trieA.CompactPersistedLeaves(); err != nil {
-						t.Fatalf("op %d: CompactPersistedLeaves: %v", i, err)
-					}
+					trieA.CompactPersistedLeaves()
 
 					if !bytes.Equal(trieA.Root(), trieB.Root()) {
 						t.Fatalf("op %d: root diverged after compaction\n compacted: %x\n plain:     %x",
@@ -74,9 +72,7 @@ func TestCompact_C1_StoreContentsIdentical(t *testing.T) {
 		requireNoError(t, trieB.Update(o.key, o.value, o.weight), "B.Update")
 		requireNoError(t, trieA.Commit(), "A.Commit")
 		requireNoError(t, trieB.Commit(), "B.Commit")
-		if _, err := trieA.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		trieA.CompactPersistedLeaves()
 	}
 
 	if len(mapA) != len(mapB) {
@@ -107,8 +103,7 @@ func TestCompact_C1_ActuallyCompacts(t *testing.T) {
 	}
 	requireNoError(t, trie.Commit(), "Commit")
 
-	compacted, err := trie.CompactPersistedLeaves()
-	requireNoError(t, err, "CompactPersistedLeaves")
+	compacted := trie.CompactPersistedLeaves()
 	if compacted != len(distinct) {
 		t.Fatalf("compacted %d leaves, want %d (one per distinct key)", compacted, len(distinct))
 	}
@@ -122,8 +117,7 @@ func TestCompact_C1_ActuallyCompacts(t *testing.T) {
 	}
 
 	// A second pass has nothing left to do.
-	again, err := trie.CompactPersistedLeaves()
-	requireNoError(t, err, "second CompactPersistedLeaves")
+	again := trie.CompactPersistedLeaves()
 	if again != 0 {
 		t.Fatalf("second compaction pass compacted %d leaves, want 0", again)
 	}
@@ -158,8 +152,7 @@ func TestCompact_C1_UncommittedLeafIsNotCompacted(t *testing.T) {
 		requireNoError(t, trieB.Update(o.key, o.value, o.weight), "B.Update pending")
 	}
 
-	compacted, err := trieA.CompactPersistedLeaves()
-	requireNoError(t, err, "CompactPersistedLeaves")
+	compacted := trieA.CompactPersistedLeaves()
 
 	// Control: the trie must really hold uncommitted leaves at this point,
 	// otherwise the guard is not being reached and this test proves nothing.

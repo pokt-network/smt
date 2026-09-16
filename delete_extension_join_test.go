@@ -88,9 +88,7 @@ func TestDelete_JoinedExtensionClearsCompactionMark(t *testing.T) {
 		requireNoError(t, trie.Update(key, valueFor(key), 1), "Update")
 	}
 	requireNoError(t, trie.Commit(), "Commit")
-	if _, err := trie.CompactPersistedLeaves(); err != nil {
-		t.Fatalf("CompactPersistedLeaves: %v", err)
-	}
+	trie.CompactPersistedLeaves()
 	assertJoinShape(t, trie)
 
 	requireNoError(t, trie.Delete(lone), "Delete")

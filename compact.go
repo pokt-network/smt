@@ -57,16 +57,13 @@ package smt
 // holding lazy nodes, because it replaces a resolved node in place; compaction
 // extends the same caveat to Prove and ProveClosest, and to fully resident
 // tries.
-//
-// The error is in the signature so that a future pass can report a failure
-// without an API change. This implementation never returns a non-nil error.
-func (smt *SMT) CompactPersistedLeaves() (int, error) {
+func (smt *SMT) CompactPersistedLeaves() int {
 	// Anything pulled in from the store arrived outside the setDirty path, so
 	// the marks cannot be trusted and this pass walks everything.
 	force := smt.resolvedSinceCompaction
 	compacted, _ := smt.compactNode(smt.root, force)
 	smt.resolvedSinceCompaction = false
-	return compacted, nil
+	return compacted
 }
 
 // compactNode recursively compacts the resident subtree rooted at node. It

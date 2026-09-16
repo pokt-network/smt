@@ -158,9 +158,7 @@ func buildMeasuredTrie(
 		requireNoError(t, trie.Update(key, value, uint64(i%1000)+1), "Update")
 		requireNoError(t, trie.Commit(), "Commit")
 		if compact {
-			if _, err := trie.CompactPersistedLeaves(); err != nil {
-				t.Fatalf("CompactPersistedLeaves: %v", err)
-			}
+			trie.CompactPersistedLeaves()
 		}
 	}
 

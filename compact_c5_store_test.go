@@ -24,9 +24,7 @@ func TestCompact_C5_StoreAccessCost(t *testing.T) {
 	for _, o := range generateOps(53, warmupLeaves) {
 		requireNoError(t, trie.Update(o.key, o.value, o.weight), "Update")
 		requireNoError(t, trie.Commit(), "Commit")
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 		keys = append(keys, o.key)
 	}
 
@@ -45,9 +43,7 @@ func TestCompact_C5_StoreAccessCost(t *testing.T) {
 	for _, o := range generateOps(59, hotLeaves) {
 		requireNoError(t, trie.Update(o.key, o.value, o.weight), "hot Update")
 		requireNoError(t, trie.Commit(), "hot Commit")
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("hot CompactPersistedLeaves: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 	}
 	hotGets, hotSets := store.gets, store.sets
 	t.Logf("C5 hot path: %d Update+Commit+Compact -> %d Gets, %d Sets", hotLeaves, hotGets, hotSets)
@@ -81,9 +77,7 @@ func TestCompact_C5_StoreAccessCost(t *testing.T) {
 	}
 
 	// --- ProveClosest on a compacted trie ---
-	if _, err := trie.CompactPersistedLeaves(); err != nil {
-		t.Fatalf("re-compaction before proving: %v", err)
-	}
+	trie.CompactPersistedLeaves()
 	spec := trie.Spec()
 	totalProofGets, proofs := 0, 0
 	for _, key := range keys[:100] {
@@ -98,9 +92,7 @@ func TestCompact_C5_StoreAccessCost(t *testing.T) {
 		if !valid {
 			t.Fatalf("key %x: proof did not verify", key)
 		}
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("re-compaction between proofs: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 	}
 	t.Logf("C5 ProveClosest on a compacted trie: %d Gets over %d proofs (%.2f per proof)",
 		totalProofGets, proofs, float64(totalProofGets)/float64(proofs))

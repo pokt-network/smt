@@ -95,9 +95,7 @@ func TestCompactScale_C1_RootIdenticalAtProtocolMaximum(t *testing.T) {
 				requireNoError(t, trieB.Update(key, value, weight), "B.Update")
 				requireNoError(t, trieA.Commit(), "A.Commit")
 				requireNoError(t, trieB.Commit(), "B.Commit")
-				if _, err := trieA.CompactPersistedLeaves(); err != nil {
-					t.Fatalf("insert %d: CompactPersistedLeaves: %v", i, err)
-				}
+				trieA.CompactPersistedLeaves()
 
 				if i%sampleEvery == 0 {
 					samples++
@@ -217,11 +215,7 @@ func TestCompactScale_C1_ThousandConcurrentTries(t *testing.T) {
 					errs[idx] = err
 					return
 				}
-				n, err := trie.CompactPersistedLeaves()
-				if err != nil {
-					errs[idx] = err
-					return
-				}
+				n := trie.CompactPersistedLeaves()
 				compactedTotal += n
 			}
 
@@ -299,9 +293,7 @@ func TestCompactScale_C2_ProofsFromDeepTrie(t *testing.T) {
 
 		requireNoError(t, trie.Update(key, value, uint64(rnd.Intn(1000)+1)), "Update")
 		requireNoError(t, trie.Commit(), "Commit")
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("insert %d: CompactPersistedLeaves: %v", i, err)
-		}
+		trie.CompactPersistedLeaves()
 		if i%sampleEvery == 0 && len(sampledKeys) < numProofs {
 			sampledKeys = append(sampledKeys, key)
 		}
@@ -342,9 +334,7 @@ func TestCompactScale_C2_ProofsFromDeepTrie(t *testing.T) {
 
 		// Re-compact so the next proof starts from the compacted state too;
 		// otherwise only the first proof measures the store cost.
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("re-compaction: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 	}
 
 	t.Logf("C2 scale: leaves=%d proofs=%d verified, %d carried SiblingData",

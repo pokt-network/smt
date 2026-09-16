@@ -46,9 +46,7 @@ func TestCompact_C3_GetAfterCompaction(t *testing.T) {
 	for _, o := range ops {
 		requireNoError(t, trie.Update(o.key, o.value, o.weight), "Update")
 		requireNoError(t, trie.Commit(), "Commit")
-		if _, err := trie.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		trie.CompactPersistedLeaves()
 		latest[string(o.key)] = o
 	}
 
@@ -99,8 +97,7 @@ func TestCompact_C3_ResolveThenRecompact(t *testing.T) {
 
 	rootBefore := append([]byte(nil), trie.Root()...)
 
-	first, err := trie.CompactPersistedLeaves()
-	requireNoError(t, err, "first compaction")
+	first := trie.CompactPersistedLeaves()
 	if first == 0 {
 		t.Fatal("first compaction pass compacted nothing")
 	}
@@ -116,8 +113,7 @@ func TestCompact_C3_ResolveThenRecompact(t *testing.T) {
 		t.Fatalf("after reading every key only %d of %d leaves hold a value", held, total)
 	}
 
-	second, err := trie.CompactPersistedLeaves()
-	requireNoError(t, err, "second compaction")
+	second := trie.CompactPersistedLeaves()
 	if second != first {
 		t.Fatalf("second compaction dropped %d leaves, want the same %d as the first", second, first)
 	}

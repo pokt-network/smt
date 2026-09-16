@@ -26,9 +26,7 @@ func TestCompact_C2_ProofFromCompactedTrie(t *testing.T) {
 		requireNoError(t, trieB.Update(o.key, o.value, o.weight), "B.Update")
 		requireNoError(t, trieA.Commit(), "A.Commit")
 		requireNoError(t, trieB.Commit(), "B.Commit")
-		if _, err := trieA.CompactPersistedLeaves(); err != nil {
-			t.Fatalf("CompactPersistedLeaves: %v", err)
-		}
+		trieA.CompactPersistedLeaves()
 		latest[string(o.key)] = o
 	}
 
@@ -117,8 +115,7 @@ func TestCompact_C2_CompactedLeafAsSibling(t *testing.T) {
 		keys = append(keys, key)
 	}
 	requireNoError(t, trie.Commit(), "Commit")
-	compacted, err := trie.CompactPersistedLeaves()
-	requireNoError(t, err, "CompactPersistedLeaves")
+	compacted := trie.CompactPersistedLeaves()
 	if compacted != len(keys) {
 		t.Fatalf("compacted %d leaves, want %d", compacted, len(keys))
 	}
