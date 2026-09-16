@@ -49,14 +49,14 @@ package smt
 // than the size of the trie. The marks ride on setDirty, which every mutation
 // already calls on the way back up.
 //
-// Concurrency. Compaction writes to the trie, and so does every read: Get,
-// Prove and ProveClosest restore a compacted leaf's value from the store and
-// clear the compactedSubtree mark on every node they descend through. None of
-// these is safe to call concurrently with any other
-// method without external locking. Get was already unsafe that way on a trie
-// holding lazy nodes, because it replaces a resolved node in place; compaction
-// extends the same caveat to Prove and ProveClosest, and to fully resident
-// tries.
+// Concurrency. Compaction writes to the trie, and so does Get: it restores a
+// compacted leaf's value in place and clears the compactedSubtree mark on the
+// nodes it walks. Neither is safe to call concurrently with any other method
+// without external locking; Get already was not on a trie holding lazy nodes,
+// because it replaces a resolved node in place, and compaction extends that to
+// fully resident tries. Prove and ProveClosest do not change the trie: they
+// read the value of a compacted leaf they need from the store into the proof,
+// which costs a store read each time, and leave the leaf compacted.
 func (smt *SMT) CompactPersistedLeaves() int {
 	compacted, _ := smt.compactNode(smt.root)
 	return compacted
@@ -114,9 +114,9 @@ func (smt *SMT) compactNode(node trieNode) (compacted int, allCompacted bool) {
 // resolveLeafValue restores the value of a compacted leaf from the node store.
 // It is a no-op for any leaf that still holds its value.
 //
-// The leaf stays hydrated afterwards, so repeated reads of the same leaf cost
-// one store read, not one per read. A later CompactPersistedLeaves drops it
-// again.
+// Get uses it: the leaf stays hydrated afterwards, so repeated Gets of the same
+// key cost one store read, not one per read. A later CompactPersistedLeaves
+// drops it again. Proofs use leafValue instead and leave the leaf as it is.
 func (smt *SMT) resolveLeafValue(leaf *leafNode) error {
 	if !leaf.compacted {
 		return nil
@@ -135,13 +135,13 @@ func (smt *SMT) resolveLeafValue(leaf *leafNode) error {
 
 // clearCompactedMark records that the subtree below node may hold values again.
 //
-// Mutations get this from setDirty. Reads cannot use setDirty, because they
-// change neither a node's digest nor whether the store holds it, yet they can
-// still bring values into the resident trie below a marked node: Get replaces
-// a lazy node with the node it resolves, a resolved leaf carries its value,
-// and a hydrated compacted leaf holds its value again. So every traversal that
-// can do that calls this on each inner or extension node it descends through,
-// and the next pass descends that path again. Clearing a node that gained
+// Mutations get this from setDirty. Get and a delete that misses cannot use
+// setDirty, because they change neither a node's digest nor whether the store
+// holds it, yet they can still bring values into the resident trie below a
+// marked node: both replace a lazy node with the node they resolve, a resolved
+// leaf carries its value, and Get restores a compacted leaf's value. So they
+// call this on each inner or extension node they descend through, and the next
+// pass descends that path again. Clearing a node that gained
 // nothing costs that pass the path's depth; missing one leaves a value resident
 // until the next mutation through that path.
 func clearCompactedMark(node trieNode) {
@@ -153,14 +153,32 @@ func clearCompactedMark(node trieNode) {
 	}
 }
 
-// resolveCompactedLeaf restores the value of node when it is a compacted leaf,
-// so that the node can be encoded. Any other node type is left alone.
-func (smt *SMT) resolveCompactedLeaf(node trieNode) error {
-	leaf, ok := node.(*leafNode)
-	if !ok {
-		return nil
+// leafValue returns the value of leaf without changing the leaf: the resident
+// value when it holds one, otherwise a copy read from the node store.
+func (smt *SMT) leafValue(leaf *leafNode) ([]byte, error) {
+	if !leaf.compacted {
+		return leaf.valueHash, nil
 	}
-	return smt.resolveLeafValue(leaf)
+	data, err := smt.nodes.Get(leaf.digest)
+	if err != nil {
+		return nil, err
+	}
+	_, value := smt.parseLeafNode(data)
+	return cloneBytes(value), nil
+}
+
+// encodeWithValue encodes node for a proof without changing it: a compacted
+// leaf is encoded from the value read from the store, any other node as is.
+func (smt *SMT) encodeWithValue(node trieNode) ([]byte, error) {
+	leaf, ok := node.(*leafNode)
+	if !ok || !leaf.compacted {
+		return smt.encode(node), nil
+	}
+	value, err := smt.leafValue(leaf)
+	if err != nil {
+		return nil, err
+	}
+	return encodeLeafNode(leaf.path, value), nil
 }
 
 // assertNotCompacted panics if a compacted leaf is about to be encoded.

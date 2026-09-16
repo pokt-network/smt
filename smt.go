@@ -341,9 +341,8 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 
 // Prove generates a SparseMerkleProof for the given key
 //
-// Prove writes to the trie when it restores a compacted leaf's value from the
-// store, and it clears the compaction mark on the nodes it walks. It is not safe
-// to call concurrently with any other method; see CompactPersistedLeaves.
+// Prove does not change the trie: the value of a compacted leaf it needs is read
+// from the node store into the proof, and the leaf stays compacted.
 func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	path := smt.ph.Path(key)
 	var siblings []trieNode
@@ -358,7 +357,6 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if node == nil {
 			break
 		}
-		clearCompactedMark(node)
 		if _, ok := node.(*leafNode); ok {
 			break
 		}
@@ -374,7 +372,6 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 				if err != nil {
 					return nil, err
 				}
-				clearCompactedMark(node)
 			} else {
 				node = extNode.expand()
 			}
@@ -396,10 +393,12 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if !bytes.Equal(leaf.path, path) {
 			// This is a non-membership proof that involves showing a different leaf.
 			// Add the leaf data to the proof.
-			if err := smt.resolveLeafValue(leaf); err != nil {
+			var value []byte
+			value, err = smt.leafValue(leaf)
+			if err != nil {
 				return nil, err
 			}
-			leafData = encodeLeafNode(leaf.path, leaf.valueHash)
+			leafData = encodeLeafNode(leaf.path, value)
 		}
 	}
 	// Hash siblings from bottom up.
@@ -420,10 +419,10 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if err != nil {
 			return nil, err
 		}
-		if err = smt.resolveCompactedLeaf(sib); err != nil {
+		proof.SiblingData, err = smt.encodeWithValue(sib)
+		if err != nil {
 			return nil, err
 		}
-		proof.SiblingData = smt.encode(sib)
 	}
 	return proof, nil
 }
@@ -440,10 +439,8 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 // a proof of inclusion is found that has the most common bits with the path
 // provided, biased to the longest common prefix.
 //
-// ProveClosest writes to the trie when it restores a compacted leaf's value
-// from the store, and it clears the compaction mark on the nodes it walks. It is
-// not safe to call concurrently with any other method; see
-// CompactPersistedLeaves.
+// ProveClosest does not change the trie: the value of a compacted leaf it needs
+// is read from the node store into the proof, and the leaf stays compacted.
 func (smt *SMT) ProveClosest(path []byte) (
 	proof *SparseMerkleClosestProof, // proof of the key-value pair found
 	err error, // the error value encountered
@@ -502,7 +499,6 @@ func (smt *SMT) ProveClosest(path []byte) (
 			flipPathBit(workingPath, depth)
 			proof.FlippedBits = append(proof.FlippedBits, depth)
 		}
-		clearCompactedMark(node)
 		// end traversal when we hit a leaf node
 		if _, ok := node.(*leafNode); ok {
 			proof.Depth = depth
@@ -527,7 +523,6 @@ func (smt *SMT) ProveClosest(path []byte) (
 				if err != nil {
 					return nil, err
 				}
-				clearCompactedMark(node)
 			}
 		}
 		inner, ok := node.(*innerNode)
@@ -556,10 +551,11 @@ func (smt *SMT) ProveClosest(path []byte) (
 		// if no leaf was found and the trie is not empty something went wrong
 		panic("expected leaf node")
 	}
-	if err = smt.resolveLeafValue(leaf); err != nil {
+	value, err := smt.leafValue(leaf)
+	if err != nil {
 		return nil, err
 	}
-	proof.ClosestPath, proof.ClosestValueHash = leaf.path, leaf.valueHash
+	proof.ClosestPath, proof.ClosestValueHash = leaf.path, value
 	// Hash siblings from bottom up.
 	var sideNodes [][]byte
 	for i := range siblings {
@@ -576,10 +572,10 @@ func (smt *SMT) ProveClosest(path []byte) (
 		if err != nil {
 			return nil, err
 		}
-		if err = smt.resolveCompactedLeaf(sib); err != nil {
+		proof.ClosestProof.SiblingData, err = smt.encodeWithValue(sib)
+		if err != nil {
 			return nil, err
 		}
-		proof.ClosestProof.SiblingData = smt.encode(sib)
 	}
 
 	return proof, nil

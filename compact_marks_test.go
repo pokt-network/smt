@@ -11,9 +11,10 @@ import (
 
 // A compaction pass stops at a node marked compactedSubtree, so every read that
 // can leave a value in the resident trie below such a node has to clear the
-// marks on its way down. Mutations clear them through setDirty; the reads and
-// the misses below do not dirty anything, so each one is pinned here: after it,
-// the next pass must reach and drop every value it left behind.
+// marks on its way down. Mutations clear them through setDirty; Get and a
+// delete that misses do not dirty anything, so each is pinned here: after it,
+// the next pass must reach and drop every value it left behind. Proofs are
+// pinned the other way: they must leave the trie untouched.
 
 // importedWithOneCompactedPath returns a trie imported from the root of a
 // committed trie, with one path resolved and compacted: its ancestors are
@@ -82,9 +83,11 @@ func TestCompact_MissesUnderMarkedAncestors(t *testing.T) {
 	}
 }
 
-// Prove and ProveClosest walk the trie through local variables, but the leaf
-// and sibling whose values they restore are the resident nodes themselves.
-func TestCompact_ProofsUnderMarkedAncestors(t *testing.T) {
+// Prove and ProveClosest read the value of a compacted leaf from the store into
+// the proof and leave the trie exactly as they found it: no leaf is hydrated,
+// no mark is cleared. That is what keeps them pure reads, as they are on a trie
+// that was never compacted.
+func TestCompact_ProofsLeaveTheTrieUntouched(t *testing.T) {
 	ops := generateOps(107, 400)
 	keys := distinctKeysInOrder(ops)
 	proofs := map[string]func(trie *SMST, i int, absent []byte) error{
@@ -112,6 +115,10 @@ func TestCompact_ProofsUnderMarkedAncestors(t *testing.T) {
 			if held, total := residentLeavesHoldingValues(trie.root); total == 0 || held != 0 {
 				t.Fatalf("CONTROL: want every resident leaf compacted, got %d of %d holding a value", held, total)
 			}
+			before := snapshotResidentNodes(trie.root)
+			if unmarkedResidentInternalNodes(trie.root) != 0 {
+				t.Fatal("CONTROL: a compacted trie must have every internal node marked")
+			}
 
 			rnd := rand.New(rand.NewSource(109))
 			absent := make([]byte, 32)
@@ -119,20 +126,95 @@ func TestCompact_ProofsUnderMarkedAncestors(t *testing.T) {
 				rnd.Read(absent) //nolint:errcheck // math/rand Read never returns an error
 				requireNoError(t, prove(trie, i, absent), name)
 			}
-			held, total := residentLeavesHoldingValues(trie.root)
-			if held == 0 {
-				t.Fatalf("CONTROL: 40 proofs restored no leaf value (%d resident leaves)", total)
-			}
 
-			if compacted := trie.CompactPersistedLeaves(); compacted != held {
-				t.Fatalf("pass compacted %d leaves, want the %d the proofs restored", compacted, held)
+			after := snapshotResidentNodes(trie.root)
+			if len(after) != len(before) {
+				t.Fatalf("proofs changed the resident trie from %d to %d nodes", len(before), len(after))
 			}
-			if held, total := residentLeavesHoldingValues(trie.root); held != 0 {
-				t.Fatalf("%d of %d leaves still hold a value: the pass stopped at an ancestor the proofs left marked",
-					held, total)
+			for node, was := range before {
+				if now := after[node]; now != was {
+					t.Fatalf("proofs changed a resident %T: before %+v, after %+v", node, was, now)
+				}
 			}
 		})
 	}
+}
+
+// Two ProveClosest calls at once on the same trie must not race, compacted or
+// not: neither writes to a node. Run under -race, which CI does. (Prove is not
+// covered: it shares the path hasher, which races on its own.)
+func TestCompact_ConcurrentProofsDoNotRace(t *testing.T) {
+	ops := generateOps(127, 300)
+	for _, compact := range []bool{false, true} {
+		name := "never compacted"
+		if compact {
+			name = "compacted"
+		}
+		t.Run(name, func(t *testing.T) {
+			trie := newPoktrollSpecSMST(simplemap.NewSimpleMap())
+			for _, o := range ops {
+				requireNoError(t, trie.Update(o.key, o.value, o.weight), "Update")
+			}
+			requireNoError(t, trie.Commit(), "Commit")
+			if compact {
+				if trie.CompactPersistedLeaves() == 0 {
+					t.Fatal("CONTROL: compaction compacted nothing")
+				}
+			}
+
+			const workers = 4
+			errs := make(chan error, workers)
+			for w := 0; w < workers; w++ {
+				go func(w int) {
+					path := make([]byte, 32)
+					rnd := rand.New(rand.NewSource(int64(131 + w)))
+					for i := 0; i < 100; i++ {
+						rnd.Read(path) //nolint:errcheck // math/rand Read never returns an error
+						if _, err := trie.ProveClosest(path); err != nil {
+							errs <- err
+							return
+						}
+					}
+					errs <- nil
+				}(w)
+			}
+			for w := 0; w < workers; w++ {
+				requireNoError(t, <-errs, "ProveClosest")
+			}
+		})
+	}
+}
+
+// nodeState is what a read could change on a resident node.
+type nodeState struct {
+	compactedSubtree bool
+	compacted        bool
+	holdsValue       bool
+	persisted        bool
+	digest           string
+}
+
+// snapshotResidentNodes records the state of every resident node, keyed by the
+// node itself, so a before/after comparison sees any in-place change.
+func snapshotResidentNodes(root trieNode) map[trieNode]nodeState {
+	out := make(map[trieNode]nodeState)
+	var walk func(node trieNode)
+	walk = func(node trieNode) {
+		switch n := node.(type) {
+		case *leafNode:
+			out[n] = nodeState{compacted: n.compacted, holdsValue: n.valueHash != nil,
+				persisted: n.persisted, digest: string(n.digest)}
+		case *innerNode:
+			out[n] = nodeState{compactedSubtree: n.compactedSubtree, persisted: n.persisted, digest: string(n.digest)}
+			walk(n.leftChild)
+			walk(n.rightChild)
+		case *extensionNode:
+			out[n] = nodeState{compactedSubtree: n.compactedSubtree, persisted: n.persisted, digest: string(n.digest)}
+			walk(n.child)
+		}
+	}
+	walk(root)
+	return out
 }
 
 // What a pass costs is the set of resident inner and extension nodes without a
