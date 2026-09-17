@@ -149,6 +149,7 @@ func (spec *TrieSpec) encodeNode(node trieNode) []byte {
 	case *lazyNode:
 		panic("Encoding a lazyNode is not supported")
 	case *leafNode:
+		assertNotCompacted(n)
 		return encodeLeafNode(n.path, n.valueHash)
 	case *innerNode:
 		leftChild := spec.digestNode(n.leftChild)
@@ -194,6 +195,7 @@ func (spec *TrieSpec) encodeSumNode(node trieNode) (preImage []byte) {
 	case *lazyNode:
 		panic("encodeSumNode(lazyNode)")
 	case *leafNode:
+		assertNotCompacted(n)
 		return encodeLeafNode(n.path, n.valueHash)
 	case *innerNode:
 		leftChild := spec.digestSumNode(n.leftChild)

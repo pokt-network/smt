@@ -52,7 +52,10 @@ jobs:
           go-version: ${{ env.TARGET_GOLANG_VERSION }}
 
       - name: Install gocovmerge
-        run: go install github.com/wadey/gocovmerge@latest
+        # gocovmerge has no go.mod, so @latest resolves the newest golang.org/x/tools,
+        # which can require a newer Go than TARGET_GOLANG_VERSION. Build the tool with
+        # a pinned newer toolchain; the tests below still run on the target version.
+        run: GOTOOLCHAIN=go1.26.5 go install github.com/wadey/gocovmerge@latest
 
       - name: Create coverage report and run tests
         run: |

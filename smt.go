@@ -21,6 +21,9 @@ type SMT struct {
 	root trieNode
 	// Lists of per-operation orphan sets
 	orphans []orphanNodes
+	// Digests written by Commit since the orphans were last drained, kept
+	// across a failed Commit; see Commit.
+	written map[string]struct{}
 }
 
 // Hashes of persisted nodes deleted from trie
@@ -63,6 +66,11 @@ func (smt *SMT) Root() MerkleRoot {
 }
 
 // Get returns the hash (i.e. digest) of the leaf value stored at the given key
+//
+// Get writes to the trie: it replaces a lazy node it resolves in place,
+// restores a compacted leaf's value from the store, and clears the compaction
+// mark on the nodes it walks. It is not safe to call
+// concurrently with any other method; see CompactPersistedLeaves.
 func (smt *SMT) Get(key []byte) ([]byte, error) {
 	path := smt.ph.Path(key)
 	// The leaf node whose value will be returned
@@ -79,6 +87,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 		if *currNode == nil {
 			break
 		}
+		clearCompactedMark(*currNode)
 		if n, ok := (*currNode).(*leafNode); ok {
 			if bytes.Equal(path, n.path) {
 				leaf = n
@@ -95,6 +104,7 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
+			clearCompactedMark(*currNode)
 		}
 		inner := (*currNode).(*innerNode)
 		if getPathBit(path, depth) == leftChildBit {
@@ -105,6 +115,9 @@ func (smt *SMT) Get(key []byte) ([]byte, error) {
 	}
 	if leaf == nil {
 		return defaultEmptyValue, nil
+	}
+	if err := smt.resolveLeafValue(leaf); err != nil {
+		return nil, err
 	}
 	return leaf.valueHash, nil
 }
@@ -254,6 +267,9 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 	if err != nil {
 		return node, err
 	}
+	// A miss returns ErrKeyNotFound without dirtying anything, yet leaves the
+	// nodes it resolved in place.
+	clearCompactedMark(node)
 
 	if node == nil {
 		return node, ErrKeyNotFound
@@ -283,6 +299,7 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 			// Join this extension with the child
 			smt.addOrphan(orphans, n)
 			n.pathBounds[0] = extNode.pathBounds[0]
+			n.setDirty()
 			node = n
 		}
 		extNode.setDirty()
@@ -296,11 +313,14 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 	} else {
 		child, sib = &inner.rightChild, &inner.leftChild
 	}
-	*child, err = smt.delete(*child, depth+1, path, orphans)
+	// Resolve the sibling before deleting below the child: the delete mutates
+	// nodes in place, so a store error after it would leave the key removed in
+	// memory while the call reports failure. A miss now reads the sibling too.
+	*sib, err = smt.resolveLazy(*sib)
 	if err != nil {
 		return node, err
 	}
-	*sib, err = smt.resolveLazy(*sib)
+	*child, err = smt.delete(*child, depth+1, path, orphans)
 	if err != nil {
 		return node, err
 	}
@@ -326,6 +346,9 @@ func (smt *SMT) delete(node trieNode, depth int, path []byte, orphans *orphanNod
 }
 
 // Prove generates a SparseMerkleProof for the given key
+//
+// Prove does not change the trie: the value of a compacted leaf it needs is read
+// from the node store into the proof, and the leaf stays compacted.
 func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 	path := smt.ph.Path(key)
 	var siblings []trieNode
@@ -376,7 +399,12 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if !bytes.Equal(leaf.path, path) {
 			// This is a non-membership proof that involves showing a different leaf.
 			// Add the leaf data to the proof.
-			leafData = encodeLeafNode(leaf.path, leaf.valueHash)
+			var value []byte
+			value, err = smt.leafValue(leaf)
+			if err != nil {
+				return nil, err
+			}
+			leafData = encodeLeafNode(leaf.path, value)
 		}
 	}
 	// Hash siblings from bottom up.
@@ -397,7 +425,10 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 		if err != nil {
 			return nil, err
 		}
-		proof.SiblingData = smt.encode(sib)
+		proof.SiblingData, err = smt.encodeWithValue(sib)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return proof, nil
 }
@@ -413,6 +444,9 @@ func (smt *SMT) Prove(key []byte) (proof *SparseMerkleProof, err error) {
 // depth (ie tries left if it tried right and vice versa). This guarantees that
 // a proof of inclusion is found that has the most common bits with the path
 // provided, biased to the longest common prefix.
+//
+// ProveClosest does not change the trie: the value of a compacted leaf it needs
+// is read from the node store into the proof, and the leaf stays compacted.
 func (smt *SMT) ProveClosest(path []byte) (
 	proof *SparseMerkleClosestProof, // proof of the key-value pair found
 	err error, // the error value encountered
@@ -523,7 +557,11 @@ func (smt *SMT) ProveClosest(path []byte) (
 		// if no leaf was found and the trie is not empty something went wrong
 		panic("expected leaf node")
 	}
-	proof.ClosestPath, proof.ClosestValueHash = leaf.path, leaf.valueHash
+	value, err := smt.leafValue(leaf)
+	if err != nil {
+		return nil, err
+	}
+	proof.ClosestPath, proof.ClosestValueHash = leaf.path, value
 	// Hash siblings from bottom up.
 	var sideNodes [][]byte
 	for i := range siblings {
@@ -540,22 +578,36 @@ func (smt *SMT) ProveClosest(path []byte) (
 		if err != nil {
 			return nil, err
 		}
-		proof.ClosestProof.SiblingData = smt.encode(sib)
+		proof.ClosestProof.SiblingData, err = smt.encodeWithValue(sib)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return proof, nil
 }
 
 // resolveLazy resolves a lazy note into a cached node depending on the tree type
+//
+// On a store error it returns the lazy node itself, not nil. Callers assign the
+// result in place before they check the error, so a nil would replace the lazy
+// node with an empty subtree and the trie would lose every leaf below it.
 func (smt *SMT) resolveLazy(node trieNode) (trieNode, error) {
 	stub, ok := node.(*lazyNode)
 	if !ok {
 		return node, nil
 	}
+	var resolved trieNode
+	var err error
 	if smt.sumTrie {
-		return smt.resolveSumNode(stub.digest)
+		resolved, err = smt.resolveSumNode(stub.digest)
+	} else {
+		resolved, err = smt.resolveNode(stub.digest)
 	}
-	return smt.resolveNode(stub.digest)
+	if err != nil {
+		return node, err
+	}
+	return resolved, nil
 }
 
 // resolveNode returns a trieNode (inner, leaf, or extension) based on what they
@@ -661,47 +713,82 @@ func (smt *SMT) parseSumTrieNode(data, digest []byte) (trieNode, error) {
 // Commit persists all dirty nodes in the trie, deletes all orphaned
 // nodes from the database and then computes and saves the root hash
 func (smt *SMT) Commit() (err error) {
-	// All orphans are persisted and have cached digests, so we don't need to check for null
-	for _, orphans := range smt.orphans {
-		for _, hash := range orphans {
-			if err = smt.nodes.Delete(hash); err != nil {
-				return
-			}
-		}
+	// Write the new nodes before deleting the orphans. Deleting first leaves
+	// the store holding neither the last committed root nor the new one when a
+	// write then fails, and a failed Commit used to drop the orphan list too.
+	if smt.written == nil {
+		smt.written = make(map[string]struct{})
 	}
-	smt.orphans = nil
-	if err = smt.commit(smt.root); err != nil {
+	written := smt.written
+	if err = smt.commit(smt.root, written); err != nil {
 		return
 	}
 	smt.rootHash = smt.Root()
+
+	// An orphan can share its digest with a node written since the orphans were
+	// last drained, such as a key set back to a value it held: that digest is
+	// live again and must stay. The set outlives a failed Commit, because the
+	// retry skips the nodes that attempt wrote. All orphans are persisted and
+	// have cached digests, so we don't need to check for null.
+	var pending [][]byte
+	for _, orphans := range smt.orphans {
+		for _, hash := range orphans {
+			if _, live := written[string(hash)]; !live {
+				pending = append(pending, hash)
+			}
+		}
+	}
+	smt.written = nil
+	for i, hash := range pending {
+		if err = smt.nodes.Delete(hash); err != nil {
+			// The new root is written; keep what is left for the next Commit.
+			smt.orphans = []orphanNodes{pending[i:]}
+			return
+		}
+	}
+	smt.orphans = nil
 	return
 }
 
-func (smt *SMT) commit(node trieNode) error {
+// commit writes every node of the subtree that is not yet persisted, children
+// first, and records the digest of each node it writes in written.
+func (smt *SMT) commit(node trieNode, written map[string]struct{}) error {
 	if node != nil && node.Persisted() {
 		return nil
 	}
 	switch n := node.(type) {
 	case *leafNode:
-		n.persisted = true
 	case *innerNode:
-		n.persisted = true
-		if err := smt.commit(n.leftChild); err != nil {
+		if err := smt.commit(n.leftChild, written); err != nil {
 			return err
 		}
-		if err := smt.commit(n.rightChild); err != nil {
+		if err := smt.commit(n.rightChild, written); err != nil {
 			return err
 		}
 	case *extensionNode:
-		n.persisted = true
-		if err := smt.commit(n.child); err != nil {
+		if err := smt.commit(n.child, written); err != nil {
 			return err
 		}
 	default:
 		return nil
 	}
 	preimage := smt.encode(node)
-	return smt.nodes.Set(smt.digest(node), preimage)
+	digest := smt.digest(node)
+	if err := smt.nodes.Set(digest, preimage); err != nil {
+		return err
+	}
+	written[string(digest)] = struct{}{}
+	// Only a node the store accepted is persisted: a node marked before a
+	// failed Set would be skipped by the next Commit and never written.
+	switch n := node.(type) {
+	case *leafNode:
+		n.persisted = true
+	case *innerNode:
+		n.persisted = true
+	case *extensionNode:
+		n.persisted = true
+	}
+	return nil
 }
 
 func (smt *SMT) addOrphan(orphans *[][]byte, node trieNode) {

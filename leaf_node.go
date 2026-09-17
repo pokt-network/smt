@@ -8,6 +8,9 @@ type leafNode struct {
 	path      []byte
 	valueHash []byte
 	persisted bool
+	// compacted reports that the value was dropped from memory because it is
+	// already in the node store under digest. See compact.go for the invariant.
+	compacted bool
 	digest    []byte
 }
 
