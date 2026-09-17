@@ -21,6 +21,9 @@ type SMT struct {
 	root trieNode
 	// Lists of per-operation orphan sets
 	orphans []orphanNodes
+	// Digests written by Commit since the orphans were last drained, kept
+	// across a failed Commit; see Commit.
+	written map[string]struct{}
 }
 
 // Hashes of persisted nodes deleted from trie
@@ -713,16 +716,20 @@ func (smt *SMT) Commit() (err error) {
 	// Write the new nodes before deleting the orphans. Deleting first leaves
 	// the store holding neither the last committed root nor the new one when a
 	// write then fails, and a failed Commit used to drop the orphan list too.
-	written := make(map[string]struct{})
+	if smt.written == nil {
+		smt.written = make(map[string]struct{})
+	}
+	written := smt.written
 	if err = smt.commit(smt.root, written); err != nil {
 		return
 	}
 	smt.rootHash = smt.Root()
 
-	// An orphan can share its digest with a node this commit just wrote, such
-	// as a key set back to a value it held: that digest is live again and must
-	// stay. All orphans are persisted and have cached digests, so we don't need
-	// to check for null.
+	// An orphan can share its digest with a node written since the orphans were
+	// last drained, such as a key set back to a value it held: that digest is
+	// live again and must stay. The set outlives a failed Commit, because the
+	// retry skips the nodes that attempt wrote. All orphans are persisted and
+	// have cached digests, so we don't need to check for null.
 	var pending [][]byte
 	for _, orphans := range smt.orphans {
 		for _, hash := range orphans {
@@ -731,6 +738,7 @@ func (smt *SMT) Commit() (err error) {
 			}
 		}
 	}
+	smt.written = nil
 	for i, hash := range pending {
 		if err = smt.nodes.Delete(hash); err != nil {
 			// The new root is written; keep what is left for the next Commit.

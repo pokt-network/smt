@@ -265,6 +265,32 @@ func TestCommit_KeySetBackToItsValueKeepsItsNode(t *testing.T) {
 	}
 }
 
+// A Commit that fails after writing a node marks it persisted, so the retry
+// skips it. If that node reuses the digest of an orphan, such as a key changed
+// and changed back, the retry must still recognize the digest as live and keep
+// it: forgetting what the failed attempt wrote deletes the leaf from the store.
+func TestCommit_RetryKeepsANodeTheFailedAttemptWrote(t *testing.T) {
+	key, value, other := bytes.Repeat([]byte{1}, 32), []byte("value"), []byte("other")
+	neighbour := bytes.Repeat([]byte{2}, 32)
+	store := &failNthSetStore{MapStore: simplemap.NewSimpleMap()}
+	trie := newPoktrollSpecSMST(store)
+	requireNoError(t, trie.Update(neighbour, other, 1), "Update neighbour")
+	requireNoError(t, trie.Update(key, value, 1), "Update")
+	requireNoError(t, trie.Commit(), "Commit")
+
+	requireNoError(t, trie.Update(key, other, 1), "Update other")
+	requireNoError(t, trie.Update(key, value, 1), "Update back")
+
+	// The leaf is written first, then the root's Set fails.
+	store.calls, store.failAt = 0, 2
+	if err := trie.Commit(); !errors.Is(err, errInjectedSet) {
+		t.Fatalf("Commit: got %v, want the injected Set failure", err)
+	}
+	requireNoError(t, trie.Commit(), "retried Commit")
+	requireStoreServes(t, store, trie.Root(),
+		map[string][]byte{string(key): value, string(neighbour): other}, "after the retry")
+}
+
 func requireSameStoreSize(t *testing.T, got, want kvstore.MapStore) {
 	t.Helper()
 	gotLen, err := got.Len()
