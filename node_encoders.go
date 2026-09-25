@@ -60,34 +60,17 @@ func isInnerNode(data []byte) bool {
 
 // encodeLeafNode encodes leaf nodes. This function applies to both the SMT and
 // SMST since the weight of the node is appended to the end of the valueHash.
+//
+// It allocates exactly once, whatever the size. A leaf carries its whole value
+// when the value hasher is nil, so a leaf can be megabytes; building it in a
+// pooled buffer and then copying it out allocated it twice, and the pool keeps
+// nothing above maxSizeForBufferPool anyway.
 func encodeLeafNode(path, leafData []byte) (data []byte) {
-	// Pre-calculate total size to avoid multiple allocations
-	totalSize := prefixLen + len(path) + len(leafData)
-
-	// Use single allocation if total size is reasonable
-	if totalSize <= reasonableNodeSize {
-		data = make([]byte, 0, totalSize)
-		data = append(data, leafNodePrefix...)
-		data = append(data, path...)
-		data = append(data, leafData...)
-		return data
-	}
-
-	// For larger sizes, use buffer pool
-	data = getBuffer()
-	if cap(data) < totalSize {
-		data = make([]byte, 0, totalSize)
-	}
-
+	data = make([]byte, 0, prefixLen+len(path)+len(leafData))
 	data = append(data, leafNodePrefix...)
 	data = append(data, path...)
 	data = append(data, leafData...)
-
-	// Return a copy and put buffer back in pool
-	result := make([]byte, len(data))
-	copy(result, data)
-	putBuffer(data)
-	return result
+	return data
 }
 
 // encodeInnerNode encodes inner node given the data for both children

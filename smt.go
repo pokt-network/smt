@@ -772,8 +772,7 @@ func (smt *SMT) commit(node trieNode, written map[string]struct{}) error {
 	default:
 		return nil
 	}
-	preimage := smt.encode(node)
-	digest := smt.digest(node)
+	preimage, digest := smt.encodeAndDigest(node)
 	if err := smt.nodes.Set(digest, preimage); err != nil {
 		return err
 	}
