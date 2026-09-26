@@ -184,7 +184,7 @@ func (spec *TrieSpec) digestNode(node trieNode) []byte {
 		return n.digest
 	}
 	if *cachedDigest == nil {
-		*cachedDigest = spec.th.digestData(spec.encodeNode(node))
+		*cachedDigest = spec.digestOfEncoding(spec.encodeNode(node))
 	}
 	return *cachedDigest
 }
@@ -228,13 +228,48 @@ func (spec *TrieSpec) digestSumNode(node trieNode) []byte {
 		return n.digest
 	}
 	if *cache == nil {
-		preImage := spec.encodeSumNode(node)
-		firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(preImage)
-		*cache = spec.th.digestData(preImage)
-		*cache = append(*cache, preImage[firstSumByteIdx:firstCountByteIdx]...)
-		*cache = append(*cache, preImage[firstCountByteIdx:]...)
+		*cache = spec.digestOfEncoding(spec.encodeSumNode(node))
 	}
 	return *cache
+}
+
+// digestOfEncoding is the digest of a leaf or inner node whose encoding is
+// preImage: its hash, and for a sum trie the sum and count the encoding ends
+// with. digestNode and digestSumNode compute a digest from a fresh encoding;
+// encodeAndDigest hands it the encoding it has just built, so Commit encodes a
+// leaf or inner node once instead of twice.
+func (spec *TrieSpec) digestOfEncoding(preImage []byte) []byte {
+	digest := spec.th.digestData(preImage)
+	if !spec.sumTrie {
+		return digest
+	}
+	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(preImage)
+	digest = append(digest, preImage[firstSumByteIdx:firstCountByteIdx]...)
+	digest = append(digest, preImage[firstCountByteIdx:]...)
+	return digest
+}
+
+// encodeAndDigest returns node's encoding and its digest, encoding it once. The
+// digest is cached on the node exactly as digest caches it. An extension node's
+// digest is not taken from its own encoding but from the inner node it expands
+// to, so for it the digest comes from digest, unchanged.
+func (spec *TrieSpec) encodeAndDigest(node trieNode) (preImage, digest []byte) {
+	preImage = spec.encode(node)
+	var cache *[]byte
+	switch n := node.(type) {
+	case *leafNode:
+		cache = &n.digest
+	case *innerNode:
+		cache = &n.digest
+	case *extensionNode:
+		return preImage, spec.digest(n)
+	default:
+		return preImage, spec.digest(node)
+	}
+	if *cache == nil {
+		*cache = spec.digestOfEncoding(preImage)
+	}
+	return preImage, *cache
 }
 
 // parseLeafNode parses a leafNode into its components
