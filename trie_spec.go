@@ -184,7 +184,7 @@ func (spec *TrieSpec) digestNode(node trieNode) []byte {
 		return n.digest
 	}
 	if *cachedDigest == nil {
-		*cachedDigest = spec.digestOfEncoding(spec.encodeNode(node))
+		*cachedDigest = spec.th.digestData(spec.encodeNode(node))
 	}
 	return *cachedDigest
 }
@@ -228,22 +228,19 @@ func (spec *TrieSpec) digestSumNode(node trieNode) []byte {
 		return n.digest
 	}
 	if *cache == nil {
-		*cache = spec.digestOfEncoding(spec.encodeSumNode(node))
+		*cache = spec.digestOfSumEncoding(spec.encodeSumNode(node))
 	}
 	return *cache
 }
 
-// digestOfEncoding is the digest of a leaf or inner node whose encoding is
-// preImage: its hash, and for a sum trie the sum and count the encoding ends
-// with. digestNode and digestSumNode compute a digest from a fresh encoding;
-// encodeAndDigest hands it the encoding it has just built, so Commit encodes a
-// leaf or inner node once instead of twice.
-func (spec *TrieSpec) digestOfEncoding(preImage []byte) []byte {
-	digest := spec.th.digestData(preImage)
-	if !spec.sumTrie {
-		return digest
-	}
+// digestOfSumEncoding is the digest of a sum leaf or inner node whose encoding
+// is preImage: its hash followed by the sum and count the encoding ends with.
+// It does not read spec.sumTrie, so it means the same thing wherever it is
+// called; where a plain and a sum digest are both possible, the caller chooses
+// by the trie type, as digest and encodeAndDigest do.
+func (spec *TrieSpec) digestOfSumEncoding(preImage []byte) []byte {
 	firstSumByteIdx, firstCountByteIdx := getFirstMetaByteIdx(preImage)
+	digest := spec.th.digestData(preImage)
 	digest = append(digest, preImage[firstSumByteIdx:firstCountByteIdx]...)
 	digest = append(digest, preImage[firstCountByteIdx:]...)
 	return digest
@@ -267,7 +264,11 @@ func (spec *TrieSpec) encodeAndDigest(node trieNode) (preImage, digest []byte) {
 		return preImage, spec.digest(node)
 	}
 	if *cache == nil {
-		*cache = spec.digestOfEncoding(preImage)
+		if spec.sumTrie {
+			*cache = spec.digestOfSumEncoding(preImage)
+		} else {
+			*cache = spec.th.digestData(preImage)
+		}
 	}
 	return preImage, *cache
 }
