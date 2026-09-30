@@ -176,6 +176,90 @@ func (smst *SMST) ProveClosest(path []byte) (
 	return smst.SMT.ProveClosest(path)
 }
 
+// ProveWeighted generates a proof of inclusion for a leaf selected in
+// proportion to leaf count: every leaf in the trie is equally likely to be
+// selected, whatever its position in the keyspace.
+//
+// The seed selects a target index t = BigEndian(seed[:8]) mod count. The trie
+// is descended from the root, going left when t is less than the count of
+// the left child, and otherwise subtracting that count and going right.
+//
+// The proof returned is the proof ProveClosest returns for the selected leaf's
+// own path, built in the same descent that selects the leaf, so it can be
+// compacted, marshaled and verified as a closest proof. Use
+// VerifyWeightedProof to also check that the leaf is the one the seed selects.
+func (smst *SMST) ProveWeighted(seed []byte) (*SparseMerkleClosestProof, error) {
+	t, err := weightedTarget(seed, smst.Root())
+	if err != nil {
+		return nil, err
+	}
+
+	// siblings are collected top-down; lastSibling is the sibling of the
+	// deepest inner node, whose encoding is returned as SiblingData, as
+	// ProveClosest does.
+	var siblings []trieNode
+	var lastSibling trieNode
+	depth := 0
+	node := smst.root
+	for {
+		if node, err = smst.resolveLazy(node); err != nil {
+			return nil, err
+		}
+		if leaf, ok := node.(*leafNode); ok {
+			value, err := smst.leafValue(leaf)
+			if err != nil {
+				return nil, err
+			}
+			// Left nil for a root leaf, as ProveClosest leaves it.
+			var sideNodes [][]byte
+			if len(siblings) > 0 {
+				sideNodes = make([][]byte, len(siblings))
+			}
+			for i, sibling := range siblings {
+				sideNodes[len(siblings)-1-i] = smst.digest(sibling)
+			}
+			proof := &SparseMerkleClosestProof{
+				Path:             leaf.path,
+				FlippedBits:      make([]int, 0),
+				Depth:            depth,
+				ClosestPath:      leaf.path,
+				ClosestValueHash: value,
+				ClosestProof:     &SparseMerkleProof{SideNodes: sideNodes},
+			}
+			if lastSibling != nil {
+				if lastSibling, err = smst.resolveLazy(lastSibling); err != nil {
+					return nil, err
+				}
+				if proof.ClosestProof.SiblingData, err = smst.encodeWithValue(lastSibling); err != nil {
+					return nil, err
+				}
+			}
+			return proof, nil
+		}
+		switch n := node.(type) {
+		case *extensionNode:
+			// Each level an extension node replaces has an empty sibling.
+			for i := 0; i < n.length(); i++ {
+				siblings = append(siblings, nil)
+			}
+			depth += n.length()
+			node = n.child
+		case *innerNode:
+			_, leftCount := parseSumAndCount(smst.digest(n.leftChild))
+			if t < leftCount {
+				node, lastSibling = n.leftChild, n.rightChild
+			} else {
+				t -= leftCount
+				node, lastSibling = n.rightChild, n.leftChild
+			}
+			siblings = append(siblings, lastSibling)
+			depth++
+		default:
+			return nil, fmt.Errorf("ProveWeighted: unexpected node %T", node)
+		}
+	}
+}
+
 // Commit persists all dirty nodes in the trie, deletes all orphaned
 // nodes from the database and then computes and saves the root hash
 func (smst *SMST) Commit() error {

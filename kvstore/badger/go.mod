@@ -1,6 +1,6 @@
 module github.com/pokt-network/smt/kvstore/badger
 
-go 1.24.3
+go 1.26.5
 
 require (
 	github.com/dgraph-io/badger/v4 v4.2.0

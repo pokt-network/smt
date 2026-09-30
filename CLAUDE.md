@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Go library implementing Sparse Merkle Tries (SMT) and Sparse Merkle Sum Tries (SMST) with optimizations from the Libra whitepaper. Provides cryptographic data structures for key-value storage with efficient proof generation and verification.
 
-**NOTE: Requires Go 1.20.12+**
+**NOTE: Requires Go 1.26.5+**
 
 ## Development Commands
 

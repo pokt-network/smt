@@ -85,6 +85,10 @@ type SparseMerkleSumTrie interface {
 	// the longest common prefix before finding the key with the most common
 	// bits as the path provided.
 	ProveClosest([]byte) (*SparseMerkleClosestProof, error)
+	// ProveWeighted computes a Merkle proof of inclusion for a leaf selected
+	// by the seed in proportion to leaf count. Verify it with
+	// VerifyWeightedProof.
+	ProveWeighted(seed []byte) (*SparseMerkleClosestProof, error)
 	// Commit saves the trie's state to its persistent storage.
 	Commit() error
 	// Spec returns the TrieSpec for the trie
