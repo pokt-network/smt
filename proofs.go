@@ -74,16 +74,22 @@ func (proof *SparseMerkleProof) validateBasic(spec *TrieSpec) error {
 		return fmt.Errorf("invalid non-membership leaf data size: got %d but min is %d", len(proof.NonMembershipLeafData), leafPathSize)
 	}
 
+	// Check that all supplied sideNodes are the correct size.
+	// Applies to every proof form, including those without SiblingData.
+	for _, sideNodeValue := range proof.SideNodes {
+		if len(sideNodeValue) != spec.hashSize() {
+			return fmt.Errorf("invalid side node size: got %d but want %d", len(sideNodeValue), spec.hashSize())
+		}
+	}
+
 	// Check that the sibling data hashes to the first side node if not nil
 	if proof.SiblingData == nil || len(proof.SideNodes) == 0 {
 		return nil
 	}
 
-	// Check that all supplied sideNodes are the correct size.
-	for _, sideNodeValue := range proof.SideNodes {
-		if len(sideNodeValue) != spec.hashSize() {
-			return fmt.Errorf("invalid side node size: got %d but want %d", len(sideNodeValue), spec.hashSize())
-		}
+	// Check the sibling data is long enough to be parsed as a node before hashing it.
+	if minSize := spec.minPreimageSize(proof.SiblingData); len(proof.SiblingData) < minSize {
+		return fmt.Errorf("invalid sibling data size: got %d but min is %d", len(proof.SiblingData), minSize)
 	}
 
 	siblingHash := spec.hashPreimage(proof.SiblingData)
@@ -164,6 +170,11 @@ func (proof *SparseCompactMerkleProof) validateBasic(spec *TrieSpec) error {
 	// Compact proofs: check that the correct number of sidenodes have been
 	// supplied according to the bit mask. For every flipped bit we have a
 	// placeholder side node.
+	for i := proof.NumSideNodes; i < len(proof.BitMask)*8; i++ {
+		if getPathBit(proof.BitMask, i) == 1 {
+			return fmt.Errorf("invalid bit mask: bit %d is set but there are %d side nodes", i, proof.NumSideNodes)
+		}
+	}
 	snl := proof.NumSideNodes - countSetBits(proof.BitMask)
 	if proof.NumSideNodes > 0 && len(proof.SideNodes) != snl {
 		return fmt.Errorf("invalid number of side nodes: got %d want %d", len(proof.SideNodes), snl)
@@ -207,6 +218,9 @@ func (proof *SparseMerkleClosestProof) GetValueHash(spec *TrieSpec) []byte {
 		return nil
 	}
 	if spec.sumTrie {
+		if len(data) < sumSizeBytes+countSizeBytes {
+			return nil
+		}
 		firstSumByteIdx, _ := getFirstMetaByteIdx(data)
 		return data[:firstSumByteIdx]
 	}
@@ -248,6 +262,9 @@ func (proof *SparseMerkleClosestProof) validateBasic(spec *TrieSpec) error {
 		return fmt.Errorf("invalid closest path: %x (not equal at bit: %d)", proof.ClosestPath, failed)
 	}
 	// validate the proof itself
+	if proof.ClosestProof == nil {
+		return errors.New("missing closest proof")
+	}
 	if err := proof.ClosestProof.validateBasic(spec); err != nil {
 		return fmt.Errorf("invalid closest proof: %w", err)
 	}
@@ -295,6 +312,9 @@ func (proof *SparseCompactMerkleClosestProof) validateBasic(spec *TrieSpec) erro
 		}
 	}
 	// perform a sanity check on the closest proof
+	if proof.ClosestProof == nil {
+		return errors.New("missing closest proof")
+	}
 	if err := proof.ClosestProof.validateBasic(spec); err != nil {
 		return fmt.Errorf("invalid closest proof: %w", err)
 	}
@@ -410,6 +430,10 @@ func VerifyWeightedProof(proof *SparseMerkleClosestProof, root, seed []byte, spe
 	}
 	if proof.ClosestProof == nil || len(proof.ClosestValueHash) < sumSizeBytes+countSizeBytes {
 		return false, errors.Join(ErrBadProof, errors.New("proof is not for a leaf"))
+	}
+	// A weighted proof proves a leaf in the trie, never the absence of one.
+	if proof.ClosestProof.NonMembershipLeafData != nil {
+		return false, errors.Join(ErrBadProof, errors.New("weighted proof has non-membership leaf data"))
 	}
 	numSideNodes := len(proof.ClosestProof.SideNodes)
 	if !bytes.Equal(proof.Path, proof.ClosestPath) || len(proof.FlippedBits) != 0 || proof.Depth != numSideNodes {

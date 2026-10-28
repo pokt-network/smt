@@ -165,7 +165,7 @@ func TestSMT_Proof_ValidateBasic(t *testing.T) {
 	require.EqualError(
 		t,
 		proof.validateBasic(base),
-		"invalid sibling data hash: got 187864587bac133246face60f98b8214407aa314f37dfc9ce8e1f5c80284a866 but want 101cb41e8679c5376da9fb4c1e5ad4772876affb74045574cc7c12e4c38975f9",
+		"invalid sibling data size: got 32 but min is 33",
 	)
 
 	result, err = VerifyProof(proof, root, []byte("testKey1"), []byte("testValue1"), base)

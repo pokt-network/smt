@@ -100,6 +100,24 @@ func (spec *TrieSpec) hashPreimage(data []byte) []byte {
 	return spec.hashSerialization(data)
 }
 
+// minPreimageSize returns the minimum length of encoded node data of the type
+// its prefix names, with the sum and count for a sum trie. Data without a
+// known prefix gets the leaf minimum.
+func (spec *TrieSpec) minPreimageSize(data []byte) int {
+	size := prefixLen + spec.ph.PathSize() // leaf: prefix, path
+	switch {
+	case len(data) < prefixLen:
+	case isExtNode(data):
+		size = prefixLen + 2 + spec.ph.PathSize() + spec.hashSize() // prefix, path bounds, path, child
+	case isInnerNode(data):
+		size = prefixLen + 2*spec.hashSize() // prefix, left child, right child
+	}
+	if spec.sumTrie {
+		size += sumSizeBytes + countSizeBytes
+	}
+	return size
+}
+
 // Used for verification of serialized proof data
 func (spec *TrieSpec) hashSerialization(data []byte) []byte {
 	if isExtNode(data) {

@@ -234,7 +234,7 @@ func TestSMST_Proof_ValidateBasic(t *testing.T) {
 	require.EqualError(
 		t,
 		proof.validateBasic(base),
-		"invalid sibling data hash: got 30ecfc36781633f6765088e69165733d7192483b4468ca53ef21794bb035f72f799a6026c448b3eacafa2b82ca1ff7f2 but want 3c54b08cc0074a44a12cb0ea0486d29d799a6026c448b3eacafa2b82ca1ff7f200000000000000090000000000000003",
+		"invalid sibling data size: got 32 but min is 49",
 	)
 
 	result, err = VerifySumProof(proof, root, []byte("testKey1"), []byte("testValue1"), 1, 1, base)
